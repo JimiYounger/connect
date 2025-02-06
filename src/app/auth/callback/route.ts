@@ -13,11 +13,17 @@ export async function GET(request: Request) {
       const cookieStore = cookies()
       const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
       
-      const { error } = await supabase.auth.exchangeCodeForSession(code)
+      const { error, data } = await supabase.auth.exchangeCodeForSession(code)
       
       if (error) {
         console.error('Auth callback error:', error)
         return NextResponse.redirect(new URL('/', request.url))
+      }
+
+      // Check if the email is from purelightpower.com
+      if (!data.user?.email?.endsWith('@purelightpower.com')) {
+        await supabase.auth.signOut()
+        return NextResponse.redirect(new URL('/?error=invalid_domain', request.url))
       }
     }
 

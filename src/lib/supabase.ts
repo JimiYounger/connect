@@ -1,6 +1,13 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { Database } from '@/types/supabase'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+// This will give you a fully typed client
+export const supabase = createClientComponentClient<Database>()
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey) 
+// If you need a server-side client, you can also add:
+import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
+
+export const createServerClient = () => {
+  return createServerComponentClient<Database>({ cookies })
+}
