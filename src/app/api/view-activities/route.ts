@@ -5,6 +5,22 @@ import { NextResponse } from 'next/server'
 import { ActivityType, ActivityStatus } from '@/lib/types/activity'
 import type { ActivityLog } from '@/lib/types/activity'
 
+// Type representing the raw database row
+type ActivityRow = {
+  id: string
+  type: string
+  action: string
+  user_id: string | null
+  user_email: string | null
+  status: string
+  details: unknown
+  metadata: unknown
+  timestamp: number
+  created_at: string | null
+  synced_at: string | null
+  redis_id: string | null
+}
+
 export const dynamic = 'force-dynamic' // Ensure the route is not cached
 
 export async function GET() {
@@ -30,16 +46,16 @@ export async function GET() {
     }
 
     // Validate and transform the activities
-    const validatedActivities = activities.map((activity: any): ActivityLog => ({
-      id: activity.id || crypto.randomUUID(),
-      type: activity.type || ActivityType.SYSTEM_EVENT,
-      action: activity.action || 'Unknown Action',
-      userId: activity.user_id,
-      userEmail: activity.user_email,
-      status: activity.status || ActivityStatus.INFO,
-      details: activity.details || {},
-      metadata: activity.metadata || {},
-      timestamp: activity.timestamp || Date.now()
+    const validatedActivities = activities.map((row: ActivityRow): ActivityLog => ({
+      id: row.id || crypto.randomUUID(),
+      type: (row.type as ActivityType) || ActivityType.SYSTEM_EVENT,
+      action: row.action || 'Unknown Action',
+      userId: row.user_id ?? undefined,
+      userEmail: row.user_email ?? undefined,
+      status: (row.status as ActivityStatus) || ActivityStatus.INFO,
+      details: row.details as Record<string, unknown> || {},
+      metadata: row.metadata as Record<string, unknown> || {},
+      timestamp: row.timestamp || Date.now()
     }))
 
     console.log('Validated activities:', validatedActivities)
