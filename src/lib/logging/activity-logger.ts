@@ -62,7 +62,7 @@ export class ActivityLogger {
     type: ActivityType,
     action: string,
     status: ActivityStatus,
-    details: Record<string, any>,
+    details: Record<string, unknown>,
     userId?: string,
     userEmail?: string,
     metadata?: ActivityLog['metadata']
