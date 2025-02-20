@@ -1,22 +1,14 @@
 'use client'
 
-import React, { useState } from 'react'
+import React from 'react'
 import { FileUploaderRegular } from "@uploadcare/react-uploader/next"
+import type { UploadcareFile } from '@uploadcare/upload-client'
 import type { FileInfo } from '@/types/files'
 import "@uploadcare/react-uploader/core.css"
-import { supabase } from '@/lib/supabase'
 
 interface UploaderProps {
   onUpload: (fileInfo: FileInfo) => void
   className?: string
-}
-
-interface UploadcareFile {
-  uuid: string
-  name?: string
-  size?: number
-  mimeType?: string
-  cdnUrl?: string
 }
 
 export function UploadcareUploader({ onUpload, className }: UploaderProps) {
@@ -24,7 +16,7 @@ export function UploadcareUploader({ onUpload, className }: UploaderProps) {
     throw new Error('Missing Uploadcare public key')
   }
 
-  const handleChange = async (files: any) => {
+  const handleChange = async (files: { successEntries: UploadcareFile[] }) => {
     if (files?.successEntries?.length > 0) {
       const file = files.successEntries[0]
       console.log('File uploaded:', file) // For debugging
@@ -32,8 +24,8 @@ export function UploadcareUploader({ onUpload, className }: UploaderProps) {
       // Just pass the file info to the parent component
       const fileInfo: FileInfo = {
         cdnUrl: `https://ucarecdn.com/${file.uuid}/`,
-        uuid: file.uuid, // Pass the Uploadcare UUID
-        originalFilename: file.name || 'untitled',
+        uuid: file.uuid,
+        originalFilename: file.originalFilename || 'untitled',
         mimeType: file.mimeType || 'application/octet-stream',
         size: file.size || 0,
       }

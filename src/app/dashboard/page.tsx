@@ -2,7 +2,6 @@
 
 "use client"
 
-import { useEffect, useRef } from "react"
 import { useAuth } from "@/features/auth/context/auth-context"
 import { useProfile } from "@/features/users/hooks/useProfile"
 import { LoadingState } from "@/components/loading-state"

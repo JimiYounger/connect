@@ -5,6 +5,7 @@ import { createServerSupabase } from '@/features/auth/utils/supabase-server'
 import type { TeamMember } from '@/types/airtable'
 
 const VALID_ROLE_TYPES = ['Setter', 'Closer', 'Manager', 'Admin', 'Executive'] as const
+type RoleType = typeof VALID_ROLE_TYPES[number]
 
 const formatDate = (dateString: string | Date | undefined | null): string => {
   if (!dateString) return ''
@@ -37,7 +38,7 @@ export const syncService = {
 
       // Validate and normalize role type
       let roleType = teamMember.fields?.['Role Type'] || 'Setter'
-      if (!VALID_ROLE_TYPES.includes(roleType as any)) {
+      if (!VALID_ROLE_TYPES.includes(roleType as RoleType)) {
         console.warn(`Invalid role type from Airtable: ${roleType}, defaulting to Setter`)
         roleType = 'Setter'
       }

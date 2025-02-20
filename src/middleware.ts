@@ -15,7 +15,6 @@ export async function middleware(request: NextRequest) {
     // Add log-error to public URLs
     const publicUrls = ['/', '/auth/callback', '/api/log-error']
     if (!publicUrls.includes(request.nextUrl.pathname)) {
-      const requestHeaders = new Headers(request.headers)
       const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Search, Loader2 } from "lucide-react"
 import type { VimeoVideo } from "@vimeo/vimeo"
+import Image from "next/image"
 
 interface VimeoGalleryProps {
   onVideoSelect: (video: {
@@ -119,9 +120,11 @@ export function VimeoGallery({ onVideoSelect, selectedVideoId }: VimeoGalleryPro
                 <div className="relative w-24 flex-shrink-0">
                   <div className="aspect-video bg-gray-100 rounded overflow-hidden">
                     {video.pictures.sizes && (
-                      <img
+                      <Image
                         src={getBestThumbnail(video.pictures)}
                         alt={video.name}
+                        width={240}
+                        height={135}
                         className="w-full h-full object-cover"
                       />
                     )}

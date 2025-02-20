@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import type { Tables } from '@/types/supabase'
+import Image from "next/image"
 
 type Banner = Tables<'carousel_banners_detailed'>
 
@@ -84,10 +85,13 @@ export function CarouselDisplay({ banners, activeRole }: CarouselDisplayProps) {
                 <Dialog>
                   <DialogTrigger asChild>
                     <div className="relative aspect-video cursor-pointer group">
-                      <img
+                      <Image
                         src={banner.banner_url || `/api/placeholder/1920/1080`}
                         alt={banner.title || ''}
+                        width={1920}
+                        height={1080}
                         className="w-full h-full object-cover"
+                        priority={index === 0}
                       />
                       <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Play className="w-16 h-16 text-white" />
@@ -118,10 +122,13 @@ export function CarouselDisplay({ banners, activeRole }: CarouselDisplayProps) {
                   onClick={() => handleBannerClick(banner)}
                   className="cursor-pointer"
                 >
-                  <img
+                  <Image
                     src={banner.banner_url || `/api/placeholder/1920/1080`}
                     alt={banner.title || ''}
+                    width={1920}
+                    height={1080}
                     className="w-full aspect-video object-cover"
+                    priority={index === 0}
                   />
                 </div>
               )}

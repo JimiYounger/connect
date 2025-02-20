@@ -7,7 +7,7 @@ export async function GET() {
   try {
     const recentErrors = await ErrorLogger.getRecentErrors(5)
     return NextResponse.json({ errors: recentErrors })
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to fetch errors' }, { status: 500 })
   }
 } 

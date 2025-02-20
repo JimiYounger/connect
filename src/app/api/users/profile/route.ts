@@ -4,7 +4,6 @@ import { createServerSupabase } from '@/features/auth/utils/supabase-server'
 import { NextResponse } from 'next/server'
 import { syncService } from '@/features/users/services/sync-service'
 import type { UserProfile } from '@/features/users/types'
-import type { ProfileCache } from '@/features/users/types/profile'
 
 // Add memory cache with types
 const profileCache = new Map<string, {
