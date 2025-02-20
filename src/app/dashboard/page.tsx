@@ -83,7 +83,7 @@ const STAT_CARDS: StatCardData[] = [
 export default function DashboardPage() {
   const { session, signOut, loading: authLoading } = useAuth()
   const { profile, isLoading: profileLoading } = useProfile(session)
-  const { can, isLoading: permissionsLoading } = usePermissions(profile ?? null)
+  const { isLoading: permissionsLoading } = usePermissions(profile ?? null)
 
   const { isLoading, message } = useLoadingState(
     {
