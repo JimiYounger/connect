@@ -18,7 +18,7 @@ function ensureJson(value: Record<string, unknown> | undefined): Json | undefine
   return value as Json
 }
 
-async function handler(req: Request) {
+async function handler(_req: Request) {
   try {
     const redis = getRedis()
     const supabase = await createServerSupabase()
