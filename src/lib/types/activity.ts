@@ -23,7 +23,7 @@ export interface ActivityLog {
   userId?: string;
   userEmail?: string;
   status: ActivityStatus;
-  details: Record<string, any>;
+  details: Record<string, unknown>;
   metadata?: {
     userAgent?: string;
     ip?: string;

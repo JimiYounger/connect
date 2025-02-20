@@ -2,7 +2,7 @@
 
 import { useCallback, useRef } from 'react'
 
-export function useDebouncedCallback<T extends (...args: any[]) => any>(
+export function useDebouncedCallback<T extends (...args: unknown[]) => unknown>(
   callback: T,
   delay: number
 ): T {
@@ -20,4 +20,4 @@ export function useDebouncedCallback<T extends (...args: any[]) => any>(
     },
     [callback, delay]
   ) as T
-} 
+}
