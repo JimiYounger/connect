@@ -18,6 +18,7 @@ import type { Tables } from '@/types/supabase'
 
 type Banner = Tables<'carousel_banners_detailed'>
 
+// TODO: Implement role-based display logic using activeRole prop
 interface CarouselDisplayProps {
   banners: Banner[]
   activeRole: string | null
