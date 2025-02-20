@@ -11,12 +11,11 @@ import { useProfile } from "@/features/users/hooks/useProfile"
 import { usePermissions } from "@/features/permissions/hooks/usePermissions"
 import { hasPermissionLevel } from "@/features/permissions/constants/roles"
 import { useBanners } from "@/features/carousel/hooks/useBanners"
-import { useEffect } from "react"
 
 export default function CarouselManagementPage() {
   const { session, loading } = useAuth()
-  const { profile, isLoading: profileLoading } = useProfile(session)
-  const { userPermissions, isLoading: permissionsLoading } = usePermissions(profile)
+  const { profile } = useProfile(session)
+  const { userPermissions } = usePermissions(profile)
   const {
     banners,
     isLoading: bannersLoading,
@@ -25,15 +24,6 @@ export default function CarouselManagementPage() {
     toggleBannerActive,
     deleteBanner
   } = useBanners()
-
-  useEffect(() => {
-    console.log('📊 [Admin Page] Mounting with state:', {
-      loading,
-      session: !!session,
-      profile,
-      userPermissions
-    })
-  }, [loading, session, profile, userPermissions])
 
   // Loading states
   if (loading.initializing) {
