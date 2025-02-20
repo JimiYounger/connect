@@ -4,10 +4,16 @@ declare module '@uploadcare/react-uploader' {
   
   interface UploaderProps {
     publicKey: string
-    onComplete: (fileInfo: any) => void
+    onComplete: (fileInfo: { 
+      uuid: string; 
+      cdnUrl: string; 
+      name?: string; 
+      size?: number; 
+      isImage?: boolean; 
+    }) => void
     locale?: string
     previewStep?: boolean
-    tabsCss?: Record<string, any>
+    tabsCss?: Record<string, string | number | Record<string, string | number>>
   }
 
   export const Uploader: FC<UploaderProps>

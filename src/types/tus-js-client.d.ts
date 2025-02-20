@@ -1,3 +1,4 @@
+// src/types/tus-js-client.d.ts
 declare module 'tus-js-client' {
   export class Upload {
     constructor(
@@ -15,14 +16,14 @@ declare module 'tus-js-client' {
         onSuccess?: () => void;
         onChunkComplete?: (chunkSize: number, bytesAccepted: number, bytesTotal: number) => void;
         chunkSize?: number;
-        fingerprint?: (file: File, options?: any) => string | Promise<string>;
+        fingerprint?: (file: File, options?: Record<string, unknown>) => string | Promise<string>;
         uploadUrl?: string | null;
         uploadSize?: number | null;
         overridePatchMethod?: boolean;
         headers?: { [key: string]: string };
         addRequestId?: boolean;
-        onBeforeRequest?: (req: any) => void;
-        onAfterResponse?: (req: any, res: any) => void;
+        onBeforeRequest?: (req: Request | Record<string, unknown>) => void;
+        onAfterResponse?: (req: Request | Record<string, unknown>, res: Response | Record<string, unknown>) => void;
         parallelUploads?: number;
         storeFingerprintForResuming?: boolean;
         removeFingerprintOnSuccess?: boolean;
@@ -33,19 +34,19 @@ declare module 'tus-js-client' {
 
     start(): void;
     abort(shouldTerminate?: boolean): Promise<void>;
-    findPreviousUploads(): Promise<any[]>;
-    resumeFromPreviousUpload(previousUpload: any): void;
+    findPreviousUploads(): Promise<Record<string, unknown>[]>;
+    resumeFromPreviousUpload(previousUpload: Record<string, unknown>): void;
     url: string | null;
     file: File | null;
     url: string | null;
-    options: any;
+    options: UploadOptions;
   }
 
   export interface UploadOptions {
     endpoint: string;
     uploadUrl?: string | null;
     metadata?: { [key: string]: string };
-    fingerprint?: (file: File, options?: any) => string | Promise<string>;
+    fingerprint?: (file: File, options?: Record<string, unknown>) => string | Promise<string>;
     uploadSize?: number | null;
     onProgress?: (bytesUploaded: number, bytesTotal: number) => void;
     onChunkComplete?: (chunkSize: number, bytesAccepted: number, bytesTotal: number) => void;
@@ -60,7 +61,7 @@ declare module 'tus-js-client' {
     uploadLengthDeferred?: boolean;
     uploadDataDuringCreation?: boolean;
     overridePatchMethod?: boolean;
-    onBeforeRequest?: (req: any) => void;
-    onAfterResponse?: (req: any, res: any) => void;
+    onBeforeRequest?: (req: Request | Record<string, unknown>) => void;
+    onAfterResponse?: (req: Request | Record<string, unknown>, res: Response | Record<string, unknown>) => void;
   }
 } 

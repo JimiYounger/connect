@@ -4,9 +4,9 @@ declare module '@vimeo/vimeo' {
   interface VimeoRequestOptions {
     method: string;
     path: string;
-    query?: Record<string, any>;
+    query?: Record<string, string | number | boolean | null>;
     headers?: Record<string, string>;
-    body?: any;
+    body?: Record<string, unknown> | string | Buffer;
   }
 
   interface VimeoUploadOptions {
@@ -29,7 +29,7 @@ declare module '@vimeo/vimeo' {
 
     request(
       options: VimeoRequestOptions,
-      callback: (error: any, body: any, statusCode?: number, headers?: object) => void
+      callback: (error: Error | null, body: Record<string, unknown> | null, statusCode?: number, headers?: Record<string, string>) => void
     ): void;
 
     upload(
@@ -37,7 +37,7 @@ declare module '@vimeo/vimeo' {
       options: VimeoUploadOptions,
       completeCallback: (uri: string) => void,
       progressCallback?: (bytesUploaded: number, bytesTotal: number) => void,
-      errorCallback?: (error: any) => void
+      errorCallback?: (error: Error) => void
     ): void;
   }
 
