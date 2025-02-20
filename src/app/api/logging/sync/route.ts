@@ -6,7 +6,7 @@ import { ActivityLog } from '@/lib/types/activity'
 import { ErrorLog } from '@/lib/types/errors'
 import type { Database } from '@/types/supabase'
 import type { Json } from '@/types/supabase'
-import { verifySignatureEdge } from '@upstash/qstash/dist/nextjs'
+import { verifySignatureAppRouter } from "@upstash/qstash/nextjs"
 
 export const runtime = 'edge'
 export const dynamic = 'force-dynamic'
@@ -118,8 +118,5 @@ async function handler(_request: NextRequest) {
   }
 }
 
-// Use verifySignatureEdge without any type annotations
-export const POST = verifySignatureEdge(handler, {
-  currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY!,
-  nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY!,
-});
+// Update the export to use verifySignatureAppRouter
+export const POST = verifySignatureAppRouter(handler)
