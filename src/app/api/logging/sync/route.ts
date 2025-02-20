@@ -118,7 +118,8 @@ async function handler(_request: NextRequest) {
   }
 }
 
-// Update the verifySignatureEdge wrapper to include NextRequest type
-export const POST = verifySignatureEdge(async (request: NextRequest) => {
-  return handler(request)
-})
+// Use verifySignatureEdge without any type annotations
+export const POST = verifySignatureEdge(handler, {
+  currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY!,
+  nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY!,
+});
