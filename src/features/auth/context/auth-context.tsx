@@ -2,7 +2,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, useMemo, useCallback, useRef } from 'react'
-import type { Session, AuthChangeEvent } from '@supabase/supabase-js'
+import type { Session } from '@supabase/supabase-js'
 import { authService } from '../utils/supabase-client'
 import { useProfile } from '@/features/users/hooks/useProfile'
 import { useDebouncedCallback } from '@/hooks/use-debounced-callback'
@@ -58,12 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   
   const currentSession = useMemo(() => authState.session, [authState.session])
   
-  const { 
-    profile, 
-    isLoading: profileLoading, 
-    error: profileError,
-    refetch: refetchProfile 
-  } = useProfile(currentSession)
+  const { refetch: refetchProfile } = useProfile(currentSession)
 
   const debouncedUpdateAuthState = useDebouncedCallback(
     (
