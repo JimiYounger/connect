@@ -3,10 +3,12 @@
 import { createServerSupabase } from '@/features/auth/utils/supabase-server'
 import { NextResponse } from 'next/server'
 import { syncService } from '@/features/users/services/sync-service'
+import type { UserProfile } from '@/features/users/types'
+import type { ProfileCache } from '@/features/users/types/profile'
 
 // Add memory cache with types
 const profileCache = new Map<string, {
-  profile: any,
+  profile: UserProfile,
   timestamp: number
 }>()
 const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes, shorter than your sync window
