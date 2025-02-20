@@ -1,6 +1,6 @@
 // app/api/logging/sync/route.ts
 import { createServerSupabase } from '@/features/auth/utils/supabase-server'
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 import { getRedis } from '@/lib/redis'
 import { ActivityLog } from '@/lib/types/activity'
 import { ErrorLog } from '@/lib/types/errors'
@@ -18,7 +18,7 @@ function ensureJson(value: Record<string, unknown> | undefined): Json | undefine
   return value as Json
 }
 
-async function handler() {
+async function handler(request: NextRequest) {
   try {
     const redis = getRedis()
     const supabase = await createServerSupabase()
@@ -118,5 +118,7 @@ async function handler() {
   }
 }
 
-// Use verifySignatureEdge instead of verifySignature
-export const POST = verifySignatureEdge(handler)
+// Update the verifySignatureEdge wrapper to include NextRequest type
+export const POST = verifySignatureEdge(async (request: NextRequest) => {
+  return handler(request)
+})
