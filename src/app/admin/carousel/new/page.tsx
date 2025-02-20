@@ -61,7 +61,7 @@ export default function NewBannerPage() {
       <div className="container py-6">
         <div className="text-center">
           <h2 className="text-xl font-semibold mb-2">Unauthorized</h2>
-          <p>You don't have permission to access this page</p>
+          <p>You don&apos;t have permission to access this page</p>
         </div>
       </div>
     )

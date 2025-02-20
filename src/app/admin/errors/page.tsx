@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
 import { RefreshCw } from "lucide-react"
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useToast } from "@/hooks/use-toast"
 
 export default function ErrorsPage() {
@@ -35,12 +35,7 @@ export default function ErrorsPage() {
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date } | undefined>()
   const { toast } = useToast()
 
-  // Fetch errors
-  useEffect(() => {
-    fetchErrors()
-  }, [])
-
-  const fetchErrors = async () => {
+  const fetchErrors = useCallback(async () => {
     try {
       const res = await fetch('/api/view-errors', { cache: 'no-store' })
       if (!res.ok) throw new Error('Failed to fetch errors')
@@ -54,7 +49,7 @@ export default function ErrorsPage() {
             const parsed = JSON.parse(error)
             console.log('Parsed error:', parsed)
             return parsed as ErrorLog
-          } catch (e: unknown) {
+          } catch {
             console.error('Failed to parse error:', error)
             return null
           }
@@ -86,7 +81,12 @@ export default function ErrorsPage() {
         variant: "destructive",
       })
     }
-  }
+  }, [toast])
+
+  // Fetch errors
+  useEffect(() => {
+    fetchErrors()
+  }, [fetchErrors])
 
   // Apply filters
   useEffect(() => {
