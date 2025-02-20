@@ -34,7 +34,7 @@ interface SortableRowProps {
   banner: Banner
   onToggleActive: (id: string) => void
   onDelete: (id: string) => void
-  router: any
+  router: ReturnType<typeof useRouter>
 }
 
 function SortableRow({ id, banner, onToggleActive, onDelete, router }: SortableRowProps) {
