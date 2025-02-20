@@ -51,7 +51,6 @@ export function useProfile(session: Session | null): UseProfileResult {
     lastFetchTimestamp: cachedData ? Date.now() : null
   })
 
-  const pendingRequestRef = useRef<Promise<UserProfile> | null>(null)
   const mountedRef = useRef(true)
   const abortControllerRef = useRef<AbortController | null>(null)
 

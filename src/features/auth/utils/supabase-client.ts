@@ -2,7 +2,6 @@
 
 import { createBrowserClient } from '@supabase/ssr'
 import type { Database } from '@/types/supabase'
-import type { TeamMember } from '@/types/airtable'
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js'
 
 const supabase = createBrowserClient<Database>(

@@ -1,5 +1,3 @@
-import type { Json } from '@/types/supabase'
-
 export interface StyleConfig {
   size?: 'small' | 'medium' | 'large' | 'wide'
   shape?: 'square' | 'rectangle' | 'circle'

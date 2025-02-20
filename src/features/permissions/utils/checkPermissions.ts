@@ -1,6 +1,6 @@
 // src/features/permissions/utils/checkPermissions.ts
 
-import { ROLE_TYPE_PERMISSIONS, hasPermissionLevel } from '../constants/roles'
+import { ROLE_TYPE_PERMISSIONS } from '../constants/roles'
 import type { RoleType, PermissionAction, UserPermissions } from '../types'
 
 export function checkPermission(

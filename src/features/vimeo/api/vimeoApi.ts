@@ -1,5 +1,5 @@
 import { vimeoClient } from '../utils/vimeoClient';
-import { VimeoResponse, VimeoVideo } from '../types/vimeo.types';
+import { VimeoResponse } from '../types/vimeo.types';
 
 interface VimeoError {
   name: string;
@@ -10,6 +10,7 @@ interface VimeoError {
 export const vimeoApi = {
   getVideos: (page: number = 1, perPage: number = 10): Promise<VimeoResponse> => {
     return new Promise((resolve, reject) => {
+      // @ts-ignore - vimeoClient type definitions need to be updated
       vimeoClient.request({
         method: 'GET',
         path: '/me/videos',
@@ -26,6 +27,7 @@ export const vimeoApi = {
 
   uploadVideo: (file: Buffer, name: string): Promise<string> => {
     return new Promise((resolve, reject) => {
+      // @ts-ignore - vimeoClient type definitions need to be updated
       vimeoClient.upload(
         file,
         {

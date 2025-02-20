@@ -4,7 +4,6 @@
 
 import { useCallback, useMemo, useRef } from 'react'
 import { useAuth } from '@/features/auth/context/auth-context'
-import { useProfile } from '@/features/users/hooks/useProfile'
 import { checkPermission } from '../utils/checkPermissions'
 import { ErrorLogger } from '@/lib/logging/error-logger'
 import { ErrorSeverity, ErrorSource } from '@/lib/types/errors'

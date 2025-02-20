@@ -1,7 +1,7 @@
 // src/lib/logging/error-logger.ts
 
 import { getRedis } from '@/lib/redis'
-import { ErrorLog, ErrorMetadata, ErrorSeverity, ErrorSource } from '../types/errors'
+import { ErrorLog, ErrorMetadata, ErrorSeverity } from '../types/errors'
 import { v4 as uuidv4 } from 'uuid'
 
 export class ErrorLogger {
