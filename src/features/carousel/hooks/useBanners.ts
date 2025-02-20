@@ -2,7 +2,7 @@
 
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/features/auth/context/auth-context'
 import { useProfile } from '@/features/users/hooks/useProfile'
 import { createBrowserClient } from '@supabase/ssr'
@@ -18,7 +18,7 @@ export function useBanners() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
 
-  const fetchBanners = async () => {
+  const fetchBanners = useCallback(async () => {
     if (!session) return
 
     try {
@@ -39,7 +39,7 @@ export function useBanners() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [session])
 
   const updateBannerOrder = async (updatedBanners: Banner[]) => {
     if (!session) return
@@ -57,7 +57,7 @@ export function useBanners() {
         const { error } = await supabase
           .from('carousel_banners')
           .update({ order_index: banner.order_index })
-          .eq('id', banner.id)
+          .eq('id', banner.id || '')
 
         if (error) throw error
       }
@@ -127,7 +127,7 @@ export function useBanners() {
 
   useEffect(() => {
     fetchBanners()
-  }, [session])
+  }, [fetchBanners])
 
   return {
     banners,
