@@ -12,8 +12,8 @@ import { usePermissions } from "@/features/permissions/hooks/usePermissions"
 export default function NewBannerPage() {
   const router = useRouter()
   const { session, loading } = useAuth()
-  const { profile, isLoading: profileLoading } = useProfile(session)
-  const { userPermissions, isLoading: permissionsLoading } = usePermissions(profile)
+  const { profile } = useProfile(session)
+  const { userPermissions } = usePermissions(profile)
 
   // Only show loading state during initial auth check
   if (loading.initializing) {
