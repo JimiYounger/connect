@@ -21,17 +21,8 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, RefreshCw, Download, Trash2 } from "lucide-react"
+import { RefreshCw } from "lucide-react"
 import { useState, useEffect } from 'react'
 import { useToast } from "@/hooks/use-toast"
 
@@ -87,7 +78,7 @@ export default function ErrorsPage() {
       console.log('Final validated errors:', validatedErrors)
       setErrors(validatedErrors)
       setFilteredErrors(validatedErrors)
-    } catch (error: Error | unknown) {
+    } catch (error) {
       console.error('Error fetching errors:', error instanceof Error ? error.message : error)
       toast({
         title: "Error",
@@ -141,7 +132,6 @@ export default function ErrorsPage() {
   }, [searchQuery, severityFilter, sourceFilter, dateRange, errors])
 
   const criticalCount = errors.filter(e => e.severity === 'critical').length
-  const highCount = errors.filter(e => e.severity === 'high').length
   const clientCount = errors.filter(e => e.source && e.source.toLowerCase() === 'client').length
   const serverCount = errors.filter(e => e.source && e.source.toLowerCase() === 'server').length
 
