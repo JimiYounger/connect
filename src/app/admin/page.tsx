@@ -108,7 +108,7 @@ export default function AdminDashboard() {
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center">
           <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-          <p>You don't have permission to access this page</p>
+          <p>You Don&apos;t have permission to access this page</p>
         </div>
       </div>
     )
