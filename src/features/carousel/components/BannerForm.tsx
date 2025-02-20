@@ -5,7 +5,6 @@
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
@@ -21,29 +20,6 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { CalendarIcon } from "lucide-react"
-import { format } from "date-fns"
-import { cn } from "@/lib/utils"
-import { UploadcareUploader } from "@/components/uploadcare-uploader"
-import { VimeoGallery } from "@/features/vimeo/components/VimeoGallery"
-import { useToast } from "@/hooks/use-toast"
-import { useBanners } from "../hooks/useBanners"
-import { BannerFormData, BannerFormDataWithId, bannerFormSchema } from '../types'
-import { RoleSelector } from "./RoleSelector"
-import type { FileInfo } from '@/types/files'
-import {
-  Select as ShadcnSelect,
-  SelectContent as ShadcnSelectContent,
-  SelectItem as ShadcnSelectItem,
-  SelectTrigger as ShadcnSelectTrigger,
-  SelectValue as ShadcnSelectValue,
-} from "@/components/ui/select"
-import { createBrowserClient } from "@supabase/ssr"
-import { Loader2, X, Play } from "lucide-react"
-import Image from "next/image"
-import { RoleType, CarouselBannerRole } from '../types'
 import {
   Dialog,
   DialogContent,
@@ -51,6 +27,15 @@ import {
   DialogTitle,
   DialogClose,
 } from "@/components/ui/dialog"
+import { UploadcareUploader } from "@/components/uploadcare-uploader"
+import { VimeoGallery } from "@/features/vimeo/components/VimeoGallery"
+import { useToast } from "@/hooks/use-toast"
+import { useBanners } from "../hooks/useBanners"
+import { BannerFormData, BannerFormDataWithId, bannerFormSchema } from '../types'
+import { RoleSelector } from "./RoleSelector"
+import { createBrowserClient } from "@supabase/ssr"
+import { Loader2, X, Play } from "lucide-react"
+import Image from "next/image"
 import type { Database } from "@/types/supabase"
 
 interface BannerFormProps {
