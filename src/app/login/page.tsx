@@ -1,15 +1,15 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { AuthButton } from '@/components/auth/auth-button'
 import { useAuth } from '@/features/auth/context/auth-context'
+import { LoginButton } from '@/features/auth/components/LoginButton'
 
 export default function LoginPage() {
   const router = useRouter()
-  const { user, loading } = useAuth()
+  const { isAuthenticated, loading } = useAuth()
 
   // Redirect if already logged in
-  if (user) {
+  if (isAuthenticated) {
     router.push('/dashboard')
     return null
   }
@@ -35,7 +35,9 @@ export default function LoginPage() {
         </div>
 
         <div className="mt-8 flex justify-center">
-          <AuthButton />
+          <LoginButton className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            Sign in with Google
+          </LoginButton>
         </div>
       </div>
     </div>
