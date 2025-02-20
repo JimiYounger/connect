@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
 import { RefreshCw } from "lucide-react"
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useToast } from "@/hooks/use-toast"
 
 export default function ActivitiesPage() {
@@ -33,12 +33,7 @@ export default function ActivitiesPage() {
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date } | undefined>()
   const { toast } = useToast()
 
-  // Fetch activities
-  useEffect(() => {
-    fetchActivities()
-  }, [])
-
-  const fetchActivities = async () => {
+  const fetchActivities = useCallback(async () => {
     try {
       const res = await fetch('/api/view-activities', { cache: 'no-store' })
       if (!res.ok) throw new Error('Failed to fetch activities')
@@ -53,7 +48,11 @@ export default function ActivitiesPage() {
         variant: "destructive",
       })
     }
-  }
+  }, [toast])
+
+  useEffect(() => {
+    fetchActivities()
+  }, [fetchActivities])
 
   // Apply filters
   useEffect(() => {
@@ -96,7 +95,6 @@ export default function ActivitiesPage() {
   const authCount = activities.filter(a => a.type === ActivityType.USER_AUTH).length
   const userCount = activities.filter(a => a.type === ActivityType.CONTENT_ACCESS).length
   const systemCount = activities.filter(a => a.type === ActivityType.SYSTEM_EVENT).length
-  const adminCount = activities.filter(a => a.type === ActivityType.ADMIN_ACTION).length
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">

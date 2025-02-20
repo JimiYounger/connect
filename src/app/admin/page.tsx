@@ -9,23 +9,47 @@ import { hasPermissionLevel } from "@/features/permissions/constants/roles"
 import { Card } from "@/components/ui/card"
 import Link from "next/link"
 import { LineChart, Activity, AlertOctagon, ImageIcon, TrendingUp, TrendingDown } from "lucide-react"
+import { LucideIcon } from 'lucide-react'
+
+type TrendDirection = 'up' | 'down'
+
+interface StatData {
+  current: number
+  change: number
+  trending: TrendDirection
+}
+
+interface MockStats {
+  daily: StatData
+  weekly: StatData
+  monthly: StatData
+}
+
+interface StatCardProps {
+  title: string
+  icon: LucideIcon
+  stat: number
+  change: number
+  trending: TrendDirection
+  iconColor: string
+}
 
 // Mock data
-const mockStats = {
+const mockStats: MockStats = {
   daily: {
     current: 245,
     change: 12.5,
-    trending: 'up' as const
+    trending: 'up'
   },
   weekly: {
     current: 1456,
     change: -2.3,
-    trending: 'down' as const
+    trending: 'down'
   },
   monthly: {
     current: 5271,
     change: 8.7,
-    trending: 'up' as const
+    trending: 'up'
   }
 }
 
@@ -36,14 +60,7 @@ function StatCard({
   change, 
   trending,
   iconColor 
-}: { 
-  title: string
-  icon: any
-  stat: number
-  change: number
-  trending: 'up' | 'down'
-  iconColor: string
-}) {
+}: StatCardProps) {
   return (
     <Card className="relative overflow-hidden group hover:shadow-lg transition-all duration-300">
       <div className="p-6">
