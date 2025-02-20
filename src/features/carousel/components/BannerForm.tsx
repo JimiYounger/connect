@@ -429,20 +429,22 @@ export function BannerForm({ initialData, onSuccess, mode = 'create' }: BannerFo
                     {/* Thumbnail with Play Button */}
                     <Dialog>
                       <DialogTrigger asChild>
-                        <div className="relative w-48 cursor-pointer group">
-                          <div className="aspect-video bg-gray-100 rounded-md overflow-hidden">
-                            <img 
-                              src={`https://vumbnail.com/${form.watch('vimeoVideoId')}.jpg`}
-                              alt={form.watch('vimeoVideoTitle') || 'Video thumbnail'}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <div className="w-12 h-12 rounded-full bg-black/75 flex items-center justify-center">
-                              <Play className="w-6 h-6 text-white fill-current" />
-                            </div>
+                      <div className="relative w-48 h-auto cursor-pointer group">
+                        <div className="aspect-video bg-gray-100 rounded-md overflow-hidden">
+                          <Image
+                            src={`https://vumbnail.com/${form.watch('vimeoVideoId')}.jpg`}
+                            alt={form.watch('vimeoVideoTitle') || 'Video thumbnail'}
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 768px) 100vw, 48vw"
+                          />
+                        </div>
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="w-12 h-12 rounded-full bg-black/75 flex items-center justify-center">
+                            <Play className="w-6 h-6 text-white" />
                           </div>
                         </div>
+                      </div>
                       </DialogTrigger>
                       <DialogContent className="!max-w-dialog !w-dialog !h-dialog !p-0 overflow-hidden rounded-lg">
                         <DialogTitle className="sr-only">

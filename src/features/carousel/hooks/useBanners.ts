@@ -12,8 +12,8 @@ import type { Tables } from '@/types/supabase'
 type Banner = Tables<'carousel_banners_detailed'>
 
 export function useBanners() {
-  const { session, isAuthenticated } = useAuth()
-  const { profile } = useProfile(session)
+  const { session } = useAuth()
+  useProfile(session)
   const [banners, setBanners] = useState<Banner[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)

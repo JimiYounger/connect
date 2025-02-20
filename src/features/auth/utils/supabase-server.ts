@@ -19,14 +19,14 @@ export async function createServerSupabase() {
         set(name: string, value: string, options: CookieOptions) {
           try {
             cookieStore.set({ name, value, ...options })
-          } catch (error) {
+          } catch {
             // Handle cookie setting in server components
           }
         },
         remove(name: string, options: CookieOptions) {
           try {
             cookieStore.delete({ name, ...options })
-          } catch (error) {
+          } catch {
             // Handle cookie removal in server components
           }
         },

@@ -73,8 +73,8 @@ export default function ErrorsPage() {
       console.log('Final validated errors:', validatedErrors)
       setErrors(validatedErrors)
       setFilteredErrors(validatedErrors)
-    } catch (error) {
-      console.error('Error fetching errors:', error instanceof Error ? error.message : error)
+    } catch (err) {
+      console.error('Error fetching errors:', err instanceof Error ? err.message : err)
       toast({
         title: "Error",
         description: "Failed to fetch errors",
@@ -149,7 +149,8 @@ export default function ErrorsPage() {
         title: "Success",
         description: "All errors have been cleared",
       })
-    } catch (error) {
+    } catch (err) {
+      console.error('Failed to clear errors:', err)
       toast({
         title: "Error",
         description: "Failed to clear errors",

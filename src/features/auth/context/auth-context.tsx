@@ -14,7 +14,6 @@ import {
 } from '../types/auth'
 import type { 
   AuthState, 
-  AuthError, 
   AuthContextType,
   AuthStateValidation,
 } from '../types/auth'

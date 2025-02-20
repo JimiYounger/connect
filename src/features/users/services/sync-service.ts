@@ -23,7 +23,7 @@ export const syncService = {
     console.log('Starting profile sync for:', email)
     
     try {
-      const teamMember = await getTeamMemberByEmail(email)
+      const teamMember: TeamMember | null = await getTeamMemberByEmail(email)
       console.log('Team member from Airtable:', {
         found: !!teamMember,
         id: teamMember?.id,

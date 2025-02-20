@@ -5,7 +5,7 @@ import { vimeoClient } from '../utils/vimeoClient'
 import { useDebounce } from '../../../hooks/use-debounce'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Search, Loader2 } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import type { VimeoVideo } from "@vimeo/vimeo"
 import Image from "next/image"
 

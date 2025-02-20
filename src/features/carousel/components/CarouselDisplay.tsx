@@ -25,7 +25,7 @@ interface CarouselDisplayProps {
   activeRole: string | null
 }
 
-export function CarouselDisplay({ banners, activeRole }: CarouselDisplayProps) {
+export function CarouselDisplay({ banners, }: CarouselDisplayProps) {
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, align: 'center' })
   const [prevBtnEnabled, setPrevBtnEnabled] = useState(false)
   const [nextBtnEnabled, setNextBtnEnabled] = useState(false)
