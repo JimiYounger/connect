@@ -69,7 +69,7 @@ export function BannerForm({ initialData, onSuccess, mode = 'create' }: BannerFo
           }
         })
     }
-  }, [initialData?.fileId])
+  }, [initialData?.fileId, supabase])
 
   const form = useForm<BannerFormData & { id?: string }>({
     resolver: zodResolver(bannerFormSchema),
