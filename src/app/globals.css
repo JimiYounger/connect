@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -68,5 +69,31 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .dialog-content {
+    @apply !max-w-[95vw] !w-[95vw] !h-[90vh] !p-0;
+  }
+
+  [role="dialog"] {
+    @apply !max-w-none;
+  }
+  
+  .page-container {
+    @apply py-8 space-y-6;
+  }
+  
+  .page-header {
+    @apply mb-8 text-center;
+  }
+  
+  .page-title {
+    @apply text-3xl font-bold tracking-tight mb-2;
+  }
+  
+  .page-description {
+    @apply text-muted-foreground;
   }
 }

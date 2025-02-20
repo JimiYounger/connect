@@ -1,34 +1,75 @@
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
+// src/middleware.ts
+
+import { type NextRequest } from 'next/server'
+import { updateSession } from '@/features/auth/middleware/auth'
 import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
+import { ErrorLogger } from '@/lib/logging/error-logger'
+import { ErrorSeverity, ErrorSource } from '@/lib/types/errors'
 
-export async function middleware(req: NextRequest) {
-  const res = NextResponse.next()
-  const supabase = createMiddlewareClient({ req, res })
-
+export async function middleware(request: NextRequest) {
   try {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
+    // Update session if needed
+    const res = await updateSession(request)
 
-    // If user is not signed in and trying to access protected route
-    if (!session && !req.nextUrl.pathname.startsWith('/')
-        && !req.nextUrl.pathname.startsWith('/auth')) {
-      return NextResponse.redirect(new URL('/', req.url))
-    }
+    // Add log-error to public URLs
+    const publicUrls = ['/', '/auth/callback', '/api/log-error']
+    if (!publicUrls.includes(request.nextUrl.pathname)) {
+      const requestHeaders = new Headers(request.headers)
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            get(name: string) {
+              return request.cookies.get(name)?.value
+            },
+          },
+        }
+      )
 
-    // If user is signed in and trying to access auth pages
-    if (session && (req.nextUrl.pathname === '/' || req.nextUrl.pathname.startsWith('/auth'))) {
-      return NextResponse.redirect(new URL('/dashboard', req.url))
+      const { data: { session } } = await supabase.auth.getSession()
+
+      if (!session) {
+        const redirectUrl = new URL('/', request.url)
+        redirectUrl.searchParams.set('redirectedFrom', request.nextUrl.pathname)
+        return NextResponse.redirect(redirectUrl)
+      }
     }
 
     return res
   } catch (error) {
-    console.error('Middleware error:', error)
-    return res
+    // Keep error logging for critical middleware errors
+    await ErrorLogger.log(
+      error,
+      {
+        severity: ErrorSeverity.HIGH,
+        source: ErrorSource.SERVER,
+        context: {
+          path: request.nextUrl.pathname,
+          method: request.method,
+          headers: Object.fromEntries(request.headers.entries())
+        }
+      }
+    )
+
+    // Return a generic error response
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 }
+    )
   }
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
-} 
+  matcher: [
+    /*
+     * Match all request paths except:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    '/((?!_next/static|_next/image|favicon.ico|public/).*)',
+  ],
+}

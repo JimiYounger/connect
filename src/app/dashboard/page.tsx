@@ -1,188 +1,245 @@
-'use client'
+// src/app/dashboard/page.tsx
 
-import { useAuth } from '@/context/auth-context'
-import { Button } from '@/components/ui/button'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { useRouter } from 'next/navigation'
-import { Card, CardHeader, CardContent } from '@/components/ui/card'
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
-import { Separator } from '@/components/ui/separator'
-import { Skeleton } from '@/components/ui/skeleton'
-import { motion } from 'framer-motion'
+"use client"
 
-const fadeIn = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.4 }
+import { useEffect, useRef } from "react"
+import { useAuth } from "@/features/auth/context/auth-context"
+import { useProfile } from "@/features/users/hooks/useProfile"
+import { LoadingState } from "@/components/loading-state"
+import { usePermissions } from "@/features/permissions/hooks/usePermissions"
+import type { UserProfile } from "@/features/users/types"
+import {
+  Target,
+  Users,
+  Building2,
+  Crown,
+  Shield,
+  Award,
+  LogOut,
+} from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import { redirect } from "next/navigation"
+import { useLoadingState } from "@/hooks/use-loading-state"
+import { motion, useTransform, useViewportScroll } from "framer-motion"
+
+interface StatCardData {
+  icon: React.ReactNode
+  title: string
+  field: keyof Pick<
+    UserProfile,
+    "region" | "team" | "area" | "role" | "role_type" | "hire_date"
+  >
+  color: string
+  getValue: (profile: UserProfile) => string
 }
 
-const MotionCard = motion(Card)
-
-function LoadingSkeleton() {
-  return (
-    <div className="min-h-screen bg-gray-50/50">
-      <div className="max-w-4xl mx-auto p-8">
-        <Card className="mb-8">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <Skeleton className="h-8 w-[100px]" />
-            <Skeleton className="h-10 w-[100px]" />
-          </CardHeader>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-6">
-              <div className="flex flex-col items-center space-y-4">
-                <Skeleton className="h-32 w-32 rounded-full" />
-                <div className="text-center space-y-2">
-                  <Skeleton className="h-8 w-[200px]" />
-                  <Skeleton className="h-4 w-[150px]" />
-                </div>
-              </div>
-
-              <Separator orientation="vertical" className="hidden md:block" />
-              <Separator orientation="horizontal" className="md:hidden" />
-
-              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="space-y-2">
-                    <Skeleton className="h-4 w-[100px]" />
-                    <Skeleton className="h-6 w-[150px]" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  )
-}
+const STAT_CARDS: StatCardData[] = [
+  {
+    icon: <Target className="h-5 w-5" />,
+    title: "Region",
+    field: "region",
+    color: "from-blue-500 to-blue-300",
+    getValue: (profile) => profile.region || "N/A",
+  },
+  {
+    icon: <Users className="h-5 w-5" />,
+    title: "Team",
+    field: "team",
+    color: "from-purple-500 to-purple-300",
+    getValue: (profile) => profile.team || "N/A",
+  },
+  {
+    icon: <Building2 className="h-5 w-5" />,
+    title: "Area",
+    field: "area",
+    color: "from-green-500 to-green-300",
+    getValue: (profile) => profile.area || "N/A",
+  },
+  {
+    icon: <Crown className="h-5 w-5" />,
+    title: "Role",
+    field: "role",
+    color: "from-amber-500 to-amber-300",
+    getValue: (profile) => profile.role || "N/A",
+  },
+  {
+    icon: <Shield className="h-5 w-5" />,
+    title: "Role Type",
+    field: "role_type",
+    color: "from-red-500 to-red-300",
+    getValue: (profile) => profile.role_type || "N/A",
+  },
+  {
+    icon: <Award className="h-5 w-5" />,
+    title: "Hire Date",
+    field: "hire_date",
+    color: "from-teal-500 to-teal-300",
+    getValue: (profile) => profile.hire_date || "N/A",
+  },
+]
 
 export default function DashboardPage() {
-  const { user, teamMember, loading } = useAuth()
-  const router = useRouter()
-  const supabase = createClientComponentClient()
+  const { session, signOut, loading: authLoading } = useAuth()
+  const { profile, isLoading: profileLoading } = useProfile(session)
+  const { can, isLoading: permissionsLoading } = usePermissions(profile ?? null)
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push('/')
+  const { isLoading, message } = useLoadingState(
+    {
+      auth: !session || authLoading.initializing,
+      profile: profileLoading && !profile,
+    },
+    {
+      auth: "Checking authentication...",
+      profile: "Loading your profile...",
+    }
+  )
+
+  // Parallax
+  const { scrollY } = useViewportScroll()
+  const shape1Y = useTransform(scrollY, [0, 500], [0, 100])
+  const shape2Y = useTransform(scrollY, [0, 500], [0, -100])
+
+  if (!session && !authLoading.initializing) {
+    redirect("/")
+    return null
   }
 
-  if (loading) {
-    return <LoadingSkeleton />
+  if (isLoading) {
+    return <LoadingState message={message || "Loading..."} />
   }
 
-  if (!user || !teamMember) {
-    return <div className="flex min-h-screen items-center justify-center">Not authenticated</div>
-  }
-
-  // Get initials for avatar fallback
-  const initials = teamMember.fields?.["Full Name"]
-    ?.split(' ')
-    .map(n => n[0])
-    .join('')
-    .toUpperCase() || 'U'
+  if (!profile) return null
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
-      <div className="max-w-4xl mx-auto p-8 space-y-8">
-        <MotionCard
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
+    <main className="relative flex flex-col min-h-screen w-full overflow-hidden">
+      {/* Background & floating shapes */}
+      <div className="absolute inset-0 -z-50 overflow-hidden bg-gradient-to-b from-black via-[#0f0f0f] to-[#151515]" />
+      <motion.div
+        style={{ y: shape1Y }}
+        className="absolute top-[-10rem] left-[-10rem] w-[40rem] h-[40rem]
+                   bg-gradient-to-r from-pink-500 to-purple-600
+                   rounded-full opacity-30 blur-3xl"
+      />
+      <motion.div
+        style={{ y: shape2Y }}
+        className="absolute bottom-[-10rem] right-[-10rem] w-[40rem] h-[40rem]
+                   bg-gradient-to-r from-blue-500 to-green-500
+                   rounded-full opacity-30 blur-3xl"
+      />
+
+      {/* Hero */}
+      <section className="relative flex flex-col items-center justify-center min-h-[60vh] px-4 text-center text-white">
+        <motion.h1
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 1 }}
+          className="mt-12 text-5xl md:text-7xl font-extrabold tracking-tight"
         >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <motion.h1 
-              className="text-2xl font-bold"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
+          Welcome to{" "}
+          <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-pink-400 to-orange-400">
+            Connect<sup>®</sup>
+          </span>
+        </motion.h1>
+        <motion.p
+          initial={{ y: 40, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 1.2 }}
+          className="mt-4 text-lg md:text-xl text-gray-300 max-w-xl"
+        >
+          Where <span className="font-bold text-white">innovation</span> meets{" "}
+          <span className="font-bold text-white">possibility</span>.
+        </motion.p>
+      </section>
+
+      {/* Content wrapper */}
+      <div className="-mt-10 pb-16 px-4 sm:px-6 lg:px-8">
+        {/* Profile card */}
+        <motion.div
+          initial={{ y: 30, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.8 }}
+          whileHover={{ rotateX: 2, rotateY: -2 }}
+          className="mx-auto max-w-4xl bg-white/10 backdrop-blur-lg rounded-xl p-6 sm:p-8 shadow-2xl
+                     hover:shadow-[0_0_40px_rgba(255,255,255,0.15)] transition-shadow"
+        >
+          <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+            <Avatar className="h-24 w-24 md:h-32 md:w-32 ring-2 ring-offset-2 ring-offset-black ring-purple-500">
+              {profile.profile_pic_url && (
+                <AvatarImage
+                  src={profile.profile_pic_url}
+                  alt={`${profile.first_name} ${profile.last_name}`}
+                />
+              )}
+              <AvatarFallback className="bg-purple-500 text-white text-2xl">
+                {profile.first_name?.[0]}
+                {profile.last_name?.[0]}
+              </AvatarFallback>
+            </Avatar>
+
+            <div className="flex-1">
+              <h2 className="text-2xl md:text-3xl font-bold text-white">
+                {profile.first_name} {profile.last_name}
+              </h2>
+              <p className="text-gray-300 mt-1">
+                {profile.role}
+                <span className="mx-2 text-purple-300">•</span>
+                {profile.team}
+              </p>
+            </div>
+
+            {/* Sign Out Button */}
+            <Button
+              onClick={() => signOut()}
+              className="gap-2 bg-transparent border border-purple-500 text-white
+                         hover:bg-purple-500 hover:text-white"
             >
-              Dashboard
-            </motion.h1>
-            <Button 
-              onClick={handleSignOut} 
-              variant="outline"
-              className="transition-all hover:scale-105"
-            >
+              <LogOut className="h-4 w-4" />
               Sign Out
             </Button>
-          </CardHeader>
-        </MotionCard>
+          </div>
+        </motion.div>
 
-        <MotionCard
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.2 }}
+        {/* Stats grid */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ duration: 1 }}
+          viewport={{ once: true }}
+          className="mx-auto max-w-4xl mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
         >
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-6">
-              <motion.div 
-                className="flex flex-col items-center space-y-4"
-                {...fadeIn}
-                transition={{ delay: 0.4 }}
+          {STAT_CARDS.map((card) => (
+            <motion.div
+              key={card.field}
+              initial={{ y: 30, opacity: 0 }}
+              whileInView={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.6 }}
+              viewport={{ once: true }}
+            >
+              <Card className="bg-white/10 backdrop-blur-md shadow-xl hover:shadow-2xl
+                               transition-shadow duration-300 rounded-xl"
               >
-                <Avatar className="h-32 w-32 transition-all hover:scale-105">
-                  <AvatarImage 
-                    src={teamMember.fields?.["Profile Pic URL"] || user.user_metadata.avatar_url} 
-                    alt={teamMember.fields?.["Full Name"] || "Profile"} 
-                  />
-                  <AvatarFallback className="text-2xl">{initials}</AvatarFallback>
-                </Avatar>
-                <div className="text-center">
-                  <h2 className="text-2xl font-bold">{teamMember.fields?.["Full Name"]}</h2>
-                  <p className="text-sm text-muted-foreground">{teamMember.fields?.Email}</p>
-                </div>
-              </motion.div>
-
-              <Separator orientation="vertical" className="hidden md:block" />
-              <Separator orientation="horizontal" className="md:hidden" />
-
-              <motion.div 
-                className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.6 }}
-              >
-                <div className="space-y-4">
-                  <div className="transition-all hover:translate-x-1">
-                    <p className="text-sm text-muted-foreground">Phone</p>
-                    <p className="font-medium">{teamMember.fields?.Phone || "Not provided"}</p>
+                <CardContent className="flex items-center gap-4 p-5">
+                  <div
+                    className={`flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br ${card.color} text-white shadow-md`}
+                  >
+                    {card.icon}
                   </div>
-
-                  <div className="transition-all hover:translate-x-1">
-                    <p className="text-sm text-muted-foreground">Role</p>
-                    <p className="font-medium">{teamMember.fields?.Role}</p>
+                  <div>
+                    <p className="text-sm font-medium text-gray-400">
+                      {card.title}
+                    </p>
+                    <p className="text-lg font-semibold mt-0.5 text-white">
+                      {card.getValue(profile)}
+                    </p>
                   </div>
-
-                  <div className="transition-all hover:translate-x-1">
-                    <p className="text-sm text-muted-foreground">Role Type</p>
-                    <p className="font-medium">{teamMember.fields?.["Role Type"]}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="transition-all hover:translate-x-1">
-                    <p className="text-sm text-muted-foreground">Team</p>
-                    <p className="font-medium">{teamMember.fields?.Team}</p>
-                  </div>
-
-                  <div className="transition-all hover:translate-x-1">
-                    <p className="text-sm text-muted-foreground">Area</p>
-                    <p className="font-medium">{teamMember.fields?.Area}</p>
-                  </div>
-
-                  <div className="transition-all hover:translate-x-1">
-                    <p className="text-sm text-muted-foreground">Region</p>
-                    <p className="font-medium">{teamMember.fields?.Region}</p>
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-          </CardContent>
-        </MotionCard>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </motion.div>
       </div>
-    </div>
+    </main>
   )
-} 
+}

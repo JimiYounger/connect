@@ -1,3 +1,5 @@
+// src/types/airtable.ts  
+
 export interface TeamMember {
   id?: string;
   fields?: {
@@ -20,6 +22,13 @@ export interface TeamMember {
     "Profile Pic URL"?: string;
     "Health Dashboard"?: string;
     "Salesforce ID"?: string;
+    State?: string[];
+    Branch?: string[];
+    "Immediate Supervisor"?: string[];
+    Admin?: boolean;
+    UUID?: string;
+    "Shirt Size"?: string;
+    Department?: string;
   };
 }
 
