@@ -14,13 +14,12 @@ type Banner = Tables<'carousel_banners_detailed'>
 const ROLE_TYPES = ['All', 'Setter', 'Closer', 'Manager']
 
 interface CarouselPreviewProps {
-  profile: any // Add proper type from your profile type
   banners: Banner[]
   isLoading: boolean
   error: Error | null
 }
 
-export function CarouselPreview({ profile, banners, isLoading, error }: CarouselPreviewProps) {
+export function CarouselPreview({ banners, isLoading, error }: CarouselPreviewProps) {
   const [activeRole, setActiveRole] = useState<string | null>(null)
 
   const filteredBanners = banners

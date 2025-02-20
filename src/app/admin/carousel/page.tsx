@@ -94,7 +94,6 @@ export default function CarouselManagementPage() {
 
       <CarouselPreview 
         banners={banners} 
-        profile={profile} 
         isLoading={bannersLoading}
         error={bannersError}
       />
@@ -102,7 +101,6 @@ export default function CarouselManagementPage() {
       <div className="space-y-6">
         <BannerList 
           banners={banners}
-          profile={profile}
           isLoading={bannersLoading}
           error={bannersError}
           onUpdateOrder={updateBannerOrder}

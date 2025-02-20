@@ -2,7 +2,6 @@
 
 'use client'
 
-import { useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table"
@@ -110,7 +109,6 @@ function SortableRow({ id, banner, onToggleActive, onDelete, router }: SortableR
 }
 
 interface BannerListProps {
-  profile: any // Add proper type from your profile type
   banners: Banner[]
   isLoading: boolean
   error: Error | null
@@ -120,7 +118,6 @@ interface BannerListProps {
 }
 
 export function BannerList({ 
-  profile, 
   banners, 
   isLoading, 
   error,
@@ -162,7 +159,7 @@ export function BannerList({
         title: "Success",
         description: "Banner order updated successfully",
       })
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to update banner order",
@@ -178,7 +175,7 @@ export function BannerList({
         title: "Success",
         description: "Banner status updated successfully",
       })
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to update banner status",
@@ -194,7 +191,7 @@ export function BannerList({
         title: "Success",
         description: "Banner deleted successfully",
       })
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to delete banner",
