@@ -47,8 +47,22 @@ const isSessionEqual = (prev: Session | null, next: Session | null): boolean => 
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [authState, setAuthState] = useState<AuthState>(initialAuthState)
+export function AuthProvider({ 
+  children, 
+  initialSession 
+}: { 
+  children: React.ReactNode
+  initialSession: Session | null 
+}) {
+  const [authState, setAuthState] = useState<AuthState>(() => ({
+    ...initialAuthState,
+    session: initialSession,
+    isInitialized: !!initialSession,
+    loading: initialSession 
+      ? { ...initialLoadingState, initializing: false }
+      : initialLoadingState,
+    isAuthenticated: !!initialSession
+  }))
   
   const initRef = useRef(false)
   const authChangeHandledRef = useRef(false)
@@ -129,7 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [updateAuthState])
 
   useEffect(() => {
-    if (initRef.current || initializingRef.current) return
+    if (initRef.current || initializingRef.current || initialSession) return
     
     let mounted = true
     initializingRef.current = true
@@ -185,53 +199,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       mounted = false
     }
-  }, [updateAuthState])
+  }, [updateAuthState, initialSession])
 
   useEffect(() => {
     if (initRef.current) return
 
     let lastEvent: string | null = null
     let lastUserId: string | null = null
+    let subscription: { data: { subscription: { unsubscribe: () => void } } }
 
-    const { data: { subscription } } = authService.onAuthStateChange(async (event, session) => {
-      const { data: { user } } = await authService.client.auth.getUser()
-      
-      if (
-        lastEvent === event && 
-        lastUserId === user?.id &&
-        authChangeHandledRef.current
-      ) {
-        return
-      }
-
-      lastEvent = event
-      lastUserId = user?.id || null
-      authChangeHandledRef.current = true
-
-      updateAuthState(current => {
-        const loading = {
-          ...current.loading,
-          session: false,
-          profile: false,
-          initializing: false
+    const setupAuthListener = async () => {
+      subscription = await authService.onAuthStateChange(async (event, session) => {
+        const { data: { user } } = await authService.client.auth.getUser()
+        
+        if (
+          lastEvent === event && 
+          lastUserId === user?.id &&
+          authChangeHandledRef.current
+        ) {
+          return
         }
 
-        if (isSessionEqual(current.session, session)) {
-          return { ...current, loading, isInitialized: true }
-        }
+        lastEvent = event
+        lastUserId = user?.id || null
+        authChangeHandledRef.current = true
 
-        return {
-          ...current,
-          session,
-          loading,
-          isInitialized: true,
-          isAuthenticated: !!session && !!user
-        }
-      }, `Auth State Change: ${event}`)
-    })
+        updateAuthState(current => {
+          const loading = {
+            ...current.loading,
+            session: false,
+            profile: false,
+            initializing: false
+          }
+
+          if (isSessionEqual(current.session, session)) {
+            return { ...current, loading, isInitialized: true }
+          }
+
+          return {
+            ...current,
+            session,
+            loading,
+            isInitialized: true,
+            isAuthenticated: !!session && !!user
+          }
+        }, `Auth State Change: ${event}`)
+      })
+    }
+
+    setupAuthListener()
 
     return () => {
-      subscription.unsubscribe()
+      if (subscription) {
+        subscription.data.subscription.unsubscribe()
+      }
     }
   }, [updateAuthState])
 
