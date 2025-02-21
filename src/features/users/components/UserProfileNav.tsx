@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
-import { UserProfile } from "../types/user-profile"
+import { UserProfile } from "../types"
 import { useAuth } from "@/features/auth/context/auth-context"
 
 interface UserProfileNavProps {
@@ -26,7 +26,7 @@ export function UserProfileNav({ profile }: UserProfileNavProps) {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10">
-            <AvatarImage src={profile.profile_pic_url} alt={profile.first_name} />
+            <AvatarImage src={profile.profile_pic_url || undefined} alt={profile.first_name} />
             <AvatarFallback>{profile.first_name[0]}{profile.last_name[0]}</AvatarFallback>
           </Avatar>
         </Button>

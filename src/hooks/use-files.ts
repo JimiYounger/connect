@@ -2,10 +2,11 @@
 
 import { useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
-import type { FileInfo, StoredFile } from '@/types/files'
+import type { FileInfo } from '@/types/files'
 import type { Database } from '@/types/supabase'
 
 type Files = Database['public']['Tables']['files']
+type StoredFile = Files['Row']
 
 export function useFiles() {
   const [isLoading, setIsLoading] = useState(false)
@@ -21,7 +22,6 @@ export function useFiles() {
       setIsLoading(true)
       setError(null)
 
-      // Get user first
       const { data: { session }, error: userError } = await supabase.auth.getSession()
       
       if (userError) {
@@ -33,17 +33,14 @@ export function useFiles() {
         throw new Error('No user ID found')
       }
 
-      // Prepare the file data
-      const fileData = {
+      const fileData: Files['Insert'] = {
         cdn_url: fileInfo.cdnUrl,
         uploadcare_uuid: fileInfo.uuid,
         original_filename: fileInfo.originalFilename,
         mime_type: fileInfo.mimeType,
         size: fileInfo.size,
         user_id: session.user.id
-      } satisfies Partial<Files['Insert']>
-
-      console.log('Attempting to save file with data:', fileData)
+      }
 
       const { data, error: supabaseError } = await supabase
         .from('files')
@@ -60,20 +57,11 @@ export function useFiles() {
         throw new Error('No data returned from insert')
       }
 
-      console.log('File saved successfully:', data)
       return data as StoredFile
 
     } catch (err) {
-      console.error('Save file error details:', {
-        error: err,
-        message: err instanceof Error ? err.message : 'Unknown error',
-        stack: err instanceof Error ? err.stack : undefined
-      })
-      
-      const error = err instanceof Error 
-        ? err 
-        : new Error('Failed to save file: ' + JSON.stringify(err))
-      
+      console.error('Save file error:', err)
+      const error = err instanceof Error ? err : new Error('Failed to save file')
       setError(error)
       throw error
     } finally {

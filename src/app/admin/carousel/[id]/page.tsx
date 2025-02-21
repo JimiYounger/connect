@@ -29,7 +29,7 @@ type BannerWithRelations = Database['public']['Tables']['carousel_banners']['Row
 }
 
 export default function EditBannerPage() {
-  const params = useParams()
+  const params = useParams<{ id: string }>()
   const router = useRouter()
   const { session, isAuthenticated, loading } = useAuth()
   const { profile, isLoading: profileLoading } = useProfile(session)

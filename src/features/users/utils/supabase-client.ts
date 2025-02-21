@@ -1,12 +1,15 @@
 // src/features/users/utils/supabase-client.ts
 
-import { createClient } from '@/features/auth/utils/supabase-client'
+import { createBrowserClient } from '@supabase/ssr'
 import type { Database } from '@/types/supabase'
+
+const supabase = createBrowserClient<Database>(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
 export const userService = {
   async getProfile(email: string) {
-    const supabase = createClient()
-    
     const { data: profile, error } = await supabase
       .from('user_profiles')
       .select('*')
@@ -18,8 +21,6 @@ export const userService = {
   },
 
   async updateProfile(email: string, data: Partial<Database['public']['Tables']['user_profiles']['Row']>) {
-    const supabase = createClient()
-    
     const { data: profile, error } = await supabase
       .from('user_profiles')
       .update(data)

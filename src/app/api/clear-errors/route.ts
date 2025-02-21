@@ -1,18 +1,18 @@
 import { NextResponse } from 'next/server'
-import { redis } from '@/lib/redis'
+import { getRedis } from '@/lib/redis'
 
 export async function DELETE() {
   try {
-    if (!redis) {
-      throw new Error('Redis client is not initialized')
-    }
+    const redis = getRedis()
 
-    // Get all error keys
-    const keys = await redis.keys('error:*')
+    // Get all error keys using the keys method from RedisService
+    const errorKeys = await redis.keys('error:*')
     
-    // Delete each error
-    if (keys.length > 0) {
-      await Promise.all(keys.map(key => redis!.delete(key)))
+    // Delete each error if keys exist
+    if (errorKeys.length > 0) {
+      for (const key of errorKeys) {
+        await redis.delete(key)
+      }
     }
     
     return NextResponse.json({ 
