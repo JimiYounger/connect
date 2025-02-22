@@ -6,6 +6,25 @@ import { LoginButtonWrapper } from '@/features/auth/components/LoginButtonWrappe
 import { redirect } from 'next/navigation'
 import { LoadingState } from "@/components/loading-state"
 
+export const metadata = {
+  title: 'Connect by Purelight',
+  description: 'Everything You Need In One Place',
+  openGraph: {
+    title: 'Connect by Purelight',
+    description: 'Everything You Need In One Place',
+    url: 'https://www.plpconnect.com',
+    images: [
+      {
+        url: 'https://ucarecdn.com/43907444-0ddb-4271-a3ec-c28ab182b972/-/preview/1000x1000/',
+        width: 1000,
+        height: 1000,
+        alt: 'Connect Thumbnail',
+      },
+    ],
+    type: 'website',
+  },
+}
+
 export default function Home() {
   const { session, loading } = useAuth()
 
