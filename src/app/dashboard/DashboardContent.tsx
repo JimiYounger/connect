@@ -162,18 +162,25 @@ function DashboardContent() {
                      hover:shadow-[0_0_40px_rgba(255,255,255,0.15)] transition-shadow"
         >
           <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-            <Avatar className="h-24 w-24 md:h-32 md:w-32 ring-2 ring-offset-2 ring-offset-black ring-purple-500">
-              {profile.profile_pic_url && (
-                <AvatarImage
-                  src={profile.profile_pic_url}
-                  alt={`${profile.first_name} ${profile.last_name}`}
-                />
-              )}
-              <AvatarFallback className="bg-purple-500 text-white text-2xl">
-                {profile.first_name?.[0]}
-                {profile.last_name?.[0]}
-              </AvatarFallback>
-            </Avatar>
+            <a 
+              href={`https://profilepic.vercel.app/?email=${encodeURIComponent(profile.email)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="cursor-pointer transition-transform hover:scale-105"
+            >
+              <Avatar className="h-24 w-24 md:h-32 md:w-32 ring-2 ring-offset-2 ring-offset-black ring-purple-500">
+                {profile.profile_pic_url && (
+                  <AvatarImage
+                    src={profile.profile_pic_url}
+                    alt={`${profile.first_name} ${profile.last_name}`}
+                  />
+                )}
+                <AvatarFallback className="bg-purple-500 text-white text-2xl">
+                  {profile.first_name?.[0]}
+                  {profile.last_name?.[0]}
+                </AvatarFallback>
+              </Avatar>
+            </a>
 
             <div className="flex-1">
               <h2 className="text-2xl md:text-3xl font-bold text-white">
