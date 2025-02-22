@@ -20,6 +20,8 @@ import { Button } from "@/components/ui/button"
 import { redirect } from "next/navigation"
 import { useLoadingState } from "@/hooks/use-loading-state"
 import { motion, useTransform, useViewportScroll } from "framer-motion"
+import { useState } from "react"
+import { Modal } from "@/components/ui/modal"
 
 interface StatCardData {
   icon: React.ReactNode
@@ -98,6 +100,9 @@ function DashboardContent() {
   const shape1Y = useTransform(scrollY, [0, 500], [0, 100])
   const shape2Y = useTransform(scrollY, [0, 500], [0, -100])
 
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
+  const [iframeLoading, setIframeLoading] = useState(true)
+
   if (!session && !authLoading.initializing) {
     redirect("/")
     return null
@@ -162,11 +167,10 @@ function DashboardContent() {
                      hover:shadow-[0_0_40px_rgba(255,255,255,0.15)] transition-shadow"
         >
           <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-            <a 
-              href={`https://profilepic.vercel.app/?email=${encodeURIComponent(profile.email)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="cursor-pointer transition-transform hover:scale-105"
+            <button 
+              onClick={() => setIsProfileModalOpen(true)}
+              className="cursor-pointer transition-transform hover:scale-105 bg-transparent border-0 p-0"
+              aria-label="Open profile picture settings"
             >
               <Avatar className="h-24 w-24 md:h-32 md:w-32 ring-2 ring-offset-2 ring-offset-black ring-purple-500">
                 {profile.profile_pic_url && (
@@ -180,7 +184,7 @@ function DashboardContent() {
                   {profile.last_name?.[0]}
                 </AvatarFallback>
               </Avatar>
-            </a>
+            </button>
 
             <div className="flex-1">
               <h2 className="text-2xl md:text-3xl font-bold text-white">
@@ -244,6 +248,24 @@ function DashboardContent() {
           ))}
         </motion.div>
       </div>
+
+      <Modal 
+        isOpen={isProfileModalOpen} 
+        onClose={() => setIsProfileModalOpen(false)}
+        className="max-w-4xl"
+      >
+        {iframeLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white" />
+          </div>
+        )}
+        <iframe
+          src={`https://profilepic.vercel.app/?email=${encodeURIComponent(profile.email)}`}
+          className="w-full h-[80vh]"
+          title="Profile Picture Portal"
+          onLoad={() => setIframeLoading(false)}
+        />
+      </Modal>
     </main>
   )
 }
