@@ -8,8 +8,10 @@ import { ErrorSeverity, ErrorSource } from '@/lib/types/errors'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
+  const requestUrl = new URL(request.url)
+  const baseUrl = requestUrl.origin
+
   try {
-    const requestUrl = new URL(request.url)
     const code = requestUrl.searchParams.get('code')
 
     if (!code) {
@@ -20,7 +22,7 @@ export async function GET(request: Request) {
           source: ErrorSource.SERVER
         }
       )
-      return NextResponse.redirect(new URL('/', request.url))
+      return NextResponse.redirect(`${baseUrl}/`)
     }
 
     const supabase = await createServerSupabase()
@@ -35,15 +37,13 @@ export async function GET(request: Request) {
           context: { error: error?.message || 'No user data' }
         }
       )
-      return NextResponse.redirect(new URL('/auth/error', request.url))
+      return NextResponse.redirect(`${baseUrl}/auth/error`)
     }
 
     // Domain validation
     if (!user.email.endsWith('@purelightpower.com')) {
       await supabase.auth.signOut()
-      return NextResponse.redirect(
-        new URL('/?error=invalid_domain', request.url)
-      )
+      return NextResponse.redirect(`${baseUrl}/?error=invalid_domain`)
     }
 
     // Check for existing profile
@@ -108,11 +108,14 @@ export async function GET(request: Request) {
             }
           }
         )
-        return NextResponse.redirect(new URL('/auth/error', request.url))
+        return NextResponse.redirect(`${baseUrl}/auth/error`)
       }
     }
 
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+    // Final redirect
+    return NextResponse.redirect(`${baseUrl}/dashboard`, {
+      status: 302
+    })
   } catch (error) {
     await ErrorLogger.log(
       error,
@@ -122,6 +125,6 @@ export async function GET(request: Request) {
         context: { error: error instanceof Error ? error.message : String(error) }
       }
     )
-    return NextResponse.redirect(new URL('/auth/error', request.url))
+    return NextResponse.redirect(`${baseUrl}/auth/error`)
   }
 }

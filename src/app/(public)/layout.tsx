@@ -10,9 +10,15 @@ export default async function PublicLayout({
   children: React.ReactNode;
 }) {
   const supabase = await createServerSupabase()
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { session }, error } = await supabase.auth.getSession()
 
-  if (session) {
+  // Don't redirect if there's an error or we're in the callback flow
+  if (error) {
+    console.error('Auth error:', error)
+    return children
+  }
+
+  if (session?.user) {
     redirect('/dashboard')
   }
 
