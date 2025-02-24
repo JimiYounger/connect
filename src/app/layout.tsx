@@ -2,9 +2,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Geist, Geist_Mono } from "next/font/google";
-import { AuthProvider } from "@/features/auth/context/auth-context";
 import { Toaster } from "@/components/ui/toaster";
-import { getServerSession } from "@/features/auth/utils/auth-server";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -48,8 +46,6 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const initialSession = await getServerSession();
-
   return (
     <html lang="en">
       <head>
@@ -65,15 +61,19 @@ export default async function RootLayout({
         {/* Android: Link to Manifest & Set Theme Color */}
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#ffffff" />
+        <style>{`
+          .auth-loading { display: none; }
+          .auth-content { opacity: 1; }
+          .loading .auth-loading { display: block; }
+          .loading .auth-content { opacity: 0; }
+        `}</style>
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
-        <AuthProvider initialSession={initialSession}>
-          <main className="flex-1 w-full min-h-screen bg-white text-black">
-            {children}
-          </main>
-        </AuthProvider>
+        <main className="flex-1 w-full min-h-screen bg-white text-black">
+          {children}
+        </main>
         <Toaster />
       </body>
     </html>

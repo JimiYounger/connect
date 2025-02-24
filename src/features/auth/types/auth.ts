@@ -1,6 +1,7 @@
 // src/features/auth/types/auth.ts
 
 import type { Session } from '@supabase/supabase-js'
+import type { UserProfile } from '@/features/users/types'
 
 export interface AuthError {
   type: 'session' | 'profile'
@@ -21,16 +22,17 @@ export interface AuthState {
   loading: LoadingState
   errors: AuthError[]
   isAuthenticated: boolean
+  profile: UserProfile | null
 }
 
-export interface AuthContextType extends Omit<AuthState, 'loading'> {
+export interface AuthContextType extends AuthState {
+  signIn: (redirectTo?: string) => Promise<void>
+  signOut: () => Promise<void>
+  clearError: () => void
+  retryProfile: () => Promise<void>
   loading: LoadingState & {
     any: boolean
   }
-  signIn: (redirectTo?: string) => Promise<void>
-  signOut: () => Promise<void>
-  clearError: (type?: 'session' | 'profile') => void
-  retryProfile: () => void
 }
 
 export interface AuthStateValidation {
@@ -52,5 +54,6 @@ export const initialAuthState: AuthState = {
   isInitialized: false,
   loading: initialLoadingState,
   errors: [],
-  isAuthenticated: false
+  isAuthenticated: false,
+  profile: null
 } 

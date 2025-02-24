@@ -1,8 +1,8 @@
 // src/features/auth/components/LoginButton.tsx
+'use client'
 
 import { useAuth } from '../context/auth-context'
-import { ErrorLogger } from '@/lib/logging/error-logger'
-import { ErrorSeverity, ErrorSource } from '@/lib/types/errors'
+import { Button } from '@/components/ui/button'
 
 interface LoginButtonProps {
   redirectTo?: string
@@ -15,38 +15,15 @@ export function LoginButton({
   className = '', 
   children 
 }: LoginButtonProps) {
-  const { signIn, loading, isAuthenticated } = useAuth()
-  const isLoading = loading.initializing || loading.session || (isAuthenticated && loading.profile)
-
-  const handleLogin = async () => {
-    try {
-      await signIn(redirectTo)
-
-    } catch (error) {
-      await ErrorLogger.log(
-        error,
-        {
-          severity: ErrorSeverity.HIGH,
-          source: ErrorSource.CLIENT,
-          context: { 
-            redirectTo: redirectTo || '/dashboard',
-            error: error instanceof Error ? error.message : String(error)
-          }
-        }
-      )
-
-      console.error('Login failed:', error)
-      // You might want to add error handling UI here
-    }
-  }
+  const { signIn, loading } = useAuth()
 
   return (
-    <button
-      onClick={handleLogin}
-      disabled={isLoading}
+    <Button
+      onClick={() => signIn(redirectTo)}
+      disabled={loading.any}
       className={className}
     >
       {children || 'Sign in with Google'}
-    </button>
+    </Button>
   )
 } 

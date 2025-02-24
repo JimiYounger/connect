@@ -24,10 +24,6 @@ import { motion, useTransform, useViewportScroll } from "framer-motion"
 import { useState } from "react"
 import { Modal } from "@/components/ui/modal"
 
-interface DashboardContentProps {
-  profile: UserProfile
-}
-
 interface StatCardData {
   icon: React.ReactNode
   title: string
@@ -84,13 +80,16 @@ const STAT_CARDS: StatCardData[] = [
   },
 ]
 
-function DashboardContent({ profile }: DashboardContentProps) {
-  const { session, signOut, loading: authLoading } = useAuth()
-  const { } = usePermissions(profile)
+function DashboardContent({ profile: initialProfile }: { profile: UserProfile }) {
+  const { session, signOut, loading: authLoading, profile } = useAuth()
+  const { } = usePermissions(profile || initialProfile)
+
+  // Use profile from context if available, fallback to initial profile
+  const currentProfile = profile || initialProfile
 
   const { isLoading, message } = useLoadingState(
     {
-      auth: !session || authLoading.initializing,
+      auth: authLoading.initializing,
     },
     {
       auth: "Checking authentication...",
@@ -173,27 +172,27 @@ function DashboardContent({ profile }: DashboardContentProps) {
               aria-label="Open profile picture settings"
             >
               <Avatar className="h-24 w-24 md:h-32 md:w-32 ring-2 ring-offset-2 ring-offset-black ring-purple-500">
-                {profile.profile_pic_url && (
+                {currentProfile.profile_pic_url && (
                   <AvatarImage
-                    src={profile.profile_pic_url}
-                    alt={`${profile.first_name} ${profile.last_name}`}
+                    src={currentProfile.profile_pic_url}
+                    alt={`${currentProfile.first_name} ${currentProfile.last_name}`}
                   />
                 )}
                 <AvatarFallback className="bg-purple-500 text-white text-2xl">
-                  {profile.first_name?.[0]}
-                  {profile.last_name?.[0]}
+                  {currentProfile.first_name?.[0]}
+                  {currentProfile.last_name?.[0]}
                 </AvatarFallback>
               </Avatar>
             </button>
 
             <div className="flex-1">
               <h2 className="text-2xl md:text-3xl font-bold text-white">
-                {profile.first_name || 'Loading'} {profile.last_name || '...'}
+                {currentProfile.first_name || 'Loading'} {currentProfile.last_name || '...'}
               </h2>
               <p className="text-gray-300 mt-1">
-                {profile.role || 'Pending'}
+                {currentProfile.role || 'Pending'}
                 <span className="mx-2 text-purple-300">•</span>
-                {profile.team || 'Pending'}
+                {currentProfile.team || 'Pending'}
               </p>
             </div>
 
@@ -239,7 +238,7 @@ function DashboardContent({ profile }: DashboardContentProps) {
                       {card.title}
                     </p>
                     <p className="text-lg font-semibold mt-0.5 text-white">
-                      {card.getValue(profile)}
+                      {card.getValue(currentProfile)}
                     </p>
                   </div>
                 </CardContent>
@@ -260,7 +259,7 @@ function DashboardContent({ profile }: DashboardContentProps) {
           </div>
         )}
         <iframe
-          src={`https://profilepic.vercel.app/?email=${encodeURIComponent(profile.email)}`}
+          src={`https://profilepic.vercel.app/?email=${encodeURIComponent(currentProfile.email)}`}
           className="w-full h-[80vh]"
           title="Profile Picture Portal"
           onLoad={() => setIframeLoading(false)}

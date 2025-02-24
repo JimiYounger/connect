@@ -1,3 +1,5 @@
+// src/features/users/hooks/useProfile.ts
+
 'use client'
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
