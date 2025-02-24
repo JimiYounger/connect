@@ -55,8 +55,9 @@ export default async function RootLayout({
           sizes="180x180"
           href="/apple-touch-icon.png"
         />
-        <meta name="apple-mobile-web-app-title" content="Connect by Purelight" />
+        <meta name="apple-mobile-web-app-title" content="Connect" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
         {/* Android: Link to Manifest & Set Theme Color */}
         <link rel="manifest" href="/manifest.json" />
