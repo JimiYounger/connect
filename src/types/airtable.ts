@@ -2,6 +2,8 @@
 
 export interface TeamMember {
   id?: string;
+  createdTime?: string;
+  lastModifiedTime?: string;
   fields?: {
     "Full Name"?: string;
     "First Name"?: string;

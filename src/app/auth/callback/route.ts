@@ -2,7 +2,6 @@
 
 import { createServerSupabase } from '@/features/auth/utils/supabase-server'
 import { NextResponse } from 'next/server'
-import { getTeamMemberByEmail } from '@/lib/airtable'
 import { ErrorLogger } from '@/lib/logging/error-logger'
 import { ErrorSeverity, ErrorSource } from '@/lib/types/errors'
 
@@ -25,35 +24,92 @@ export async function GET(request: Request) {
     }
 
     const supabase = await createServerSupabase()
-    const { error, data } = await supabase.auth.exchangeCodeForSession(code)
+    const { error, data: { user } } = await supabase.auth.exchangeCodeForSession(code)
     
-    if (error) {
+    if (error || !user?.email) {
       await ErrorLogger.log(
-        error,
+        error || new Error('No user data after code exchange'),
         {
           severity: ErrorSeverity.HIGH,
           source: ErrorSource.SERVER,
-          context: { error: error.message }
+          context: { error: error?.message || 'No user data' }
         }
       )
       return NextResponse.redirect(new URL('/auth/error', request.url))
     }
 
     // Domain validation
-    if (!data.user?.email?.endsWith('@purelightpower.com')) {
+    if (!user.email.endsWith('@purelightpower.com')) {
       await supabase.auth.signOut()
       return NextResponse.redirect(
         new URL('/?error=invalid_domain', request.url)
       )
     }
 
-    // Get team member data
-    const teamMember = await getTeamMemberByEmail(data.user.email)
-    if (!teamMember) {
-      await supabase.auth.signOut()
-      return NextResponse.redirect(
-        new URL('/?error=no_team_member', request.url)
-      )
+    // Check for existing profile
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('id, user_id')
+      .eq('email', user.email)
+      .single()
+
+    if (profile) {
+      // Update existing profile with user_id if not set
+      if (!profile.user_id) {
+        const { error: updateError } = await supabase
+          .from('user_profiles')
+          .update({ user_id: user.id })
+          .eq('id', profile.id)
+
+        if (updateError) {
+          await ErrorLogger.log(
+            updateError,
+            {
+              severity: ErrorSeverity.MEDIUM,
+              source: ErrorSource.SERVER,
+              context: { 
+                action: 'update_user_id',
+                profileId: profile.id,
+                userId: user.id 
+              }
+            }
+          )
+        }
+      }
+    } else {
+      // Create basic profile if none exists
+      const { error: insertError } = await supabase
+        .from('user_profiles')
+        .insert({
+          email: user.email,
+          user_id: user.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          // Set minimum required fields
+          first_name: user.email.split('@')[0], // Temporary name from email
+          last_name: '-',
+          role: 'Pending',
+          role_type: 'Admin', // Default to valid role type
+          team: 'Pending',
+          area: 'Pending',
+          airtable_record_id: 'pending' // Temporary until sync
+        })
+
+      if (insertError) {
+        await ErrorLogger.log(
+          insertError,
+          {
+            severity: ErrorSeverity.HIGH,
+            source: ErrorSource.SERVER,
+            context: { 
+              action: 'create_profile',
+              email: user.email,
+              userId: user.id 
+            }
+          }
+        )
+        return NextResponse.redirect(new URL('/auth/error', request.url))
+      }
     }
 
     return NextResponse.redirect(new URL('/dashboard', request.url))

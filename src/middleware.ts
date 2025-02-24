@@ -12,9 +12,13 @@ export async function middleware(request: NextRequest) {
     // Update session if needed
     const res = await updateSession(request)
 
-    // Add log-error to public URLs
+    // Add public URLs and API routes that handle their own auth
     const publicUrls = ['/', '/auth/callback', '/api/log-error']
-    if (!publicUrls.includes(request.nextUrl.pathname)) {
+    const isApiRoute = request.nextUrl.pathname.startsWith('/api/')
+    const isPublicUrl = publicUrls.includes(request.nextUrl.pathname)
+    
+    // Skip session check for public URLs and API routes
+    if (!isPublicUrl && !isApiRoute) {
       const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

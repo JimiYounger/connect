@@ -1,7 +1,8 @@
+// src/app/dashboard/DashboardContent.tsx
+
 "use client"
 
 import { useAuth } from "@/features/auth/context/auth-context"
-import { useProfile } from "@/features/users/hooks/useProfile"
 import { LoadingState } from "@/components/loading-state"
 import { usePermissions } from "@/features/permissions/hooks/usePermissions"
 import type { UserProfile } from "@/features/users/types"
@@ -22,6 +23,10 @@ import { useLoadingState } from "@/hooks/use-loading-state"
 import { motion, useTransform, useViewportScroll } from "framer-motion"
 import { useState } from "react"
 import { Modal } from "@/components/ui/modal"
+
+interface DashboardContentProps {
+  profile: UserProfile
+}
 
 interface StatCardData {
   icon: React.ReactNode
@@ -79,19 +84,16 @@ const STAT_CARDS: StatCardData[] = [
   },
 ]
 
-function DashboardContent() {
+function DashboardContent({ profile }: DashboardContentProps) {
   const { session, signOut, loading: authLoading } = useAuth()
-  const { profile, isLoading: profileLoading } = useProfile(session)
-  const { } = usePermissions(profile ?? null)
+  const { } = usePermissions(profile)
 
   const { isLoading, message } = useLoadingState(
     {
       auth: !session || authLoading.initializing,
-      profile: profileLoading && !profile,
     },
     {
       auth: "Checking authentication...",
-      profile: "Loading your profile...",
     }
   )
 
@@ -111,8 +113,6 @@ function DashboardContent() {
   if (isLoading) {
     return <LoadingState message={message || "Loading..."} />
   }
-
-  if (!profile) return null
 
   return (
     <main className="relative flex flex-col min-h-screen w-full overflow-hidden">
@@ -188,12 +188,12 @@ function DashboardContent() {
 
             <div className="flex-1">
               <h2 className="text-2xl md:text-3xl font-bold text-white">
-                {profile.first_name} {profile.last_name}
+                {profile.first_name || 'Loading'} {profile.last_name || '...'}
               </h2>
               <p className="text-gray-300 mt-1">
-                {profile.role}
+                {profile.role || 'Pending'}
                 <span className="mx-2 text-purple-300">•</span>
-                {profile.team}
+                {profile.team || 'Pending'}
               </p>
             </div>
 
