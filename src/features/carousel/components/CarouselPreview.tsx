@@ -21,13 +21,16 @@ interface CarouselPreviewProps {
 
 export function CarouselPreview({ banners, isLoading, error }: CarouselPreviewProps) {
   const [activeRole, setActiveRole] = useState<string | null>(null)
+  
 
   const filteredBanners = banners
-  .filter(banner => banner.is_active)
-  .filter(banner => {
-    if (!activeRole || activeRole === 'All') return true
-    return !banner.visible_to_roles || banner.visible_to_roles.includes(activeRole.toLowerCase())
-  })
+    // Only filter by is_active, not by date constraints
+    .filter(banner => banner.is_active)
+    // Filter by role if a role is selected
+    .filter(banner => {
+      if (!activeRole || activeRole === 'All') return true
+      return !banner.visible_to_roles || banner.visible_to_roles.includes(activeRole.toLowerCase())
+    })
 
   if (isLoading) {
     return (
@@ -53,22 +56,24 @@ export function CarouselPreview({ banners, isLoading, error }: CarouselPreviewPr
   return (
     <Card className="p-4">
       <div className="space-y-4">
-        <div className="flex gap-2 bg-muted p-1 rounded-lg">
-          {ROLE_TYPES.map((role) => (
-            <Button
-              key={role}
-              variant={activeRole === role || (role === 'All' && activeRole === null) ? "default" : "ghost"}
-              className={cn(
-                "flex-1",
-                activeRole === role || (role === 'All' && activeRole === null)
-                  ? "bg-background shadow-sm text-foreground font-medium"
-                  : "hover:bg-background/50 text-muted-foreground"
-              )}
-              onClick={() => setActiveRole(role === 'All' ? null : role)}
-            >
-              {role}
-            </Button>
-          ))}
+        <div className="flex justify-between items-center">
+          <div className="flex gap-2 bg-muted p-1 rounded-lg">
+            {ROLE_TYPES.map((role) => (
+              <Button
+                key={role}
+                variant={activeRole === role || (role === 'All' && activeRole === null) ? "default" : "ghost"}
+                className={cn(
+                  "flex-1",
+                  activeRole === role || (role === 'All' && activeRole === null)
+                    ? "bg-background shadow-sm text-foreground font-medium"
+                    : "hover:bg-background/50 text-muted-foreground"
+                )}
+                onClick={() => setActiveRole(role === 'All' ? null : role)}
+              >
+                {role}
+              </Button>
+            ))}
+          </div>
         </div>
 
         {filteredBanners.length === 0 ? (

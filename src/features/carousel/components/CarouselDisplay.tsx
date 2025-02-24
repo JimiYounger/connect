@@ -2,7 +2,7 @@
 
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import useEmblaCarousel from 'embla-carousel-react'
 import { ChevronLeft, ChevronRight, Play, X } from 'lucide-react'
 import { Button } from "@/components/ui/button"
@@ -16,23 +16,45 @@ import {
 import { cn } from "@/lib/utils"
 import type { Tables } from '@/types/supabase'
 import Image from "next/image"
+import { BannerDateIndicator } from './BannerDateIndicator'
 
 type Banner = Tables<'carousel_banners_detailed'>
 
-// TODO: Implement role-based display logic using activeRole prop
 interface CarouselDisplayProps {
   banners: Banner[]
   activeRole: string | null
 }
 
-export function CarouselDisplay({ banners, }: CarouselDisplayProps) {
+export function CarouselDisplay({ banners }: CarouselDisplayProps) {
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, align: 'center' })
   const [prevBtnEnabled, setPrevBtnEnabled] = useState(false)
   const [nextBtnEnabled, setNextBtnEnabled] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const autoScrollIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
-  const scrollPrev = useCallback(() => emblaApi && emblaApi.scrollPrev(), [emblaApi])
-  const scrollNext = useCallback(() => emblaApi && emblaApi.scrollNext(), [emblaApi])
+  const resetAutoScroll = useCallback(() => {
+    if (autoScrollIntervalRef.current) {
+      clearInterval(autoScrollIntervalRef.current)
+    }
+    
+    autoScrollIntervalRef.current = setInterval(() => {
+      emblaApi?.scrollNext()
+    }, 6500) // Changed to 6.5 seconds
+  }, [emblaApi])
+
+  const scrollPrev = useCallback(() => {
+    if (emblaApi) {
+      emblaApi.scrollPrev()
+      resetAutoScroll()
+    }
+  }, [emblaApi, resetAutoScroll])
+
+  const scrollNext = useCallback(() => {
+    if (emblaApi) {
+      emblaApi.scrollNext()
+      resetAutoScroll()
+    }
+  }, [emblaApi, resetAutoScroll])
 
   const onSelect = useCallback(() => {
     if (!emblaApi) return
@@ -53,16 +75,17 @@ export function CarouselDisplay({ banners, }: CarouselDisplayProps) {
     }
   }, [emblaApi, onSelect])
 
-  // Auto-scroll functionality
   useEffect(() => {
     if (!emblaApi) return
+    
+    resetAutoScroll()
 
-    const interval = setInterval(() => {
-      emblaApi.scrollNext()
-    }, 5000) // Scroll every 5 seconds
-
-    return () => clearInterval(interval)
-  }, [emblaApi])
+    return () => {
+      if (autoScrollIntervalRef.current) {
+        clearInterval(autoScrollIntervalRef.current)
+      }
+    }
+  }, [emblaApi, resetAutoScroll])
 
   const handleBannerClick = (banner: Banner) => {
     if (banner.click_behavior === 'url' && banner.url) {
@@ -96,6 +119,8 @@ export function CarouselDisplay({ banners, }: CarouselDisplayProps) {
                       <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Play className="w-16 h-16 text-white" />
                       </div>
+                      {/* Add date indicator */}
+                      <BannerDateIndicator banner={banner} />
                     </div>
                   </DialogTrigger>
                   <DialogContent className="max-w-4xl">
@@ -120,7 +145,7 @@ export function CarouselDisplay({ banners, }: CarouselDisplayProps) {
               ) : (
                 <div
                   onClick={() => handleBannerClick(banner)}
-                  className="cursor-pointer"
+                  className="cursor-pointer relative"
                 >
                   <Image
                     src={banner.banner_url || `/api/placeholder/1920/1080`}
@@ -130,6 +155,8 @@ export function CarouselDisplay({ banners, }: CarouselDisplayProps) {
                     className="w-full aspect-video object-cover"
                     priority={index === 0}
                   />
+                  {/* Add date indicator */}
+                  <BannerDateIndicator banner={banner} />
                 </div>
               )}
             </div>
@@ -173,7 +200,10 @@ export function CarouselDisplay({ banners, }: CarouselDisplayProps) {
                 ? "bg-white scale-125" 
                 : "bg-white/50 hover:bg-white/75"
             )}
-            onClick={() => emblaApi?.scrollTo(index)}
+            onClick={() => {
+              emblaApi?.scrollTo(index)
+              resetAutoScroll()
+            }}
           />
         ))}
       </div>
