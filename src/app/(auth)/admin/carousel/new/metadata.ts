@@ -1,4 +1,4 @@
-// src/app/admin/carousel/new/metadata.ts
+// src/app/(auth)/admin/carousel/new/metadata.ts
 
 import { Metadata } from "next"
 

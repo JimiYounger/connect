@@ -1,4 +1,4 @@
-// src/app/admin/page.tsx
+// src/app/(auth)/admin/page.tsx
 'use client'
 
 import { UserProfileNav } from "@/features/users/components/UserProfileNav"

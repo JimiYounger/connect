@@ -1,4 +1,4 @@
-// src/app/admin/carousel/layout.tsx
+// src/app/(auth)/admin/carousel/layout.tsx
 'use client'
 
 import { Button } from "@/components/ui/button"

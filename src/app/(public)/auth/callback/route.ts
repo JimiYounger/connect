@@ -112,10 +112,18 @@ export async function GET(request: Request) {
       }
     }
 
-    // Final redirect
-    return NextResponse.redirect(`${baseUrl}/dashboard`, {
+    // Refresh session one more time to ensure it's fully set
+    await supabase.auth.getSession()
+    
+    // Create a response with the cookie already set
+    const response = NextResponse.redirect(`${baseUrl}/dashboard`, {
       status: 302
     })
+
+    // Add a custom header to indicate successful auth for client-side handling
+    response.headers.set('X-Auth-Return-To', 'dashboard')
+    
+    return response
   } catch (error) {
     await ErrorLogger.log(
       error,

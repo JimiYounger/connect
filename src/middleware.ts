@@ -35,7 +35,22 @@ export async function middleware(request: NextRequest) {
 
       const { data: { session } } = await supabase.auth.getSession()
 
+      // Check referrer to see if we're coming from an auth flow
+      const referrer = request.headers.get('referer') || ''
+      const isComingFromAuthFlow = 
+        referrer.includes('/auth/callback') || 
+        request.cookies.has('supabase-auth-token')
+      
+      // If we don't have a session and we're not coming from an auth flow, redirect to home
       if (!session) {
+        // If the user has a recent auth cookie but session isn't ready, give it a chance
+        // This helps in production where cookie propagation might be slightly delayed
+        if (isComingFromAuthFlow) {
+          // Return the response as-is, letting the page load
+          // The client-side code will handle redirecting if needed
+          return res
+        }
+        
         const redirectUrl = new URL('/', request.url)
         redirectUrl.searchParams.set('redirectedFrom', request.nextUrl.pathname)
         return NextResponse.redirect(redirectUrl)

@@ -68,6 +68,38 @@ export default async function RootLayout({
           .loading .auth-loading { display: block; }
           .loading .auth-content { opacity: 0; }
         `}</style>
+        <script dangerouslySetInnerHTML={{
+          __html: `
+            (function() {
+              try {
+                // Check if we're in auth loading state
+                if (localStorage.getItem('auth_loading') === 'true') {
+                  document.body.classList.add('loading');
+                }
+                
+                // Listen for page load to properly handle auth redirects
+                window.addEventListener('load', function() {
+                  // If we're on the dashboard page and we were in a loading state
+                  if (window.location.pathname.includes('/dashboard') && localStorage.getItem('auth_loading') === 'true') {
+                    // Clear the loading state
+                    localStorage.removeItem('auth_loading');
+                    document.body.classList.remove('loading');
+                  }
+                  
+                  // If we're redirected to home with a ?error or ?redirectedFrom parameter
+                  if (window.location.pathname === '/' && 
+                      (window.location.search.includes('error') || window.location.search.includes('redirectedFrom'))) {
+                    // Clear loading state as something went wrong
+                    localStorage.removeItem('auth_loading');
+                    document.body.classList.remove('loading');
+                  }
+                });
+              } catch (e) {
+                console.error('Auth loading script error:', e);
+              }
+            })();
+          `
+        }} />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}

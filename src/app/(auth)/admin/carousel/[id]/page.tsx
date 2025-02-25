@@ -1,4 +1,4 @@
-// src/app/admin/carousel/[id]/page.tsx
+// src/app/(auth)/admin/carousel/[id]/page.tsx
 
 'use client'
 
