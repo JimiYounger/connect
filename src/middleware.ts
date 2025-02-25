@@ -12,8 +12,8 @@ export async function middleware(request: NextRequest) {
     const res = await updateSession(request)
 
     // Add public URLs and API routes that handle their own auth
-    const publicUrls = ['/', '/auth/callback', '/api/log-error', '/login']
-    const authFlowUrls = ['/auth/callback'] // Add URLs that are part of the auth flow
+    const publicUrls = ['/', '/auth/callback', '/api/log-error', '/login', '/auth/processing']
+    const authFlowUrls = ['/auth/callback', '/auth/processing'] // Add URLs that are part of the auth flow
     const isApiRoute = request.nextUrl.pathname.startsWith('/api/')
     const isPublicUrl = publicUrls.includes(request.nextUrl.pathname)
     const isAuthFlow = authFlowUrls.includes(request.nextUrl.pathname) || 
@@ -39,6 +39,7 @@ export async function middleware(request: NextRequest) {
       const referrer = request.headers.get('referer') || ''
       const isComingFromAuthFlow = 
         referrer.includes('/auth/callback') || 
+        referrer.includes('/auth/processing') ||
         request.cookies.has('supabase-auth-token')
       
       // If we don't have a session and we're not coming from an auth flow, redirect to home
