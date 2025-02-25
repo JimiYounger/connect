@@ -1,5 +1,4 @@
 // src/middleware.ts
-
 import { type NextRequest } from 'next/server'
 import { updateSession } from '@/features/auth/middleware/auth'
 import { NextResponse } from 'next/server'
@@ -13,12 +12,15 @@ export async function middleware(request: NextRequest) {
     const res = await updateSession(request)
 
     // Add public URLs and API routes that handle their own auth
-    const publicUrls = ['/', '/auth/callback', '/api/log-error']
+    const publicUrls = ['/', '/auth/callback', '/api/log-error', '/login']
+    const authFlowUrls = ['/auth/callback'] // Add URLs that are part of the auth flow
     const isApiRoute = request.nextUrl.pathname.startsWith('/api/')
     const isPublicUrl = publicUrls.includes(request.nextUrl.pathname)
+    const isAuthFlow = authFlowUrls.includes(request.nextUrl.pathname) || 
+                      request.nextUrl.pathname.startsWith('/auth/')
     
-    // Skip session check for public URLs and API routes
-    if (!isPublicUrl && !isApiRoute) {
+    // Skip session check for public URLs, API routes, and auth flow URLs
+    if (!isPublicUrl && !isApiRoute && !isAuthFlow) {
       const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
