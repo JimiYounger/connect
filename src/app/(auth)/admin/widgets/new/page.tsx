@@ -1,3 +1,5 @@
+// my-app/src/app/(auth)/admin/widgets/new/page.tsx
+
 'use client'
 
 import { useState, useEffect } from 'react';
@@ -27,7 +29,7 @@ import { useAuth } from '@/features/auth/context/auth-context';
 import { useProfile } from '@/features/users/hooks/useProfile';
 import { usePermissions } from '@/features/permissions/hooks/usePermissions';
 import { hasPermissionLevel } from '@/features/permissions/constants/roles';
-import { WidgetType, WidgetShape } from '@/features/widgets/types';
+import { WidgetType, WidgetShape, WidgetDisplayType } from '@/features/widgets/types';
 import { WidgetRenderer } from '@/features/widgets/components/widget-renderer';
 import Link from 'next/link';
 
@@ -149,6 +151,23 @@ const combinedSchema = z.object({
 
 type FormValues = z.infer<typeof combinedSchema>;
 
+// Utility function to calculate dimensions based on size ratio
+const calculateDimensions = (ratio: string, maxSize: number = 300): { width: number, height: number } => {
+  const [widthRatio, heightRatio] = ratio.split(':').map(Number);
+  
+  if (widthRatio >= heightRatio) {
+    // Width is the limiting factor
+    const width = maxSize;
+    const height = (heightRatio / widthRatio) * maxSize;
+    return { width, height };
+  } else {
+    // Height is the limiting factor
+    const height = maxSize;
+    const width = (widthRatio / heightRatio) * maxSize;
+    return { width, height };
+  }
+};
+
 export default function NewWidgetPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -170,7 +189,7 @@ export default function NewWidgetPage() {
       description: '',
       size_ratio: '1:1',
       shape: WidgetShape.SQUARE,
-      is_public: false,
+      is_public: true,
       config: {},
       styles: {
         backgroundColor: '#ffffff',
@@ -185,11 +204,16 @@ export default function NewWidgetPage() {
     mode: 'onChange',
   });
   
-  const { watch, handleSubmit, setValue: _setValue, getValues: _getValues, trigger, formState } = methods;
+  const { watch, handleSubmit, setValue: _setValue, getValues: _getValues, trigger: _trigger, setError, formState } = methods;
   const { errors: _errors } = formState;
   
   // Watch for widget type changes to update schema
   const widgetType = watch('widget_type');
+  const sizeRatio = watch('size_ratio');
+  const widgetShape = watch('shape');
+  
+  // Calculate dimensions based on the selected size ratio
+  const dimensions = calculateDimensions(sizeRatio);
   
   // Preview widget
   const previewWidget = {
@@ -235,36 +259,22 @@ export default function NewWidgetPage() {
   }, [toast]);
   
   // Handle step change
-  const handleStepChange = async (step: string) => {
-    // Validate current step before proceeding
-    let isValid = false;
-    
-    switch (currentStep) {
-      case 'type':
-        isValid = await trigger(['widget_type']);
-        break;
-      case 'info':
-        isValid = await trigger(['name', 'description', 'category_id', 'size_ratio', 'shape']);
-        break;
-      case 'config':
-        // Config validation depends on the widget type
-        isValid = await trigger('config');
-        break;
-      case 'appearance':
-        isValid = await trigger('styles');
-        break;
-      default:
-        isValid = true;
+  const handleStepChange = (step: string) => {
+    // Prevent form submission when changing steps
+    // Validate the current step before allowing navigation
+    if (step === 'info' && currentStep === 'type') {
+      // Validate the type selection
+      const typeResult = typeSchema.safeParse(_getValues());
+      if (!typeResult.success) {
+        setError('widget_type', { 
+          type: 'manual', 
+          message: 'Please select a widget type' 
+        });
+        return;
+      }
     }
     
-    if (!isValid && step !== currentStep) {
-      toast({
-        title: "Validation Error",
-        description: "Please fix the errors before proceeding",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Other validation logic for other steps...
     
     setCurrentStep(step);
   };
@@ -284,7 +294,9 @@ export default function NewWidgetPage() {
         created_by: session.user.id,
         category_id: data.category_id === 'uncategorized' ? undefined : data.category_id,
         thumbnail_url: data.thumbnail_url,
-        is_public: data.is_public,
+        display_type: WidgetDisplayType.IFRAME,
+        is_public: true,
+        is_published: true,
       });
       
       if (error) throw error;
@@ -388,11 +400,25 @@ export default function NewWidgetPage() {
           <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
             <div className="md:col-span-3">
               <Tabs value={currentStep} onValueChange={handleStepChange}>
-                <TabsList className="grid grid-cols-4 mb-4">
-                  <TabsTrigger value="type">1. Type</TabsTrigger>
-                  <TabsTrigger value="info">2. Information</TabsTrigger>
-                  <TabsTrigger value="config">3. Configuration</TabsTrigger>
-                  <TabsTrigger value="appearance">4. Appearance</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-4">
+                  {[
+                    { value: 'type', label: '1. Type' },
+                    { value: 'info', label: '2. Information' },
+                    { value: 'config', label: '3. Configuration' },
+                    { value: 'appearance', label: '4. Appearance' }
+                  ].map((step) => (
+                    <TabsTrigger
+                      key={step.value}
+                      value={step.value}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleStepChange(step.value);
+                      }}
+                      disabled={isCreating}
+                    >
+                      {step.label}
+                    </TabsTrigger>
+                  ))}
                 </TabsList>
                 
                 <Card>
@@ -473,7 +499,8 @@ export default function NewWidgetPage() {
                     {currentStep !== 'appearance' ? (
                       <Button
                         type="button"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.preventDefault();
                           const steps = ['type', 'info', 'config', 'appearance'];
                           const currentIndex = steps.indexOf(currentStep);
                           if (currentIndex < steps.length - 1) {
@@ -509,19 +536,43 @@ export default function NewWidgetPage() {
                 <CardContent className="border-t pt-4">
                   <div className="border rounded-md p-4 bg-gray-50">
                     <div 
-                      className="bg-white rounded-md shadow-sm aspect-square max-w-xs mx-auto"
+                      className="bg-white rounded-md shadow-sm mx-auto flex items-center justify-center overflow-hidden"
                       style={{
-                        borderRadius: watch('styles.borderRadius') || '8px',
+                        borderRadius: widgetShape === WidgetShape.CIRCLE ? '50%' : (watch('styles.borderRadius') || '8px'),
                         padding: watch('styles.padding') || '16px',
-                        backgroundColor: watch('styles.backgroundColor') || '#ffffff'
+                        backgroundColor: watch('styles.backgroundColor') || '#ffffff',
+                        backgroundImage: watch('thumbnail_url') ? `url(${watch('thumbnail_url')})` : 'none',
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        width: `${dimensions.width}px`,
+                        height: `${dimensions.height}px`,
+                        maxWidth: '100%'
                       }}
                     >
-                      <WidgetRenderer
-                        widget={previewWidget as any}
-                        configuration={previewConfig}
-                        width={300}
-                        height={300}
-                      />
+                      {/* Only render the WidgetRenderer if there's no thumbnail */}
+                      {!watch('thumbnail_url') && (
+                        <WidgetRenderer
+                          widget={{
+                            ...previewWidget,
+                            thumbnail_url: null,
+                            category_id: null,
+                            component_path: null,
+                            display_type: WidgetDisplayType.IFRAME,
+                            shape: widgetShape,
+                            size_ratio: sizeRatio,
+                            target_url: null,
+                            updated_at: new Date().toISOString(),
+                          }}
+                          configuration={{
+                            ...previewConfig,
+                          }}
+                          width={dimensions.width}
+                          height={dimensions.height}
+                        />
+                      )}
+                    </div>
+                    <div className="mt-2 text-center text-sm text-gray-500">
+                      {sizeRatio} - {widgetShape}
                     </div>
                   </div>
                 </CardContent>

@@ -1,3 +1,5 @@
+// my-app/src/app/(auth)/admin/widgets/new/steps/widget-configuration.tsx
+
 import { useEffect } from 'react';
 import { useFormContext } from 'react-hook-form';
 import {
@@ -26,14 +28,44 @@ interface WidgetConfigurationProps {
   type: WidgetType;
 }
 
+const SafeInput = ({ value, ...props }: { value: any } & React.ComponentProps<typeof Input>) => (
+  <Input value={value || ''} {...props} />
+);
+
+const SafeTextarea = ({ value, ...props }: { value: any } & React.ComponentProps<typeof Textarea>) => (
+  <Textarea value={value || ''} {...props} />
+);
+
+const SafeSwitch = ({ checked, ...props }: { checked: any } & React.ComponentProps<typeof Switch>) => (
+  <Switch checked={!!checked} {...props} />
+);
+
 export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
-  const { control, watch, setValue: _setValue } = useFormContext();
+  const { control, watch, setValue } = useFormContext();
   const _config = watch('config') || {};
   
   // Initialize config based on widget type
   useEffect(() => {
-    // Default config initialization
-  }, [type]);
+    // Set default values for all config fields when type changes
+    setValue('config.title', _config.title || '');
+    setValue('config.subtitle', _config.subtitle || '');
+    
+    // Type-specific defaults
+    if (type === WidgetType.REDIRECT) {
+      setValue('config.redirectUrl', _config.redirectUrl || '');
+      setValue('config.description', _config.description || '');
+      setValue('config.settings.openInNewTab', _config.settings?.openInNewTab || false);
+      setValue('config.settings.trackClicks', _config.settings?.trackClicks || false);
+    } else if (type === WidgetType.DATA_VISUALIZATION) {
+      setValue('config.dataSource', _config.dataSource || '');
+      setValue('config.chartType', _config.chartType || '');
+      setValue('config.refreshInterval', _config.refreshInterval || 0);
+      setValue('config.settings.showLegend', _config.settings?.showLegend || false);
+      setValue('config.settings.responsive', _config.settings?.responsive || true);
+    }
+    // Add defaults for other widget types...
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [type, setValue]);
   
   // Render type-specific configuration fields
   const renderTypeSpecificFields = () => {
@@ -48,9 +80,9 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
                 <FormItem>
                   <FormLabel>Redirect URL</FormLabel>
                   <FormControl>
-                    <Input 
+                    <SafeInput 
                       placeholder="https://example.com" 
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormDescription>
@@ -68,10 +100,10 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
                 <FormItem>
                   <FormLabel>Link Description</FormLabel>
                   <FormControl>
-                    <Textarea 
+                    <SafeTextarea 
                       placeholder="Describe where this link will take users" 
                       className="min-h-[80px]"
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormDescription>
@@ -97,8 +129,8 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
                       </FormDescription>
                     </div>
                     <FormControl>
-                      <Switch
-                        checked={field.value}
+                      <SafeSwitch
+                        checked={!!field.value}
                         onCheckedChange={field.onChange}
                       />
                     </FormControl>
@@ -118,8 +150,8 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
                       </FormDescription>
                     </div>
                     <FormControl>
-                      <Switch
-                        checked={field.value}
+                      <SafeSwitch
+                        checked={!!field.value}
                         onCheckedChange={field.onChange}
                       />
                     </FormControl>
@@ -140,9 +172,9 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
                 <FormItem>
                   <FormLabel>Data Source</FormLabel>
                   <FormControl>
-                    <Input 
+                    <SafeInput 
                       placeholder="API endpoint or data source identifier" 
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormDescription>
@@ -191,12 +223,13 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
                 <FormItem>
                   <FormLabel>Refresh Interval (seconds)</FormLabel>
                   <FormControl>
-                    <Input 
+                    <SafeInput 
                       type="number" 
                       min="0"
                       placeholder="0 (disabled)" 
-                      {...field} 
-                      onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                      {...field}
+                      value={field.value ?? 0}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => field.onChange(parseInt(e.target.value) || 0)}
                     />
                   </FormControl>
                   <FormDescription>
@@ -222,8 +255,8 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
                       </FormDescription>
                     </div>
                     <FormControl>
-                      <Switch
-                        checked={field.value}
+                      <SafeSwitch
+                        checked={!!field.value}
                         onCheckedChange={field.onChange}
                       />
                     </FormControl>
@@ -243,8 +276,8 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
                       </FormDescription>
                     </div>
                     <FormControl>
-                      <Switch
-                        checked={field.value}
+                      <SafeSwitch
+                        checked={!!field.value}
                         onCheckedChange={field.onChange}
                       />
                     </FormControl>
@@ -265,9 +298,9 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
                 <FormItem>
                   <FormLabel>Embed URL</FormLabel>
                   <FormControl>
-                    <Input 
+                    <SafeInput 
                       placeholder="https://example.com/embed" 
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormDescription>
@@ -290,8 +323,8 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
                     </FormDescription>
                   </div>
                   <FormControl>
-                    <Switch
-                      checked={field.value}
+                    <SafeSwitch
+                      checked={!!field.value}
                       onCheckedChange={field.onChange}
                     />
                   </FormControl>
@@ -311,8 +344,8 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
                     </FormDescription>
                   </div>
                   <FormControl>
-                    <Switch
-                      checked={field.value}
+                    <SafeSwitch
+                      checked={!!field.value}
                       onCheckedChange={field.onChange}
                     />
                   </FormControl>
@@ -332,10 +365,10 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
                 <FormItem>
                   <FormLabel>Content</FormLabel>
                   <FormControl>
-                    <Textarea 
+                    <SafeTextarea 
                       placeholder="Enter content to display in the widget" 
                       className="min-h-[200px]"
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormDescription>
@@ -358,8 +391,8 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
                     </FormDescription>
                   </div>
                   <FormControl>
-                    <Switch
-                      checked={field.value}
+                    <SafeSwitch
+                      checked={!!field.value}
                       onCheckedChange={field.onChange}
                     />
                   </FormControl>
@@ -410,12 +443,12 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
                 <FormItem>
                   <FormLabel>Tool Settings (JSON)</FormLabel>
                   <FormControl>
-                    <Textarea 
+                    <SafeTextarea 
                       placeholder="{}" 
                       className="font-mono text-sm min-h-[150px]"
                       {...field}
-                      value={typeof field.value === 'object' ? JSON.stringify(field.value, null, 2) : field.value}
-                      onChange={(e) => {
+                      value={typeof field.value === 'object' ? JSON.stringify(field.value, null, 2) : (field.value || '{}')}
+                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
                         try {
                           const parsed = JSON.parse(e.target.value);
                           field.onChange(parsed);
@@ -453,9 +486,9 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
           <FormItem>
             <FormLabel>Display Title</FormLabel>
             <FormControl>
-              <Input 
+              <SafeInput 
                 placeholder="Widget title (shown to users)" 
-                {...field} 
+                {...field}
               />
             </FormControl>
             <FormDescription>
@@ -476,7 +509,8 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
               <FormControl>
                 <Input 
                   placeholder="Optional subtitle" 
-                  {...field} 
+                  {...field}
+                  value={field.value || ''}
                 />
               </FormControl>
               <FormDescription>

@@ -8,7 +8,11 @@ import type {
   WidgetConfiguration, 
   WidgetPlacement, 
   DraftWidgetPlacement,
-  WidgetType
+} from '../types';
+
+import { 
+  WidgetType,
+  WidgetDisplayType
 } from '../types';
 
 // Define interface for widget interactions since it's missing from Database type
@@ -364,6 +368,8 @@ export class WidgetService {
       created_by: string;
       category_id?: string;
       thumbnail_url?: string;
+      display_type?: string;
+      file_id?: string;
       is_public?: boolean;
     }
   ): Promise<{ data: Widget | null; error: Error | null }> {
@@ -379,14 +385,15 @@ export class WidgetService {
         description: widgetData.description || null,
         category_id: widgetData.category_id || null,
         created_at: now,
-        display_type: 'standard', // default value
+        display_type: widgetData.display_type || WidgetDisplayType.IFRAME,
         component_path: null,
         shape: 'square', // default value
         size_ratio: '1:1', // default value
-        public: widgetData.is_public || false,
+        public: true, // Always set to true
         is_active: true,
-        is_published: false,
+        is_published: true, // Set to published by default
         thumbnail_url: widgetData.thumbnail_url || null,
+        file_id: widgetData.file_id || null,
         // Don't include created_by as it doesn't seem to exist in the Widget type
       };
       
@@ -490,14 +497,26 @@ export class WidgetService {
    */
   async updateWidget(
     widgetId: string,
-    widgetData: Partial<Widget>
+    widgetData: Partial<Widget & { file_id?: string }>
   ): Promise<{ data: Widget | null; error: Error | null }> {
     try {
       const supabase = this.getClient();
       
+      // Ensure widgets are always public and published
+      const updatedData = {
+        ...widgetData,
+        public: true,
+        is_published: true
+      };
+      
+      // Remove any is_public property if it exists
+      if ('is_public' in updatedData) {
+        delete updatedData.is_public;
+      }
+      
       const { data, error } = await supabase
         .from('widgets')
-        .update(widgetData)
+        .update(updatedData)
         .eq('id', widgetId)
         .select()
         .single();

@@ -26,14 +26,12 @@ export enum WidgetType {
 }
 
 /**
- * Enum for display types
+ * Enum for display types - must match database constraints
  */
 export enum WidgetDisplayType {
-  CARD = "card",
-  BANNER = "banner",
-  PANEL = "panel",
-  MODAL = "modal",
-  INLINE = "inline"
+  IFRAME = "iframe",
+  WINDOW = "window",
+  ROUTE = "route"
 }
 
 /**

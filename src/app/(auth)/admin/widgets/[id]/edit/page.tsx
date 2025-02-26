@@ -87,6 +87,23 @@ const formSchema = z.object({
   }).optional(),
 });
 
+// Add the calculateDimensions utility function (same as in new/page.tsx)
+const calculateDimensions = (ratio: string, maxSize: number = 300): { width: number, height: number } => {
+  const [widthRatio, heightRatio] = ratio.split(':').map(Number);
+  
+  if (widthRatio >= heightRatio) {
+    // Width is the limiting factor
+    const width = maxSize;
+    const height = (heightRatio / widthRatio) * maxSize;
+    return { width, height };
+  } else {
+    // Height is the limiting factor
+    const height = maxSize;
+    const width = (widthRatio / heightRatio) * maxSize;
+    return { width, height };
+  }
+};
+
 export default function EditWidgetPage() {
   const router = useRouter();
   const params = useParams();
@@ -179,7 +196,7 @@ export default function EditWidgetPage() {
           size_ratio: widgetData.size_ratio as WidgetSizeRatio || '1:1',
           shape: widgetData.shape as WidgetShape || WidgetShape.SQUARE,
           thumbnail_url: widgetData.thumbnail_url || '',
-          is_public: widgetData.is_public || false,
+          is_public: widgetData.public || false,
           // Load config from the most recent configuration if available
           ...(configurationsData && configurationsData.length > 0 
             ? {
@@ -222,16 +239,18 @@ export default function EditWidgetPage() {
     
     try {
       // Update widget basic info
-      const { error: updateError } = await widgetService.updateWidget(widget.id, {
+      const widgetData = {
         name: data.name,
-        description: data.description,
+        description: data.description || '',
         widget_type: data.widget_type,
-        category_id: data.category_id,
+        category_id: data.category_id === 'uncategorized' || !data.category_id ? null : data.category_id,
+        thumbnail_url: data.thumbnail_url,
         shape: data.shape,
         size_ratio: data.size_ratio,
-        thumbnail_url: data.thumbnail_url,
-        is_public: data.is_public,
-      });
+        public: true,
+      };
+      
+      const { error: updateError } = await widgetService.updateWidget(widget.id, widgetData);
       
       if (updateError) throw updateError;
       
@@ -267,29 +286,15 @@ export default function EditWidgetPage() {
     }
   };
   
-  // Generate widget preview data
-  const previewWidget = {
-    id: widget.id,
-    name: widget.name,
-    description: widget.description ?? null,
-    widget_type: widget.widget_type,
-    shape: widget.shape,
-    category_id: widget.category_id,
-    component_path: widget.component_path ?? null,
-    display_type: widget.display_type ?? null,
-    size_ratio: widget.size_ratio,
-    created_at: widget.created_at,
-    updated_at: widget.updated_at ?? null,
-    status: widget.status ?? "draft",
-    target_url: widget.target_url ?? null,
-    thumbnail_url: widget.thumbnail_url ?? null,
-    is_public: widget.is_public ?? false
-  };
-  
   const previewConfig = {
     ...watch('config'),
     styles: watch('styles'),
   };
+  
+  // Calculate dimensions based on the selected size ratio
+  const sizeRatio = watch('size_ratio') || '1:1';
+  const widgetShape = watch('shape') || WidgetShape.SQUARE;
+  const dimensions = calculateDimensions(sizeRatio);
   
   // Loading states
   if (loading.initializing || isLoading) {
@@ -524,22 +529,31 @@ export default function EditWidgetPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="border-t pt-4">
-                  <div className="border rounded-md p-4 bg-gray-50">
-                    <div 
-                      className="bg-white rounded-md shadow-sm aspect-square max-w-xs mx-auto"
-                      style={{
-                        borderRadius: watch('styles.borderRadius') || '8px',
-                        padding: watch('styles.padding') || '16px',
-                        backgroundColor: watch('styles.backgroundColor') || '#ffffff'
-                      }}
-                    >
+                  <div 
+                    className="bg-white rounded-md shadow-sm mx-auto flex items-center justify-center overflow-hidden"
+                    style={{
+                      borderRadius: widget.shape === 'circle' ? '50%' : (watch('styles.borderRadius') || '8px'),
+                      padding: watch('styles.padding') || '16px',
+                      backgroundColor: watch('styles.backgroundColor') || '#ffffff',
+                      backgroundImage: widget.thumbnail_url ? `url(${widget.thumbnail_url})` : 'none',
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      width: `${dimensions.width}px`,
+                      height: `${dimensions.height}px`,
+                      maxWidth: '100%'
+                    }}
+                  >
+                    {!widget.thumbnail_url && (
                       <WidgetRenderer
-                        widget={previewWidget}
+                        widget={widget}
                         configuration={previewConfig}
-                        width={300}
-                        height={300}
+                        width={dimensions.width}
+                        height={dimensions.height}
                       />
-                    </div>
+                    )}
+                  </div>
+                  <div className="mt-2 text-center text-sm text-gray-500">
+                    {sizeRatio} - {widgetShape}
                   </div>
                 </CardContent>
               </Card>

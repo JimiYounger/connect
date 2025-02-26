@@ -22,7 +22,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { WidgetShape } from '../../../types';
-import { ImageUpload } from '@/components/ui/uploadcare-uploader';
+import { ImageUpload } from '@/components/uploadcare-uploader';
 
 interface BasicInformationProps {
   categories: any[];

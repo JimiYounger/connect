@@ -21,13 +21,14 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { WidgetShape } from '@/features/widgets/types';
 import { ImageUpload } from '@/components/ui/uploadcare-uploader';
+// import { Image } from '@/components/ui/image';
 
 interface BasicInformationProps {
   categories: any[];
 }
 
 export function BasicInformation({ categories }: BasicInformationProps) {
-  const { control, register: _register, formState, setValue, watch: _watch } = useFormContext();
+  const { control, register: _register, formState, setValue: _setValue, watch: _watch } = useFormContext();
   const { errors: _errors } = formState;
   
   return (
@@ -182,34 +183,20 @@ export function BasicInformation({ categories }: BasicInformationProps) {
             <FormControl>
               <ImageUpload
                 value={field.value}
-                onChange={(url) => setValue('thumbnail_url', url)}
+                onChange={(url: string, fileId?: string) => {
+                  _setValue('thumbnail_url', url);
+                  if (fileId) {
+                    _setValue('file_id', fileId);
+                  }
+                  
+                  field.onChange(url);
+                }}
               />
             </FormControl>
             <FormDescription>
               Upload a preview image for this widget (optional)
             </FormDescription>
             <FormMessage />
-          </FormItem>
-        )}
-      />
-      
-      <FormField
-        control={control}
-        name="is_public"
-        render={({ field }) => (
-          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-            <div className="space-y-0.5">
-              <FormLabel className="text-base">Public Widget</FormLabel>
-              <FormDescription>
-                Make this widget available to all users
-              </FormDescription>
-            </div>
-            <FormControl>
-              <Switch
-                checked={field.value}
-                onCheckedChange={field.onChange}
-              />
-            </FormControl>
           </FormItem>
         )}
       />

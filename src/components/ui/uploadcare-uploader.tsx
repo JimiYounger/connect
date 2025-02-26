@@ -1,66 +1,80 @@
-import React, { useState } from 'react';
-import Image from 'next/image';
-import { Button } from './button';
-import { Upload } from 'lucide-react';
+'use client'
+
+import React, { useState } from 'react'
+import Image from 'next/image'
+import { Button } from '@/components/ui/button'
+import { X } from 'lucide-react'
+import { UploadcareUploader } from '@/components/uploadcare-uploader'
+import { useFiles } from '@/hooks/use-files'
+import type { FileInfo } from '@/types/files'
 
 interface ImageUploadProps {
-  value?: string;
-  onChange: (url: string) => void;
+  value?: string | null
+  onChange: (url: string, fileId?: string) => void
+  className?: string
 }
 
-export function ImageUpload({ value, onChange }: ImageUploadProps) {
-  const [isUploading, setIsUploading] = useState(false);
-  
-  // Placeholder for actual upload functionality
-  const handleUpload = () => {
-    setIsUploading(true);
-    // Simulate upload delay
-    setTimeout(() => {
-      // This would be replaced with actual upload logic
-      const mockImageUrl = `https://picsum.photos/seed/${Math.random()}/400/400`;
-      onChange(mockImageUrl);
-      setIsUploading(false);
-    }, 1500);
-  };
-  
+export function ImageUpload({ value, onChange, className }: ImageUploadProps) {
+  const [_isUploading, setIsUploading] = useState(false)
+  const { saveFile } = useFiles()
+
+  const handleUpload = async (fileInfo: FileInfo) => {
+    try {
+      setIsUploading(true)
+      
+      // Save the file to our database
+      const storedFile = await saveFile(fileInfo)
+      
+      // Pass both the CDN URL and the file ID to the parent component
+      if (storedFile) {
+        onChange(fileInfo.cdnUrl, storedFile.id)
+      } else {
+        // Fallback in case file saving fails
+        onChange(fileInfo.cdnUrl)
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error)
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const handleRemove = () => {
+    onChange('', undefined)
+  }
+
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div className={className}>
       {value ? (
-        <div className="relative w-full h-48">
-          <Image 
-            src={value} 
-            alt="Thumbnail" 
-            fill
-            sizes="(max-width: 768px) 100vw, 400px"
-            className="object-cover rounded-md"
-            unoptimized={value.startsWith('data:') || value.startsWith('blob:')}
-          />
-          <Button 
-            type="button" 
-            variant="outline" 
-            size="sm"
-            onClick={() => onChange('')}
-            className="absolute top-2 right-2 z-10"
+        <div className="relative w-full rounded-lg border bg-background">
+          <div 
+            className="relative w-full rounded-lg overflow-hidden"
+            style={{ paddingTop: '56.25%' }} // 16:9 aspect ratio
           >
-            Remove
+            <Image
+              src={value}
+              alt="Uploaded image"
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 50vw"
+            />
+          </div>
+          <Button
+            type="button"
+            variant="destructive"
+            size="icon"
+            className="absolute top-2 right-2 z-10"
+            onClick={handleRemove}
+          >
+            <X className="h-4 w-4" />
           </Button>
         </div>
       ) : (
-        <div className="border-2 border-dashed border-gray-300 rounded-md p-6 w-full flex flex-col items-center gap-2">
-          <Upload className="h-10 w-10 text-gray-400" />
-          <p className="text-sm text-gray-500">Click to upload an image</p>
-        </div>
-      )}
-      
-      {!value && (
-        <Button 
-          type="button" 
-          onClick={handleUpload}
-          disabled={isUploading}
-        >
-          {isUploading ? 'Uploading...' : 'Upload Image'}
-        </Button>
+        <UploadcareUploader
+          onUpload={handleUpload}
+          className="w-full"
+        />
       )}
     </div>
-  );
+  )
 } 
