@@ -1,5 +1,3 @@
-// src/types/supabase.ts
-
 export type Json =
   | string
   | number
@@ -162,6 +160,117 @@ export type Database = {
           },
         ]
       }
+      dashboard_drafts: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          name: string
+          role_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          name: string
+          role_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          name?: string
+          role_type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      dashboard_versions: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          go_live_date: string | null
+          id: string
+          role_type: string
+          status: string
+          updated_at: string | null
+          version_name: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          go_live_date?: string | null
+          id?: string
+          role_type: string
+          status: string
+          updated_at?: string | null
+          version_name: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          go_live_date?: string | null
+          id?: string
+          role_type?: string
+          status?: string
+          updated_at?: string | null
+          version_name?: string
+        }
+        Relationships: []
+      }
+      draft_widget_placements: {
+        Row: {
+          created_at: string | null
+          draft_id: string
+          height: number
+          id: string
+          layout_type: string
+          position_x: number
+          position_y: number
+          widget_id: string
+          width: number
+        }
+        Insert: {
+          created_at?: string | null
+          draft_id: string
+          height: number
+          id?: string
+          layout_type: string
+          position_x: number
+          position_y: number
+          widget_id: string
+          width: number
+        }
+        Update: {
+          created_at?: string | null
+          draft_id?: string
+          height?: number
+          id?: string
+          layout_type?: string
+          position_x?: number
+          position_y?: number
+          widget_id?: string
+          width?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "draft_widget_placements_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "dashboard_drafts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_widget_placements_widget_id_fkey"
+            columns: ["widget_id"]
+            isOneToOne: false
+            referencedRelation: "widgets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       error_logs: {
         Row: {
           context: Json | null
@@ -245,6 +354,24 @@ export type Database = {
           size?: number
           uploadcare_uuid?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      thumbnails: {
+        Row: {
+          created_at: string | null
+          id: string
+          uploadcare_url: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          uploadcare_url: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          uploadcare_url?: string
         }
         Relationships: []
       }
@@ -383,6 +510,222 @@ export type Database = {
             columns: ["user_profile_id"]
             isOneToOne: false
             referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      widget_analytics: {
+        Row: {
+          created_at: string | null
+          id: string
+          interaction_type: string
+          metadata: Json | null
+          user_id: string
+          widget_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          interaction_type: string
+          metadata?: Json | null
+          user_id: string
+          widget_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          interaction_type?: string
+          metadata?: Json | null
+          user_id?: string
+          widget_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "widget_analytics_widget_id_fkey"
+            columns: ["widget_id"]
+            isOneToOne: false
+            referencedRelation: "widgets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      widget_categories: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          position: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          position?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          position?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      widget_configurations: {
+        Row: {
+          config: Json
+          created_at: string | null
+          id: string
+          updated_at: string | null
+          widget_id: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+          widget_id: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+          widget_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "widget_configurations_widget_id_fkey"
+            columns: ["widget_id"]
+            isOneToOne: false
+            referencedRelation: "widgets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      widget_placements: {
+        Row: {
+          created_at: string | null
+          dashboard_version_id: string
+          height: number
+          id: string
+          layout_type: string
+          position_x: number
+          position_y: number
+          widget_id: string
+          width: number
+        }
+        Insert: {
+          created_at?: string | null
+          dashboard_version_id: string
+          height: number
+          id?: string
+          layout_type: string
+          position_x: number
+          position_y: number
+          widget_id: string
+          width: number
+        }
+        Update: {
+          created_at?: string | null
+          dashboard_version_id?: string
+          height?: number
+          id?: string
+          layout_type?: string
+          position_x?: number
+          position_y?: number
+          widget_id?: string
+          width?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "widget_placements_dashboard_version_id_fkey"
+            columns: ["dashboard_version_id"]
+            isOneToOne: false
+            referencedRelation: "dashboard_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "widget_placements_widget_id_fkey"
+            columns: ["widget_id"]
+            isOneToOne: false
+            referencedRelation: "widgets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      widgets: {
+        Row: {
+          category_id: string | null
+          component_path: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          display_type: string | null
+          id: string
+          is_active: boolean
+          is_published: boolean
+          name: string
+          public: boolean
+          shape: string
+          size_ratio: string
+          target_url: string | null
+          thumbnail_url: string | null
+          updated_at: string | null
+          widget_type: string
+        }
+        Insert: {
+          category_id?: string | null
+          component_path?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          display_type?: string | null
+          id?: string
+          is_active?: boolean
+          is_published?: boolean
+          name: string
+          public?: boolean
+          shape: string
+          size_ratio: string
+          target_url?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          widget_type: string
+        }
+        Update: {
+          category_id?: string | null
+          component_path?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          display_type?: string | null
+          id?: string
+          is_active?: boolean
+          is_published?: boolean
+          name?: string
+          public?: boolean
+          shape?: string
+          size_ratio?: string
+          target_url?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          widget_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "widgets_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "widget_categories"
             referencedColumns: ["id"]
           },
         ]

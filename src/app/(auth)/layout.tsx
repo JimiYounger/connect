@@ -1,3 +1,5 @@
+// my-app/src/app/(auth)/layout.tsx
+
 import { AuthProvider } from "@/features/auth/context/auth-context";
 import { createServerSupabase } from "@/features/auth/utils/supabase-server";
 import { redirect } from "next/navigation";
