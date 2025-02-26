@@ -583,6 +583,7 @@ export type Database = {
         Row: {
           config: Json
           created_at: string | null
+          created_by: string | null
           id: string
           updated_at: string | null
           widget_id: string
@@ -590,6 +591,7 @@ export type Database = {
         Insert: {
           config?: Json
           created_at?: string | null
+          created_by?: string | null
           id?: string
           updated_at?: string | null
           widget_id: string
@@ -597,6 +599,7 @@ export type Database = {
         Update: {
           config?: Json
           created_at?: string | null
+          created_by?: string | null
           id?: string
           updated_at?: string | null
           widget_id?: string
@@ -670,6 +673,7 @@ export type Database = {
           created_by: string | null
           description: string | null
           display_type: string | null
+          file_id: string | null
           id: string
           is_active: boolean
           is_published: boolean
@@ -689,6 +693,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           display_type?: string | null
+          file_id?: string | null
           id?: string
           is_active?: boolean
           is_published?: boolean
@@ -708,6 +713,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           display_type?: string | null
+          file_id?: string | null
           id?: string
           is_active?: boolean
           is_published?: boolean
@@ -726,6 +732,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "widget_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "widgets_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "files"
             referencedColumns: ["id"]
           },
         ]

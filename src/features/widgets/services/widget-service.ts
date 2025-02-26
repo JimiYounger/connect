@@ -371,6 +371,7 @@ export class WidgetService {
       display_type?: string;
       file_id?: string;
       is_public?: boolean;
+      is_published?: boolean;
     }
   ): Promise<{ data: Widget | null; error: Error | null }> {
     try {

@@ -30,7 +30,7 @@ import { useProfile } from '@/features/users/hooks/useProfile';
 import { usePermissions } from '@/features/permissions/hooks/usePermissions';
 import { hasPermissionLevel } from '@/features/permissions/constants/roles';
 import { WidgetType, WidgetShape, WidgetDisplayType } from '@/features/widgets/types';
-import { WidgetRenderer } from '@/features/widgets/components/widget-renderer';
+import { WidgetRenderer as _WidgetRenderer } from '@/features/widgets/components/widget-renderer';
 import Link from 'next/link';
 
 // Step components
@@ -56,11 +56,10 @@ const basicInfoSchema = z.object({
   description: z.string().optional(),
   category_id: z.string().optional(),
   size_ratio: z.enum([
-    '1:1', '2:1', '1:2', '3:2', '2:3', '4:3', '3:4'
+    '1:1', '2:1', '1:2', '3:2', '2:3', '4:3', '3:4', '2:2', '4:4', '2:4', '4:2'
   ] as const),
   shape: z.enum([
     WidgetShape.SQUARE, 
-    WidgetShape.RECTANGLE, 
     WidgetShape.CIRCLE
   ]),
   thumbnail_url: z.string().optional(),
@@ -136,8 +135,7 @@ const _appearanceSchema = z.object({
     textColor: z.string().optional(),
     borderRadius: z.string().optional(),
     padding: z.string().optional(),
-    showTitle: z.boolean().default(true),
-    showDescription: z.boolean().default(true),
+    customCSS: z.string().optional(),
   }),
 });
 
@@ -187,18 +185,17 @@ export default function NewWidgetPage() {
       widget_type: WidgetType.REDIRECT,
       name: '',
       description: '',
-      size_ratio: '1:1',
+      size_ratio: '2:2',
       shape: WidgetShape.SQUARE,
       is_public: true,
       config: {},
       styles: {
-        backgroundColor: '#ffffff',
+        backgroundColor: '#C6FC36',
         titleColor: '#000000',
-        textColor: '#333333',
-        borderRadius: '8px',
-        padding: '16px',
-        showTitle: true,
-        showDescription: true,
+        textColor: '#000000',
+        borderRadius: '50px',
+        padding: '30px',
+        customCSS: ''
       },
     },
     mode: 'onChange',
@@ -216,7 +213,7 @@ export default function NewWidgetPage() {
   const dimensions = calculateDimensions(sizeRatio);
   
   // Preview widget
-  const previewWidget = {
+  const _previewWidget = {
     id: 'preview',
     name: watch('name') || 'Widget Preview',
     description: watch('description') || 'This is a preview of your widget',
@@ -230,7 +227,7 @@ export default function NewWidgetPage() {
   };
   
   // Preview config
-  const previewConfig = {
+  const _previewConfig = {
     ...watch('config'),
     title: watch('name') || 'Widget Preview',
     description: watch('description') || 'This is a preview of your widget',
@@ -257,6 +254,23 @@ export default function NewWidgetPage() {
     
     fetchCategories();
   }, [toast]);
+  
+  // Add an effect to ensure circle shapes only use square ratios
+  useEffect(() => {
+    // If the shape is a circle, ensure we're using a square ratio (1:1, 2:2, or 4:4)
+    const currentShape = watch('shape');
+    const currentSizeRatio = watch('size_ratio');
+    
+    if (currentShape === WidgetShape.CIRCLE) {
+      if (currentSizeRatio !== '1:1' && currentSizeRatio !== '2:2' && currentSizeRatio !== '4:4') {
+        methods.setValue('size_ratio', '2:2');
+        toast({
+          title: "Auto-adjusted ratio",
+          description: "Circle shape requires a square ratio (1:1, 2:2, or 4:4)",
+        });
+      }
+    }
+  }, [watch, methods, toast]);
   
   // Handle step change
   const handleStepChange = (step: string) => {
@@ -305,14 +319,21 @@ export default function NewWidgetPage() {
         throw new Error('Failed to create widget');
       }
       
+      // Inside onSubmit function, before creating the widget configuration
+      console.log('Original config data:', data.config);
+      console.log('Widget name being used:', data.name);
+
       // Create widget configuration
       const configData = {
         ...data.config,
-        title: data.name,
-        description: data.description,
+        // Only use widget name as title if no display title was provided
+        title: data.config.title || data.name,
+        description: data.description || data.config.description,
         styles: data.styles,
       };
-      
+
+      console.log('Final config data being saved:', configData);
+
       const { error: configError } = await widgetService.saveWidgetConfiguration(
         widget.id,
         { config: configData },
@@ -534,46 +555,43 @@ export default function NewWidgetPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="border-t pt-4">
-                  <div className="border rounded-md p-4 bg-gray-50">
-                    <div 
-                      className="bg-white rounded-md shadow-sm mx-auto flex items-center justify-center overflow-hidden"
-                      style={{
-                        borderRadius: widgetShape === WidgetShape.CIRCLE ? '50%' : (watch('styles.borderRadius') || '8px'),
-                        padding: watch('styles.padding') || '16px',
-                        backgroundColor: watch('styles.backgroundColor') || '#ffffff',
-                        backgroundImage: watch('thumbnail_url') ? `url(${watch('thumbnail_url')})` : 'none',
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                        width: `${dimensions.width}px`,
-                        height: `${dimensions.height}px`,
-                        maxWidth: '100%'
-                      }}
-                    >
-                      {/* Only render the WidgetRenderer if there's no thumbnail */}
-                      {!watch('thumbnail_url') && (
-                        <WidgetRenderer
-                          widget={{
-                            ...previewWidget,
-                            thumbnail_url: null,
-                            category_id: null,
-                            component_path: null,
-                            display_type: WidgetDisplayType.IFRAME,
-                            shape: widgetShape,
-                            size_ratio: sizeRatio,
-                            target_url: null,
-                            updated_at: new Date().toISOString(),
-                          }}
-                          configuration={{
-                            ...previewConfig,
-                          }}
-                          width={dimensions.width}
-                          height={dimensions.height}
-                        />
-                      )}
-                    </div>
-                    <div className="mt-2 text-center text-sm text-gray-500">
-                      {sizeRatio} - {widgetShape}
-                    </div>
+                  <div
+                    className="mx-auto flex flex-col justify-end overflow-hidden"
+                    style={{
+                      borderRadius: watch('shape') === WidgetShape.CIRCLE 
+                        ? '50%' 
+                        : '50px',
+                      padding: '30px',
+                      backgroundColor: watch('thumbnail_url') ? 'transparent' : (watch('styles.backgroundColor') || '#ffffff'),
+                      backgroundImage: watch('thumbnail_url') ? `url(${watch('thumbnail_url')})` : 'none',
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      width: `${dimensions.width}px`,
+                      height: `${dimensions.height}px`,
+                      maxWidth: '100%'
+                    }}
+                  >
+                    {!watch('thumbnail_url') && (
+                      <div className="flex flex-col items-start w-full pb-4">
+                        <h3 
+                          className="font-semibold text-2xl md:text-3xl" 
+                          style={{ color: watch('styles.titleColor') || '#000000' }}
+                        >
+                          {watch('config.title') || watch('name') || 'Widget Title'}
+                        </h3>
+                        {watch('config.subtitle') && (
+                          <p 
+                            className="text-lg mt-1" 
+                            style={{ color: watch('styles.textColor') || '#333333' }}
+                          >
+                            {watch('config.subtitle')}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-2 text-center text-sm text-gray-500">
+                    {sizeRatio} - {widgetShape}
                   </div>
                 </CardContent>
               </Card>

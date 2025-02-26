@@ -39,14 +39,13 @@ export enum WidgetDisplayType {
  */
 export enum WidgetShape {
   SQUARE = "square",
-  RECTANGLE = "rectangle",
   CIRCLE = "circle"
 }
 
 /**
  * Size ratio options
  */
-export type WidgetSizeRatio = "1:1" | "2:1" | "1:2" | "3:2" | "2:3" | "4:3" | "3:4";
+export type WidgetSizeRatio = "1:1" | "2:1" | "1:2" | "3:2" | "2:3" | "4:3" | "3:4" | "2:2" | "4:4" | "2:4" | "4:2";
 
 /**
  * Widget configuration interface

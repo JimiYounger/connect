@@ -2,7 +2,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -41,7 +41,7 @@ import { useProfile } from '@/features/users/hooks/useProfile';
 import { usePermissions } from '@/features/permissions/hooks/usePermissions';
 import { hasPermissionLevel } from '@/features/permissions/constants/roles';
 import { WidgetType, WidgetShape, WidgetSizeRatio } from '@/features/widgets/types';
-import { WidgetRenderer } from '@/features/widgets/components/widget-renderer';
+import { WidgetRenderer as _WidgetRenderer } from '@/features/widgets/components/widget-renderer';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -65,11 +65,10 @@ const formSchema = z.object({
   description: z.string().optional(),
   category_id: z.string().optional(),
   size_ratio: z.enum([
-    '1:1', '2:1', '1:2', '3:2', '2:3', '4:3', '3:4'
+    '1:1', '2:1', '1:2', '3:2', '2:3', '4:3', '3:4', '2:2', '4:4', '2:4', '4:2'
   ] as const),
   shape: z.enum([
     WidgetShape.SQUARE, 
-    WidgetShape.RECTANGLE, 
     WidgetShape.CIRCLE
   ]),
   thumbnail_url: z.string().optional(),
@@ -81,8 +80,6 @@ const formSchema = z.object({
     textColor: z.string().optional(),
     borderRadius: z.string().optional(),
     padding: z.string().optional(),
-    showTitle: z.boolean().optional(),
-    showDescription: z.boolean().optional(),
     customCSS: z.string().optional(),
   }).optional(),
 });
@@ -102,6 +99,21 @@ const calculateDimensions = (ratio: string, maxSize: number = 300): { width: num
     const width = (widthRatio / heightRatio) * maxSize;
     return { width, height };
   }
+};
+
+// First, provide a complete type definition for the styles structure
+interface WidgetStyles {
+  backgroundColor: string;
+  titleColor: string;
+  textColor: string;
+  borderRadius: string;
+  padding: string;
+  customCSS?: string;
+}
+
+// Add this utility function at the top of your file
+const isValidHexColor = (color: string) => {
+  return /^#([0-9A-F]{3}){1,2}$/i.test(color);
 };
 
 export default function EditWidgetPage() {
@@ -130,19 +142,17 @@ export default function EditWidgetPage() {
       name: '',
       description: '',
       category_id: '',
-      size_ratio: '1:1' as const,
+      size_ratio: '2:2' as const,
       shape: WidgetShape.SQUARE,
       thumbnail_url: '',
       is_public: false,
       config: {},
       styles: {
-        backgroundColor: '#ffffff',
+        backgroundColor: '#C6FC36',
         titleColor: '#000000',
-        textColor: '#333333',
-        borderRadius: '8px',
-        padding: '16px',
-        showTitle: true,
-        showDescription: true,
+        textColor: '#000000',
+        borderRadius: '50px',
+        padding: '30px',
         customCSS: ''
       }
     }
@@ -150,6 +160,31 @@ export default function EditWidgetPage() {
   
   const { reset, watch, handleSubmit, formState: _formState } = methods;
   const widgetType = watch('widget_type');
+  
+  // Use useMemo to create the styles object once
+  const defaultStyles = useMemo(() => ({
+    backgroundColor: '#C6FC36',
+    titleColor: '#000000',
+    textColor: '#000000',
+    borderRadius: '50px',
+    padding: '30px',
+    customCSS: ''
+  }), []);
+  
+  // Add this right after setting up the form
+  const [refreshPreview, setRefreshPreview] = useState(0);
+  const formValues = methods.getValues();
+  
+  // Then add this effect to update formValues when needed
+  useEffect(() => {
+    // This forces a re-evaluation of formValues when the form changes
+    console.log('Refreshing preview with current values');
+  }, [refreshPreview, methods]);
+  
+  // Finally, add a function to trigger refresh and add it to the form's onChange handler
+  const triggerPreviewRefresh = () => {
+    setRefreshPreview(prev => prev + 1);
+  };
   
   // Load widget data
   useEffect(() => {
@@ -193,19 +228,61 @@ export default function EditWidgetPage() {
           name: widgetData.name,
           description: widgetData.description || '',
           category_id: widgetData.category_id || '',
-          size_ratio: widgetData.size_ratio as WidgetSizeRatio || '1:1',
+          size_ratio: widgetData.size_ratio as WidgetSizeRatio || '2:2',
           shape: widgetData.shape as WidgetShape || WidgetShape.SQUARE,
           thumbnail_url: widgetData.thumbnail_url || '',
           is_public: widgetData.public || false,
-          // Load config from the most recent configuration if available
+          // Load config and styles from the most recent configuration if available
           ...(configurationsData && configurationsData.length > 0 
             ? {
                 config: configurationsData[0].config || {},
-                styles: {} // Default empty styles
+                // Now update the styles extraction code with proper type safety
+                styles: (() => {
+                  if (!configurationsData || configurationsData.length === 0 || !configurationsData[0].config) {
+                    console.log('No configuration data found, using defaults');
+                    return defaultStyles;
+                  }
+
+                  const config = configurationsData[0].config as any;
+                  console.log('Extracting styles from:', config);
+                  
+                  // Try to find styles in the saved configuration
+                  if (config.styles && typeof config.styles === 'object') {
+                    console.log('Found styles in config:', config.styles);
+                    return { ...defaultStyles, ...config.styles };
+                  }
+                  
+                  // If styles aren't in a nested object, maybe they're at the top level
+                  const styleProps = ['backgroundColor', 'titleColor', 'textColor', 'borderRadius', 'padding'];
+                  
+                  // Check if we can extract styles from top level
+                  if (typeof config === 'object') {
+                    const hasTopLevelStyles = styleProps.some(prop => prop in config);
+                    
+                    if (hasTopLevelStyles) {
+                      console.log('Found styles at top level of config');
+                      const extractedStyles: Partial<WidgetStyles> = {};
+                      styleProps.forEach(prop => {
+                        if (prop in config) extractedStyles[prop as keyof WidgetStyles] = config[prop];
+                      });
+                      return { ...defaultStyles, ...extractedStyles };
+                    }
+                  }
+
+                  console.log('No styles found in config, using defaults');
+                  return defaultStyles;
+                })()
               }
             : {
                 config: {},
-                styles: {}
+                styles: {
+                  backgroundColor: '#C6FC36',
+                  titleColor: '#000000',
+                  textColor: '#000000',
+                  borderRadius: '50px',
+                  padding: '30px',
+                  customCSS: ''
+                }
               }
           )
         });
@@ -225,7 +302,33 @@ export default function EditWidgetPage() {
     if (session && widgetId) {
       fetchWidgetData();
     }
-  }, [widgetId, session, reset, toast]);
+  }, [widgetId, session, reset, toast, defaultStyles]);
+  
+  // Add a debugging useEffect to log form values when they change
+  useEffect(() => {
+    console.log('Form values updated:', {
+      styles: methods.getValues('styles'),
+      watchedStyles: watch('styles'),
+      rawForm: methods.getValues(),
+    });
+  }, [watch, methods]);
+  
+  // Let's fix the useEffect dependency array warnings
+  useEffect(() => {
+    // If the shape is a circle, ensure we're using a square ratio (1:1, 2:2, or 4:4)
+    const currentShape = watch('shape');
+    const currentSizeRatio = watch('size_ratio');
+    
+    if (currentShape === WidgetShape.CIRCLE) {
+      if (currentSizeRatio !== '1:1' && currentSizeRatio !== '2:2' && currentSizeRatio !== '4:4') {
+        methods.setValue('size_ratio', '2:2');
+        toast({
+          title: "Auto-adjusted ratio",
+          description: "Circle shape requires a square ratio (1:1, 2:2, or 4:4)",
+        });
+      }
+    }
+  }, [watch, methods, toast]);
   
   // Handle form submission
   const onSubmit = async (data: any) => {
@@ -254,11 +357,18 @@ export default function EditWidgetPage() {
       
       if (updateError) throw updateError;
       
-      // Save new configuration version
+      // Inside onSubmit function, before saving the configuration
+      console.log('Current styles being saved:', data.styles);
+
+      // Save new configuration version  
       const { error: configError } = await widgetService.saveWidgetConfiguration(
         widget.id,
         {
-          config: data.config,
+          config: {
+            ...data.config,
+            // Ensure styles are saved with the configuration
+            styles: data.styles
+          },
         },
         session?.user?.id || 'unknown-user'
       );
@@ -286,13 +396,13 @@ export default function EditWidgetPage() {
     }
   };
   
-  const previewConfig = {
+  const _previewConfig = {
     ...watch('config'),
     styles: watch('styles'),
   };
   
   // Calculate dimensions based on the selected size ratio
-  const sizeRatio = watch('size_ratio') || '1:1';
+  const sizeRatio = watch('size_ratio') || '2:2';
   const widgetShape = watch('shape') || WidgetShape.SQUARE;
   const dimensions = calculateDimensions(sizeRatio);
   
@@ -341,6 +451,13 @@ export default function EditWidgetPage() {
     );
   }
   
+  // Add this right before the return statement at the end of the component
+  console.log('Current form values:', {
+    styles: watch('styles'),
+    thumbnail: watch('thumbnail_url'),
+    backgroundColor: watch('styles.backgroundColor')
+  });
+  
   return (
     <div className="container mx-auto py-8 space-y-6">
       <div className="flex items-center justify-between">
@@ -359,7 +476,10 @@ export default function EditWidgetPage() {
       </div>
       
       <FormProvider {...methods}>
-        <form onSubmit={handleSubmit(onSubmit)}>
+        <form 
+          onSubmit={handleSubmit(onSubmit)}
+          onChange={triggerPreviewRefresh}
+        >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="md:col-span-2">
               <Tabs value={currentTab} onValueChange={setCurrentTab}>
@@ -529,34 +649,69 @@ export default function EditWidgetPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="border-t pt-4">
-                  <div 
-                    className="bg-white rounded-md shadow-sm mx-auto flex items-center justify-center overflow-hidden"
-                    style={{
-                      borderRadius: widget.shape === 'circle' ? '50%' : (watch('styles.borderRadius') || '8px'),
-                      padding: watch('styles.padding') || '16px',
-                      backgroundColor: watch('styles.backgroundColor') || '#ffffff',
-                      backgroundImage: widget.thumbnail_url ? `url(${widget.thumbnail_url})` : 'none',
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                      width: `${dimensions.width}px`,
-                      height: `${dimensions.height}px`,
-                      maxWidth: '100%'
-                    }}
-                  >
-                    {!widget.thumbnail_url && (
-                      <WidgetRenderer
-                        widget={widget}
-                        configuration={previewConfig}
-                        width={dimensions.width}
-                        height={dimensions.height}
-                      />
-                    )}
-                  </div>
-                  <div className="mt-2 text-center text-sm text-gray-500">
-                    {sizeRatio} - {widgetShape}
+                  <div className="relative">
+                    <div
+                      className="mx-auto flex flex-col justify-end overflow-hidden"
+                      style={{
+                        position: 'relative',
+                        borderRadius: watch('shape') === WidgetShape.CIRCLE 
+                          ? '50%' 
+                          : '50px',
+                        padding: '30px',
+                        backgroundColor: (() => {
+                          if (watch('thumbnail_url')) return 'transparent';
+                          const bgColor = watch('styles.backgroundColor');
+                          return bgColor && isValidHexColor(bgColor) ? bgColor : '#ffffff';
+                        })(),
+                        backgroundImage: watch('thumbnail_url') ? `url(${watch('thumbnail_url')})` : 'none',
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        width: `${dimensions.width}px`,
+                        height: `${dimensions.height}px`,
+                        maxWidth: '100%'
+                      }}
+                    >
+                      {!watch('thumbnail_url') && (
+                        <div className="flex flex-col items-start w-full pb-4">
+                          <h3 
+                            className="font-semibold text-2xl md:text-3xl" 
+                            style={{ color: watch('styles.titleColor') || '#000000' }}
+                          >
+                            {watch('config.title') || watch('name') || 'Widget Title'}
+                          </h3>
+                          {(watch('config.subtitle') || formValues.config?.subtitle) && (
+                            <p 
+                              className="text-lg mt-1" 
+                              style={{ color: watch('styles.textColor') || '#333333' }}
+                            >
+                              {watch('config.subtitle') || formValues.config?.subtitle || 'Subtitle'}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-2 text-center text-sm text-gray-500">
+                      {sizeRatio} - {widgetShape}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
+              
+              {/* Debug information - can be removed in production */}
+              <div className="mt-4 p-3 bg-gray-50 text-xs rounded-md">
+                <details>
+                  <summary className="cursor-pointer font-medium">Debug Style Values</summary>
+                  <pre className="mt-2 overflow-auto max-h-40">
+                    {JSON.stringify({ 
+                      backgroundColor: watch('styles.backgroundColor'),
+                      titleColor: watch('styles.titleColor'),
+                      textColor: watch('styles.textColor'),
+                      borderRadius: watch('styles.borderRadius'),
+                      padding: watch('styles.padding')
+                    }, null, 2)}
+                  </pre>
+                </details>
+              </div>
               
               {widget && (
                 <Card className="mt-6">

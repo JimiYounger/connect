@@ -99,7 +99,7 @@ const baseSchema = z.object({
   description: z.string().optional(),
   category_id: z.string().optional(),
   size_ratio: z.enum(['1:1', '2:1', '1:2', '3:2', '2:3', '4:3', '3:4'] as const),
-  shape: z.enum([WidgetShape.SQUARE, WidgetShape.RECTANGLE, WidgetShape.CIRCLE]),
+  shape: z.enum([WidgetShape.SQUARE, WidgetShape.CIRCLE]),
   thumbnail_url: z.string().optional(),
   is_public: z.boolean().default(false),
   styles: z.object({
@@ -123,7 +123,7 @@ const widgetFormSchema = z.discriminatedUnion('widget_type', [
     description: z.string().optional(),
     category_id: z.string().optional(),
     size_ratio: z.enum(['1:1', '2:1', '1:2', '3:2', '2:3', '4:3', '3:4'] as const),
-    shape: z.enum([WidgetShape.SQUARE, WidgetShape.RECTANGLE, WidgetShape.CIRCLE]),
+    shape: z.enum([WidgetShape.SQUARE, WidgetShape.CIRCLE]),
     thumbnail_url: z.string().optional(),
     is_public: z.boolean(),
     config: z.object({
@@ -152,7 +152,7 @@ const widgetFormSchema = z.discriminatedUnion('widget_type', [
     description: z.string().optional(),
     category_id: z.string().optional(),
     size_ratio: z.enum(['1:1', '2:1', '1:2', '3:2', '2:3', '4:3', '3:4'] as const),
-    shape: z.enum([WidgetShape.SQUARE, WidgetShape.RECTANGLE, WidgetShape.CIRCLE]),
+    shape: z.enum([WidgetShape.SQUARE, WidgetShape.CIRCLE]),
     thumbnail_url: z.string().optional(),
     is_public: z.boolean(),
     config: z.object({

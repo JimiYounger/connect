@@ -17,7 +17,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Switch } from '@/components/ui/switch';
+import { Switch as _Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { WidgetShape } from '@/features/widgets/types';
 import { ImageUpload } from '@/components/ui/uploadcare-uploader';
@@ -126,10 +126,6 @@ export function BasicInformation({ categories }: BasicInformationProps) {
                     <Label htmlFor="shape-square">Square</Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value={WidgetShape.RECTANGLE} id="shape-rectangle" />
-                    <Label htmlFor="shape-rectangle">Rectangle</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
                     <RadioGroupItem value={WidgetShape.CIRCLE} id="shape-circle" />
                     <Label htmlFor="shape-circle">Circle</Label>
                   </div>
@@ -156,9 +152,13 @@ export function BasicInformation({ categories }: BasicInformationProps) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="1:1">1:1 (Square)</SelectItem>
+                  <SelectItem value="1:1">1:1 (Square - Small)</SelectItem>
+                  <SelectItem value="2:2">2:2 (Square - Medium)</SelectItem>
+                  <SelectItem value="4:4">4:4 (Square - Large)</SelectItem>
                   <SelectItem value="2:1">2:1 (Wide)</SelectItem>
+                  <SelectItem value="4:2">4:2 (Wide - Large)</SelectItem>
                   <SelectItem value="1:2">1:2 (Tall)</SelectItem>
+                  <SelectItem value="2:4">2:4 (Tall - Large)</SelectItem>
                   <SelectItem value="3:2">3:2 (Standard)</SelectItem>
                   <SelectItem value="2:3">2:3 (Portrait)</SelectItem>
                   <SelectItem value="4:3">4:3 (Classic)</SelectItem>

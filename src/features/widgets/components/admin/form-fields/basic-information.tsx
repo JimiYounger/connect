@@ -22,7 +22,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { WidgetShape } from '../../../types';
-import { ImageUpload } from '@/components/uploadcare-uploader';
+import { ImageUpload } from '@/components/ui/uploadcare-uploader';
 
 interface BasicInformationProps {
   categories: any[];
@@ -122,10 +122,6 @@ export function BasicInformation({ categories }: BasicInformationProps) {
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value={WidgetShape.SQUARE} id="shape-square" />
                     <Label htmlFor="shape-square">Square</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value={WidgetShape.RECTANGLE} id="shape-rectangle" />
-                    <Label htmlFor="shape-rectangle">Rectangle</Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value={WidgetShape.CIRCLE} id="shape-circle" />
