@@ -33,6 +33,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Loader2, Plus, Save, Send, Trash2, Settings } from 'lucide-react';
+import { useAuth } from '@/features/auth/context/auth-context';
+import { dashboardService } from '../../services/dashboard-service';
 
 // Responsive grid layout with width provider
 const ResponsiveGridLayout = WidthProvider(Responsive);
@@ -59,11 +61,12 @@ export const DashboardEditor: React.FC<DashboardEditorProps> = ({
   onPublish
 }) => {
   const _router = useRouter();
-  // Replace next-auth session with a placeholder or your auth solution
-  // const { data: session } = useSession();
-  // Placeholder for session data
-  const session = { user: { id: 'placeholder-user-id' } };
-  const userId = session?.user?.id || '';
+  // Replace placeholder session with actual auth
+  const { profile } = useAuth();
+  const userId = profile?.id || '';
+  
+  // Add authentication check
+  const [authError, setAuthError] = useState<boolean>(false);
   
   // State for layouts
   const [layouts, setLayouts] = useState<{ [key: string]: any[] }>({});
@@ -255,8 +258,16 @@ export const DashboardEditor: React.FC<DashboardEditorProps> = ({
   
   // Save the current layout as a draft
   const saveDraft = async () => {
-    if (!dashboardId) return;
+    if (!dashboardId) {
+      alert('No dashboard ID provided');
+      return;
+    }
     
+    if (!userId) {
+      alert('Authentication required');
+      return;
+    }
+
     setIsSaving(true);
     
     try {
@@ -271,9 +282,22 @@ export const DashboardEditor: React.FC<DashboardEditorProps> = ({
         });
       }
       
-      // Call API to save draft
-      // This is a placeholder - implement the actual API call
-      // await widgetService.saveDashboardDraft(dashboardId, widgetPlacements);
+      // Call dashboard service to save draft
+      const { data: _data, error } = await dashboardService.replaceDraftWidgetPlacements(
+        draftId || `draft_${dashboardId}_${Date.now()}`, 
+        widgetPlacements.map(p => ({
+          draft_id: p.draft_id,
+          widget_id: p.widget_id,
+          position_x: p.position_x,
+          position_y: p.position_y,
+          width: p.width,
+          height: p.height,
+          layout_type: p.layout_type,
+          created_by: userId
+        }))
+      );
+      
+      if (error) throw error;
       
       // Call onSave callback if provided
       if (onSave) {
@@ -284,7 +308,7 @@ export const DashboardEditor: React.FC<DashboardEditorProps> = ({
       alert('Draft saved successfully!');
     } catch (error) {
       console.error('Error saving draft:', error);
-      alert('Error saving draft. Please try again.');
+      alert(`Error saving draft: ${(error as Error).message}`);
     } finally {
       setIsSaving(false);
     }
@@ -388,6 +412,52 @@ export const DashboardEditor: React.FC<DashboardEditorProps> = ({
     );
   };
   
+  // Check for authentication
+  useEffect(() => {
+    if (!profile && !isLoadingWidgets) {
+      setAuthError(true);
+    } else {
+      setAuthError(false);
+    }
+  }, [profile, isLoadingWidgets]);
+  
+  // Add this to handle the case where there's no data yet
+  useEffect(() => {
+    // Display a message to the user when the component first loads
+    if (isLoadingWidgets) {
+      console.log('Loading widgets...');
+    } else if (initialLayout.length === 0 && dashboardId) {
+      console.log(`No initial layout provided for dashboard ${dashboardId}, attempting to load draft`);
+      loadDraftLayout();
+    }
+  }, [isLoadingWidgets, initialLayout, dashboardId, loadDraftLayout]);
+  
+  // Return auth error if no user
+  if (authError) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-8 bg-gray-50">
+        <div className="text-center bg-white p-6 rounded-lg shadow-md max-w-md">
+          <h2 className="text-xl font-bold text-red-600 mb-4">Authentication Required</h2>
+          <p className="mb-4">You need to be logged in to access the dashboard editor.</p>
+          <Button 
+            onClick={() => _router.push('/auth/login')}
+            variant="default"
+          >
+            Log In
+          </Button>
+        </div>
+      </div>
+    );
+  }
+  
+  // Add a loading state indicator to the component
+  const renderLoadingState = () => (
+    <div className="flex flex-col items-center justify-center h-64 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 p-8">
+      <Loader2 className="h-8 w-8 animate-spin text-gray-400 mb-4" />
+      <p className="text-gray-500">Loading dashboard...</p>
+    </div>
+  );
+  
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar */}
@@ -443,38 +513,44 @@ export const DashboardEditor: React.FC<DashboardEditorProps> = ({
       
       {/* Main editor area */}
       <div className="flex-1 overflow-auto p-4 bg-gray-50">
-        <ResponsiveGridLayout
-          className="layout"
-          layouts={layouts}
-          breakpoints={BREAKPOINTS}
-          cols={COLS}
-          rowHeight={100}
-          onLayoutChange={handleLayoutChange}
-          onBreakpointChange={handleBreakpointChange}
-          isDraggable={!isPreviewMode}
-          isResizable={!isPreviewMode}
-          compactType="vertical"
-          margin={[16, 16]}
-        >
-          {layouts[currentBreakpoint]?.map(item => (
-            <div key={item.i} className="bg-white rounded-lg shadow-sm overflow-hidden">
-              {renderWidget(item.i)}
-            </div>
-          ))}
-        </ResponsiveGridLayout>
-        
-        {/* Empty state */}
-        {(!layouts[currentBreakpoint] || layouts[currentBreakpoint].length === 0) && (
-          <div className="flex flex-col items-center justify-center h-64 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 p-8">
-            <p className="text-gray-500 mb-4">No widgets added to this dashboard yet.</p>
-            <Button
-              variant="outline"
-              onClick={() => setShowWidgetPalette(true)}
-              disabled={isPreviewMode}
+        {isLoadingWidgets ? (
+          renderLoadingState()
+        ) : (
+          <>
+            <ResponsiveGridLayout
+              className="layout"
+              layouts={layouts}
+              breakpoints={BREAKPOINTS}
+              cols={COLS}
+              rowHeight={100}
+              onLayoutChange={handleLayoutChange}
+              onBreakpointChange={handleBreakpointChange}
+              isDraggable={!isPreviewMode}
+              isResizable={!isPreviewMode}
+              compactType="vertical"
+              margin={[16, 16]}
             >
-              <Plus className="mr-2 h-4 w-4" /> Add Widget
-            </Button>
-          </div>
+              {layouts[currentBreakpoint]?.map(item => (
+                <div key={item.i} className="bg-white rounded-lg shadow-sm overflow-hidden">
+                  {renderWidget(item.i)}
+                </div>
+              ))}
+            </ResponsiveGridLayout>
+            
+            {/* Empty state */}
+            {(!layouts[currentBreakpoint] || layouts[currentBreakpoint].length === 0) && (
+              <div className="flex flex-col items-center justify-center h-64 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 p-8">
+                <p className="text-gray-500 mb-4">No widgets added to this dashboard yet.</p>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowWidgetPalette(true)}
+                  disabled={isPreviewMode}
+                >
+                  <Plus className="mr-2 h-4 w-4" /> Add Widget
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
       

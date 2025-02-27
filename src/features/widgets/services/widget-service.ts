@@ -146,21 +146,38 @@ export class WidgetService {
   ): Promise<{ data: (WidgetPlacement | DraftWidgetPlacement)[] | null; error: Error | null }> {
     try {
       const supabase = this.getClient();
-      const table = isDraft ? 'draft_widget_placements' : 'widget_placements';
       
-      const { data, error } = await supabase
-        .from(table)
-        .select(`
-          *,
-          widget:widgets (*)
-        `)
-        .eq('dashboard_id', dashboardId)
-        .order('position_y', { ascending: true })
-        .order('position_x', { ascending: true });
+      if (isDraft) {
+        // For drafts, use draft_id instead of dashboard_id
+        const { data, error } = await supabase
+          .from('draft_widget_placements')
+          .select(`
+            *,
+            widget:widgets (*)
+          `)
+          .eq('draft_id', dashboardId)  // Use draft_id instead of dashboard_id
+          .order('position_y', { ascending: true })
+          .order('position_x', { ascending: true });
+          
+        if (error) throw error;
         
-      if (error) throw error;
-      
-      return { data, error: null };
+        return { data, error: null };
+      } else {
+        // For published versions, keep using dashboard_version_id
+        const { data, error } = await supabase
+          .from('widget_placements')
+          .select(`
+            *,
+            widget:widgets (*)
+          `)
+          .eq('dashboard_version_id', dashboardId)  // Already correct
+          .order('position_y', { ascending: true })
+          .order('position_x', { ascending: true });
+          
+        if (error) throw error;
+        
+        return { data, error: null };
+      }
     } catch (error) {
       console.error(`Error fetching widget placements for dashboard ${dashboardId}:`, error);
       return { data: null, error: error as Error };

@@ -64,48 +64,87 @@ export function useDashboardEditor({
   
   const { toast } = useToast();
   
-  // Load draft layout from server - define this before it's used in useEffect
+  // Load draft layout from server
   const loadDraftLayout = useCallback(async () => {
-    if (!dashboardId) return;
+    if (!dashboardId) {
+      console.error("Cannot load draft layout: No dashboard ID provided");
+      return;
+    }
     
+    if (!userId) {
+      console.error("Cannot load draft layout: No user ID available");
+      setError(new Error("Authentication required"));
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     
     try {
+      console.log(`Loading draft layout for dashboard: ${dashboardId}`);
+      
       // Get the latest draft for this dashboard
       const { data: draft, error: draftError } = await dashboardService.getLatestDraft(dashboardId);
       
-      if (draftError) throw draftError;
+      if (draftError) {
+        console.error(`Error fetching latest draft:`, draftError);
+        throw draftError;
+      }
       
       if (draft) {
+        console.log(`Found existing draft with ID: ${draft.id}`);
         setDraftId(draft.id);
         
         // Load widget placements for this draft
         const { data: placements, error: placementsError } = 
           await dashboardService.getDraftWidgetPlacements(draft.id);
         
-        if (placementsError) throw placementsError;
+        if (placementsError) {
+          console.error(`Error fetching draft placements:`, placementsError);
+          throw placementsError;
+        }
         
         if (placements && placements.length > 0) {
-          setLayout(placements);
-          setOriginalLayout(placements);
+          console.log(`Loaded ${placements.length} widget placements`);
+          
+          // Filter out any placeholder entries
+          const validPlacements = placements.filter(p => p.widget_id !== 'placeholder');
+          
+          setLayout(validPlacements);
+          setOriginalLayout(validPlacements);
+        } else {
+          console.log(`No widget placements found for draft ${draft.id}`);
+          setLayout([]);
+          setOriginalLayout([]);
         }
       } else {
+        console.log(`No draft found for dashboard ${dashboardId}, creating new draft`);
         // No draft exists, create one
         const { data: newDraft, error: newDraftError } = 
           await dashboardService.createDraft(dashboardId, userId);
         
-        if (newDraftError) throw newDraftError;
+        if (newDraftError) {
+          console.error(`Error creating new draft:`, newDraftError);
+          throw newDraftError;
+        }
         
         if (newDraft) {
+          console.log(`Created new draft with ID: ${newDraft.id}`);
           setDraftId(newDraft.id);
+          setLayout([]);
+          setOriginalLayout([]);
+        } else {
+          console.error(`Failed to create draft for dashboard ${dashboardId}`);
+          throw new Error("Failed to create new draft");
         }
       }
     } catch (err) {
+      const errorMessage = (err as Error).message || "Unknown error occurred";
+      console.error(`Draft layout loading failed: ${errorMessage}`, err);
       setError(err as Error);
       toast({
         title: "Error loading dashboard",
-        description: (err as Error).message,
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -199,14 +238,43 @@ export function useDashboardEditor({
   
   // Fix the saveDraft method to handle deletions differently
   const saveDraft = useCallback(async (): Promise<string | null> => {
-    if (!dashboardId || !draftId) return null;
+    if (!dashboardId) {
+      console.error("Cannot save draft: No dashboard ID provided");
+      toast({
+        title: "Error saving dashboard",
+        description: "No dashboard ID provided",
+        variant: "destructive"
+      });
+      return null;
+    }
     
+    if (!draftId) {
+      console.error("Cannot save draft: No draft ID available");
+      toast({
+        title: "Error saving dashboard",
+        description: "No draft ID available",
+        variant: "destructive"
+      });
+      return null;
+    }
+    
+    if (!userId) {
+      console.error("Cannot save draft: No user ID available");
+      toast({
+        title: "Error saving dashboard",
+        description: "Authentication required",
+        variant: "destructive"
+      });
+      return null;
+    }
+
     setIsLoading(true);
     setError(null);
     
     try {
-      // Instead of deleting placements individually, use a single operation
-      // to replace all placements
+      console.log(`Saving draft ${draftId} with ${layout.length} widget placements`);
+      
+      // Ensure all placements have the correct draft_id
       const placements = layout.map(item => ({
         draft_id: draftId,
         widget_id: item.widget_id,
@@ -214,16 +282,39 @@ export function useDashboardEditor({
         position_y: item.position_y,
         width: item.width,
         height: item.height,
-        layout_type: item.layout_type
+        layout_type: item.layout_type,
+        created_by: userId // Add user ID for traceability
       }));
       
-      // Add a method to dashboard service to replace all placements
-      await dashboardService.replaceDraftWidgetPlacements(
+      // If layout is empty, add a placeholder entry to maintain the draft
+      if (placements.length === 0) {
+        console.log(`Adding placeholder entry to maintain draft ${draftId}`);
+        placements.push({
+          draft_id: draftId,
+          widget_id: 'placeholder',
+          position_x: 0,
+          position_y: 0,
+          width: 1,
+          height: 1,
+          layout_type: 'grid',
+          created_by: userId
+        });
+      }
+      
+      // Replace all placements in a single operation
+      const { data, error } = await dashboardService.replaceDraftWidgetPlacements(
         draftId, 
         placements
       );
       
-      // Update original layout to match current layout
+      if (error) {
+        console.error(`Error replacing widget placements:`, error);
+        throw error;
+      }
+      
+      console.log(`Successfully saved ${data?.length || 0} widget placements`);
+      
+      // Update original layout to match current layout (exclude placeholder entry)
       setOriginalLayout(layout);
       setIsDirty(false);
       
@@ -236,17 +327,19 @@ export function useDashboardEditor({
       
       return draftId;
     } catch (err) {
+      const errorMessage = (err as Error).message || "Unknown error occurred";
+      console.error(`Draft saving failed: ${errorMessage}`, err);
       setError(err as Error);
       toast({
         title: "Error saving dashboard",
-        description: (err as Error).message,
+        description: errorMessage,
         variant: "destructive"
       });
       return null;
     } finally {
       setIsLoading(false);
     }
-  }, [dashboardId, draftId, layout, onSave, toast]);
+  }, [dashboardId, draftId, layout, userId, onSave, toast]);
   
   // Publish the current layout as a new dashboard version
   const publishDashboard = useCallback(async (
