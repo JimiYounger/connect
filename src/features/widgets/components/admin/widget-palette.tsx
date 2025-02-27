@@ -1,13 +1,16 @@
 // my-app/src/features/widgets/components/admin/widget-palette.tsx
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Widget, 
   WidgetType, 
-  WidgetCategory 
+  WidgetCategory,
+  WidgetShape,
+  WidgetConfigData
 } from '../../types';
 import { useWidgets } from '../../hooks/use-widgets';
-import { Search, Filter, Loader2, Grid, LayoutGrid } from 'lucide-react';
+import { widgetService } from '../../services/widget-service';
+import { Search, Filter, Loader2, Grid, LayoutGrid, BarChart3, FileText, Globe, ExternalLink, Box } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,16 +24,9 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { WidgetRenderer } from '../../components/widget-renderer';
 
 interface WidgetPaletteProps {
   userId: string;
@@ -55,6 +51,9 @@ export const WidgetPalette: React.FC<WidgetPaletteProps> = ({
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [activeTab, setActiveTab] = useState<string>('all');
+  
+  // State for widget configurations
+  const [widgetConfigs, setWidgetConfigs] = useState<Record<string, WidgetConfigData>>({});
 
   // Fetch widgets
   const { widgets, isLoading, error, refetch } = useWidgets({
@@ -62,6 +61,31 @@ export const WidgetPalette: React.FC<WidgetPaletteProps> = ({
     isPublished: true,
     limit: 100,
   });
+
+  // Fetch widget configurations when widgets load
+  useEffect(() => {
+    const fetchWidgetConfigurations = async () => {
+      if (!widgets.length) return;
+      
+      const configs: Record<string, WidgetConfigData> = {};
+      
+      // Fetch configurations for all widgets
+      await Promise.all(widgets.map(async (widget) => {
+        try {
+          const { data, error } = await widgetService.getWidgetConfiguration(widget.id);
+          if (!error && data && data.config) {
+            configs[widget.id] = data.config as WidgetConfigData;
+          }
+        } catch (err) {
+          console.error(`Error fetching config for widget ${widget.id}:`, err);
+        }
+      }));
+      
+      setWidgetConfigs(configs);
+    };
+    
+    fetchWidgetConfigurations();
+  }, [widgets]);
 
   // Group widgets by category - prefixed with _ to indicate intentionally unused
   const _widgetsByCategory = useMemo(() => {
@@ -162,7 +186,7 @@ export const WidgetPalette: React.FC<WidgetPaletteProps> = ({
     return category?.name || 'Unknown Category';
   };
 
-  // Get color for widget type
+  // Get color for widget type (for badge styling)
   const getTypeColor = (type: string): string => {
     switch (type) {
       case WidgetType.DATA_VISUALIZATION:
@@ -182,59 +206,192 @@ export const WidgetPalette: React.FC<WidgetPaletteProps> = ({
     }
   };
 
-  // Render widget card
-  const renderWidgetCard = (widget: Widget) => {
+  // Get the actual color value for the widget type (for background use)
+  const getTypeColorValue = (type: string): string => {
+    switch (type) {
+      case WidgetType.DATA_VISUALIZATION:
+        return '#EBF5FF'; // Light blue background
+      case WidgetType.INTERACTIVE_TOOL:
+        return '#F5F0FF'; // Light purple background
+      case WidgetType.CONTENT:
+        return '#ECFDF5'; // Light green background
+      case WidgetType.EMBED:
+        return '#FFF4E5'; // Light orange background
+      case WidgetType.REDIRECT:
+        return '#FEF2F2'; // Light red background 
+      case WidgetType.CUSTOM:
+        return '#F9FAFB'; // Light gray background
+      default:
+        return '#F9FAFB'; // Light gray background
+    }
+  };
+
+  // Render a preview based on widget type and configuration
+  const renderWidgetPreview = (widget: Widget) => {
+    // Get widget configuration if available
+    const config = widgetConfigs[widget.id];
+    
+    // Determine the shape
+    const shape = widget.shape as WidgetShape || WidgetShape.SQUARE;
+    const isCircle = shape === WidgetShape.CIRCLE;
+    
+    // Get styling from configuration
+    const backgroundColor = config?.styles?.backgroundColor || getTypeColorValue(widget.widget_type);
+    const borderRadius = config?.styles?.borderRadius || (isCircle ? '50%' : '8px');
+    const padding = config?.styles?.padding || '12px';
+    
+    // Get content styling
+    const titleColor = config?.styles?.titleColor || '#000000';
+    const textColor = config?.styles?.textColor || '#333333';
+    
+    // Base styles for all widgets
+    const containerStyle: React.CSSProperties = {
+      position: 'relative',
+      width: '100%',
+      height: '100%',
+      overflow: 'hidden',
+      borderRadius: borderRadius,
+      backgroundColor: backgroundColor,
+      boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
+      transition: 'transform 0.2s, box-shadow 0.2s',
+    };
+    
+    // For thumbnail images
+    if (widget.thumbnail_url) {
+      return (
+        <div style={containerStyle} className="hover:shadow-md hover:scale-[1.02]">
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundImage: `url(${widget.thumbnail_url})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center'
+          }} />
+        </div>
+      );
+    }
+    
+    // For content-based widgets
     return (
-      <Card 
-        key={widget.id}
-        className="cursor-pointer hover:shadow-md transition-shadow"
-        onClick={() => onSelectWidget(widget)}
-      >
-        <CardHeader className="p-4 pb-2">
-          <div className="flex justify-between items-start">
-            <CardTitle className="text-sm font-medium truncate">{widget.name}</CardTitle>
-            <Badge className={`${getTypeColor(widget.widget_type)} text-xs`}>
-              {widget.widget_type}
-            </Badge>
+      <div style={containerStyle} className="hover:shadow-md hover:scale-[1.02]">
+        <div style={{
+          position: 'absolute', 
+          inset: 0,
+          padding: padding,
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+          {/* Widget title if available */}
+          {(config?.title || widget.name) && (
+            <div style={{
+              fontWeight: 500,
+              color: titleColor,
+              textAlign: 'center',
+              marginBottom: '4px',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              fontSize: '0.85rem',
+            }}>
+              {config?.title || widget.name}
+            </div>
+          )}
+          
+          {/* Content based on widget type */}
+          <div style={{flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+            {widget.widget_type === WidgetType.REDIRECT && (
+              <ExternalLink style={{color: titleColor}} size={24} />
+            )}
+            
+            {widget.widget_type === WidgetType.DATA_VISUALIZATION && (
+              <BarChart3 style={{color: titleColor}} size={24} />
+            )}
+            
+            {widget.widget_type === WidgetType.CONTENT && (
+              <FileText style={{color: titleColor}} size={24} />
+            )}
+            
+            {widget.widget_type === WidgetType.EMBED && (
+              <Globe style={{color: titleColor}} size={24} />
+            )}
+            
+            {widget.widget_type === WidgetType.INTERACTIVE_TOOL && (
+              <Box style={{color: titleColor}} size={24} />
+            )}
+            
+            {widget.widget_type === WidgetType.CUSTOM && (
+              <Box style={{color: titleColor}} size={24} />
+            )}
           </div>
-          <CardDescription className="text-xs line-clamp-2">
-            {widget.description || 'No description'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-4 pt-0">
-          <div className="w-full h-24 bg-gray-100 rounded-md flex items-center justify-center">
-            {/* Widget thumbnail or preview would go here */}
-            <div className="text-gray-400 text-xs">Widget Preview</div>
-          </div>
-        </CardContent>
-        <CardFooter className="p-2 text-xs text-gray-500 border-t">
-          {getCategoryName(widget.category_id || 'uncategorized')}
-        </CardFooter>
-      </Card>
+          
+          {/* Widget subtitle if available - only show in a simplified form */}
+          {config?.subtitle && (
+            <div style={{
+              fontSize: '0.7rem',
+              color: textColor,
+              textAlign: 'center',
+              marginTop: '4px',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}>
+              {config.subtitle}
+            </div>
+          )}
+        </div>
+      </div>
     );
   };
 
-  // Render widget list item
-  const renderWidgetListItem = (widget: Widget) => {
+  // Render widget card with more realistic preview
+  const renderWidgetCard = (widget: Widget) => {
+    // Get the size ratio
+    const sizeRatio = widget.size_ratio || '1:1';
+    const [width, height] = sizeRatio.split(':').map(Number);
+    const aspectRatio = (height / width) * 100;
+    
     return (
       <div 
         key={widget.id}
-        className="flex items-center p-3 border-b cursor-pointer hover:bg-gray-50"
+        className="cursor-pointer transition-all hover:opacity-95"
+        onClick={() => onSelectWidget(widget)}
+        title={widget.name}
+      >
+        <div className="relative mb-1 shadow-sm hover:shadow-md transition-all">
+          {/* Use padding-bottom trick to maintain aspect ratio */}
+          <div style={{paddingBottom: `${aspectRatio}%`, position: 'relative'}} className="widget-preview-container">
+            <div className="absolute inset-0">
+              {renderWidgetPreview(widget)}
+            </div>
+          </div>
+        </div>
+        
+        {/* Only show the widget name, with no additional metadata */}
+        <h3 className="text-xs font-medium truncate text-center">{widget.name}</h3>
+      </div>
+    );
+  };
+
+  // Render widget list item with more realistic preview 
+  const renderWidgetListItem = (widget: Widget) => {
+    // Get the size ratio
+    const sizeRatio = widget.size_ratio || '1:1';
+    const [width, height] = sizeRatio.split(':').map(Number);
+    
+    return (
+      <div 
+        key={widget.id}
+        className="flex items-center px-2 py-2 cursor-pointer hover:bg-gray-50 border-b"
         onClick={() => onSelectWidget(widget)}
       >
-        <div className="w-10 h-10 bg-gray-100 rounded-md flex items-center justify-center mr-3">
-          {/* Widget icon would go here */}
+        <div className="w-12 h-12 flex-shrink-0 overflow-hidden mr-2 relative">
+          {renderWidgetPreview(widget)}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex justify-between items-center">
-            <h3 className="text-sm font-medium truncate">{widget.name}</h3>
-            <Badge className={`${getTypeColor(widget.widget_type)} text-xs ml-2`}>
-              {widget.widget_type}
-            </Badge>
-          </div>
-          <p className="text-xs text-gray-500 truncate">
-            {widget.description || 'No description'}
-          </p>
+          <h3 className="text-sm font-medium truncate">{widget.name}</h3>
+          <Badge className={`${getTypeColor(widget.widget_type)} text-xs`}>
+            {widget.widget_type.split('_')[0]}
+          </Badge>
         </div>
       </div>
     );
@@ -363,7 +520,7 @@ export const WidgetPalette: React.FC<WidgetPaletteProps> = ({
           </div>
         ) : (
           <div className={viewMode === 'grid' 
-            ? "grid grid-cols-2 gap-4 p-4" 
+            ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 p-3" 
             : "divide-y"
           }>
             {activeTabWidgets.map((widget) => (
@@ -376,11 +533,10 @@ export const WidgetPalette: React.FC<WidgetPaletteProps> = ({
       </ScrollArea>
       
       {/* Status bar */}
-      <div className="p-2 border-t text-xs text-gray-500">
-        {filteredWidgets.length} widgets • 
-        {selectedTypes.length > 0 && ` ${selectedTypes.length} types filtered •`}
-        {selectedCategories.length > 0 && ` ${selectedCategories.length} categories filtered •`}
-        {searchQuery && ` Search: "${searchQuery}" •`}
+      <div className="px-2 py-1 border-t text-xs text-gray-500">
+        {filteredWidgets.length} widgets
+        {selectedTypes.length > 0 && ` • ${selectedTypes.length} types filtered`}
+        {selectedCategories.length > 0 && ` • ${selectedCategories.length} categories filtered`}
       </div>
     </div>
   );
