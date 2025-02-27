@@ -1,3 +1,5 @@
+// my-app/src/app/(auth)/admin/dashboards/layout.tsx
+
 import { ReactNode } from 'react';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';

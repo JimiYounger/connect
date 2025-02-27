@@ -9,6 +9,8 @@ export type Widget = Tables<"widgets"> & {
   is_active?: boolean | null;
   public?: boolean | null;
   created_by?: string | null;
+  shape?: WidgetShape;
+  size_ratio?: WidgetSizeRatio;
 };
 export type WidgetConfiguration = Tables<"widget_configurations">;
 export type WidgetCategory = Tables<"widget_categories">;
@@ -43,9 +45,24 @@ export enum WidgetShape {
 }
 
 /**
- * Size ratio options
+ * Valid widget size ratios
+ * These represent width:height proportions
  */
-export type WidgetSizeRatio = "1:1" | "2:1" | "1:2" | "3:2" | "2:3" | "4:3" | "3:4" | "2:2" | "4:4" | "2:4" | "4:2";
+export const VALID_WIDGET_RATIOS = [
+  '1:1',   // Square
+  '2:1',   // Wide
+  '1:2',   // Tall
+  '3:2',   // Landscape
+  '2:3',   // Portrait
+  '4:3',   // Standard
+  '3:4',   // Vertical
+  '2:2',   // Large square
+  '4:4',   // Extra large square
+  '2:4',   // Tall rectangle
+  '4:2'    // Wide rectangle
+] as const;
+
+export type WidgetSizeRatio = typeof VALID_WIDGET_RATIOS[number];
 
 /**
  * Widget configuration interface

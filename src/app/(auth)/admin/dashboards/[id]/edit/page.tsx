@@ -1,3 +1,5 @@
+// my-app/src/app/(auth)/admin/dashboards/[id]/edit/page.tsx
+
 'use client'
 
 import { useState, useEffect, useCallback } from 'react';

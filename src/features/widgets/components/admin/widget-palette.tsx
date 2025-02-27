@@ -26,7 +26,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { WidgetRenderer } from '../../components/widget-renderer';
 
 interface WidgetPaletteProps {
   userId: string;
@@ -34,6 +33,18 @@ interface WidgetPaletteProps {
   categories?: WidgetCategory[];
   className?: string;
 }
+
+// Add this helper function at the top level
+const parseRatio = (ratio: string = '1:1'): { width: number; height: number } => {
+  const [w, h] = ratio.split(':').map(Number);
+  return { width: w || 1, height: h || 1 };
+};
+
+// Add this helper function to get the aspect ratio CSS value
+const getAspectRatioCSS = (ratio: string = '1:1'): string => {
+  const [w, h] = ratio.split(':').map(Number);
+  return `${w} / ${h}`;
+};
 
 /**
  * Widget Palette Component
@@ -179,8 +190,8 @@ export const WidgetPalette: React.FC<WidgetPaletteProps> = ({
     setSelectedCategories([]);
   };
 
-  // Get category name by ID
-  const getCategoryName = (categoryId: string): string => {
+  // Prefix with underscore to indicate intentionally unused
+  const _getCategoryName = (categoryId: string): string => {
     if (categoryId === 'uncategorized') return 'Uncategorized';
     const category = categories.find(c => c.id === categoryId);
     return category?.name || 'Unknown Category';
@@ -226,7 +237,27 @@ export const WidgetPalette: React.FC<WidgetPaletteProps> = ({
     }
   };
 
-  // Render a preview based on widget type and configuration
+  // Helper function to adjust color brightness
+  const adjustColorBrightness = (color: string, percent: number): string => {
+    // Handle empty or invalid colors
+    if (!color) return '#ffffff';
+    if (color === 'transparent') return color;
+    
+    // Convert hex to RGB
+    let R = parseInt(color.substring(1, 3), 16);
+    let G = parseInt(color.substring(3, 5), 16);
+    let B = parseInt(color.substring(5, 7), 16);
+
+    // Adjust brightness
+    R = Math.min(255, Math.max(0, Math.round(R * (1 + percent / 100))));
+    G = Math.min(255, Math.max(0, Math.round(G * (1 + percent / 100))));
+    B = Math.min(255, Math.max(0, Math.round(B * (1 + percent / 100))));
+
+    // Convert back to hex
+    return `#${R.toString(16).padStart(2, '0')}${G.toString(16).padStart(2, '0')}${B.toString(16).padStart(2, '0')}`;
+  };
+
+  // Enhanced renderWidgetPreview function
   const renderWidgetPreview = (widget: Widget) => {
     // Get widget configuration if available
     const config = widgetConfigs[widget.id];
@@ -235,14 +266,28 @@ export const WidgetPalette: React.FC<WidgetPaletteProps> = ({
     const shape = widget.shape as WidgetShape || WidgetShape.SQUARE;
     const isCircle = shape === WidgetShape.CIRCLE;
     
+    // Size calculations based on widget size ratio
+    const sizeRatio = widget.size_ratio || '1:1';
+    const { width: widthRatio, height: heightRatio } = parseRatio(sizeRatio);
+    const isWide = widthRatio > heightRatio;
+    const isTall = heightRatio > widthRatio;
+    
     // Get styling from configuration
     const backgroundColor = config?.styles?.backgroundColor || getTypeColorValue(widget.widget_type);
+    const titleColor = config?.styles?.titleColor || '#333333';
+    const textColor = config?.styles?.textColor || '#666666';
     const borderRadius = config?.styles?.borderRadius || (isCircle ? '50%' : '8px');
-    const padding = config?.styles?.padding || '12px';
+    const padding = config?.styles?.padding || (isCircle ? '12%' : '12px');
     
-    // Get content styling
-    const titleColor = config?.styles?.titleColor || '#000000';
-    const textColor = config?.styles?.textColor || '#333333';
+    // Determine icon size based on widget dimensions
+    const getIconSize = () => {
+      const baseSize = 24;
+      if (isWide) return baseSize * 1.2;
+      if (isTall) return baseSize * 0.9;
+      return baseSize;
+    };
+    
+    const iconSize = getIconSize();
     
     // Base styles for all widgets
     const containerStyle: React.CSSProperties = {
@@ -250,10 +295,10 @@ export const WidgetPalette: React.FC<WidgetPaletteProps> = ({
       width: '100%',
       height: '100%',
       overflow: 'hidden',
-      borderRadius: borderRadius,
+      borderRadius: isCircle ? '50%' : borderRadius, // Ensure circles render correctly
       backgroundColor: backgroundColor,
       boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
-      transition: 'transform 0.2s, box-shadow 0.2s',
+      transition: 'transform 0.2s, box-shadow 0.2s, opacity 0.2s',
     };
     
     // For thumbnail images
@@ -267,13 +312,137 @@ export const WidgetPalette: React.FC<WidgetPaletteProps> = ({
             backgroundSize: 'cover',
             backgroundPosition: 'center'
           }} />
+          
+          {/* Size indicator overlay */}
+          <div className="absolute bottom-1 right-1 bg-black/60 text-white text-[8px] px-1 rounded">
+            {sizeRatio}
+          </div>
         </div>
       );
     }
     
+    // Render content based on widget type
+    const renderWidgetContent = () => {
+      const commonIconProps = {
+        size: iconSize,
+        style: { color: titleColor },
+        className: 'transition-all duration-300'
+      };
+      
+      switch (widget.widget_type) {
+        case WidgetType.DATA_VISUALIZATION:
+          return (
+            <div className="w-full h-full flex flex-col items-center justify-center">
+              {/* Simplified chart visualization */}
+              <BarChart3 {...commonIconProps} />
+              <div className="flex items-end mt-2 space-x-1">
+                {[0.4, 0.7, 0.5, 0.9, 0.6].map((height, i) => (
+                  <div 
+                    key={i}
+                    style={{
+                      height: `${height * 24}px`,
+                      width: '4px',
+                      backgroundColor: adjustColorBrightness(titleColor, -20),
+                      borderRadius: '1px'
+                    }}
+                    className="transition-all duration-300"
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        
+        case WidgetType.INTERACTIVE_TOOL:
+          return (
+            <div className="w-full h-full flex flex-col items-center justify-center">
+              <Box {...commonIconProps} />
+              {/* Interactive elements preview */}
+              <div className="flex items-center space-x-1 mt-2">
+                <div style={{
+                  width: '24px',
+                  height: '8px',
+                  backgroundColor: adjustColorBrightness(titleColor, -10),
+                  borderRadius: '2px'
+                }} />
+                <div style={{
+                  width: '8px',
+                  height: '8px',
+                  backgroundColor: adjustColorBrightness(titleColor, 10),
+                  borderRadius: '50%'
+                }} />
+              </div>
+            </div>
+          );
+        
+        case WidgetType.CONTENT:
+          return (
+            <div className="w-full h-full flex flex-col items-center justify-center">
+              <FileText {...commonIconProps} />
+              {/* Text content preview */}
+              <div className="w-full mt-2 px-2">
+                <div style={{
+                  height: '4px',
+                  width: '100%',
+                  backgroundColor: adjustColorBrightness(titleColor, -30),
+                  opacity: 0.7,
+                  borderRadius: '1px',
+                  marginBottom: '3px'
+                }} />
+                <div style={{
+                  height: '4px',
+                  width: '80%',
+                  backgroundColor: adjustColorBrightness(titleColor, -30),
+                  opacity: 0.5,
+                  borderRadius: '1px'
+                }} />
+              </div>
+            </div>
+          );
+        
+        case WidgetType.EMBED:
+          return (
+            <div className="w-full h-full flex flex-col items-center justify-center">
+              <Globe {...commonIconProps} />
+              {/* Embedded content frame */}
+              <div style={{
+                width: '28px',
+                height: '16px',
+                border: `1px solid ${adjustColorBrightness(titleColor, -20)}`,
+                borderRadius: '2px',
+                marginTop: '4px'
+              }} />
+            </div>
+          );
+        
+        case WidgetType.REDIRECT:
+          return (
+            <div className="w-full h-full flex flex-col items-center justify-center">
+              <ExternalLink {...commonIconProps} />
+              {/* Arrow indicator */}
+              <div style={{
+                width: '16px',
+                height: '8px',
+                borderRight: `2px solid ${adjustColorBrightness(titleColor, -10)}`,
+                borderBottom: `2px solid ${adjustColorBrightness(titleColor, -10)}`,
+                transform: 'rotate(-45deg)',
+                marginTop: '6px'
+              }} />
+            </div>
+          );
+        
+        case WidgetType.CUSTOM:
+        default:
+          return (
+            <div className="w-full h-full flex items-center justify-center">
+              <Box {...commonIconProps} />
+            </div>
+          );
+      }
+    };
+    
     // For content-based widgets
     return (
-      <div style={containerStyle} className="hover:shadow-md hover:scale-[1.02]">
+      <div style={containerStyle} className="hover:shadow-lg hover:scale-[1.02] group">
         <div style={{
           position: 'absolute', 
           inset: 0,
@@ -291,7 +460,7 @@ export const WidgetPalette: React.FC<WidgetPaletteProps> = ({
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
-              fontSize: '0.85rem',
+              fontSize: isWide ? '0.9rem' : isTall ? '0.75rem' : '0.85rem',
             }}>
               {config?.title || widget.name}
             </div>
@@ -299,32 +468,10 @@ export const WidgetPalette: React.FC<WidgetPaletteProps> = ({
           
           {/* Content based on widget type */}
           <div style={{flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-            {widget.widget_type === WidgetType.REDIRECT && (
-              <ExternalLink style={{color: titleColor}} size={24} />
-            )}
-            
-            {widget.widget_type === WidgetType.DATA_VISUALIZATION && (
-              <BarChart3 style={{color: titleColor}} size={24} />
-            )}
-            
-            {widget.widget_type === WidgetType.CONTENT && (
-              <FileText style={{color: titleColor}} size={24} />
-            )}
-            
-            {widget.widget_type === WidgetType.EMBED && (
-              <Globe style={{color: titleColor}} size={24} />
-            )}
-            
-            {widget.widget_type === WidgetType.INTERACTIVE_TOOL && (
-              <Box style={{color: titleColor}} size={24} />
-            )}
-            
-            {widget.widget_type === WidgetType.CUSTOM && (
-              <Box style={{color: titleColor}} size={24} />
-            )}
+            {renderWidgetContent()}
           </div>
           
-          {/* Widget subtitle if available - only show in a simplified form */}
+          {/* Widget subtitle if available */}
           {config?.subtitle && (
             <div style={{
               fontSize: '0.7rem',
@@ -338,35 +485,45 @@ export const WidgetPalette: React.FC<WidgetPaletteProps> = ({
               {config.subtitle}
             </div>
           )}
+          
+          {/* Size indicator - only visible on hover */}
+          <div className="absolute bottom-1 right-1 bg-black/40 text-white text-[8px] px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+            {sizeRatio}
+          </div>
         </div>
       </div>
     );
   };
 
-  // Render widget card with more realistic preview
+  // Enhanced renderWidgetCard function
   const renderWidgetCard = (widget: Widget) => {
-    // Get the size ratio
     const sizeRatio = widget.size_ratio || '1:1';
-    const [width, height] = sizeRatio.split(':').map(Number);
-    const aspectRatio = (height / width) * 100;
-    
+    const shape = widget.shape as WidgetShape || WidgetShape.SQUARE;
+    const isCircle = shape === WidgetShape.CIRCLE;
+
     return (
       <div 
         key={widget.id}
-        className="cursor-pointer transition-all hover:opacity-95"
+        className="cursor-pointer transition-all duration-300 hover:opacity-95"
         onClick={() => onSelectWidget(widget)}
-        title={widget.name}
+        title={`${widget.name} (${sizeRatio})`}
       >
-        <div className="relative mb-1 shadow-sm hover:shadow-md transition-all">
-          {/* Use padding-bottom trick to maintain aspect ratio */}
-          <div style={{paddingBottom: `${aspectRatio}%`, position: 'relative'}} className="widget-preview-container">
-            <div className="absolute inset-0">
-              {renderWidgetPreview(widget)}
-            </div>
+        <div className="relative mb-2 shadow-sm hover:shadow-md transition-all">
+          {/* Use aspect-ratio instead of padding trick */}
+          <div 
+            style={{ 
+              aspectRatio: getAspectRatioCSS(sizeRatio),
+              position: 'relative',
+              width: '100%'
+            }} 
+            className={`widget-preview-container ${
+              isCircle ? 'overflow-hidden rounded-full' : ''
+            }`}
+          >
+            {renderWidgetPreview(widget)}
           </div>
         </div>
         
-        {/* Only show the widget name, with no additional metadata */}
         <h3 className="text-xs font-medium truncate text-center">{widget.name}</h3>
       </div>
     );
@@ -374,23 +531,19 @@ export const WidgetPalette: React.FC<WidgetPaletteProps> = ({
 
   // Render widget list item with more realistic preview 
   const renderWidgetListItem = (widget: Widget) => {
-    // Get the size ratio
-    const sizeRatio = widget.size_ratio || '1:1';
-    const [width, height] = sizeRatio.split(':').map(Number);
-    
     return (
       <div 
         key={widget.id}
         className="flex items-center px-2 py-2 cursor-pointer hover:bg-gray-50 border-b"
         onClick={() => onSelectWidget(widget)}
       >
-        <div className="w-12 h-12 flex-shrink-0 overflow-hidden mr-2 relative">
+        <div className="w-12 h-12 flex-shrink-0 overflow-hidden mr-2 relative rounded-md">
           {renderWidgetPreview(widget)}
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="text-sm font-medium truncate">{widget.name}</h3>
           <Badge className={`${getTypeColor(widget.widget_type)} text-xs`}>
-            {widget.widget_type.split('_')[0]}
+            {widget.widget_type.split('_').join(' ')}
           </Badge>
         </div>
       </div>
@@ -519,9 +672,11 @@ export const WidgetPalette: React.FC<WidgetPaletteProps> = ({
             No widgets found. Try adjusting your filters.
           </div>
         ) : (
-          <div className={viewMode === 'grid' 
-            ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 p-3" 
-            : "divide-y"
+          <div className={
+            viewMode === 'grid' 
+              ? "grid auto-rows-fr gap-3 p-3 " + 
+                "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5" 
+              : "divide-y"
           }>
             {activeTabWidgets.map((widget) => (
               viewMode === 'grid' 
