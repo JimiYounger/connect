@@ -155,7 +155,7 @@ export class WidgetService {
             *,
             widget:widgets (*)
           `)
-          .eq('draft_id', dashboardId)  // Use draft_id instead of dashboard_id
+          .eq('draft_id', dashboardId)
           .order('position_y', { ascending: true })
           .order('position_x', { ascending: true });
           
@@ -163,20 +163,35 @@ export class WidgetService {
         
         return { data, error: null };
       } else {
-        // For published versions, keep using dashboard_version_id
+        // For published versions, use version_id instead of dashboard_version_id
         const { data, error } = await supabase
           .from('widget_placements')
           .select(`
             *,
             widget:widgets (*)
           `)
-          .eq('dashboard_version_id', dashboardId)  // Already correct
+          .eq('version_id', dashboardId)  // Changed from dashboard_version_id to version_id
           .order('position_y', { ascending: true })
           .order('position_x', { ascending: true });
           
         if (error) throw error;
         
-        return { data, error: null };
+        // Return properly mapped data to fix type casting issue
+        return { 
+          data: data.map(item => ({
+            id: item.id,
+            version_id: item.version_id,
+            widget_id: item.widget_id,
+            position_x: item.position_x,
+            position_y: item.position_y,
+            width: item.width,
+            height: item.height,
+            layout_type: item.layout_type,
+            created_at: item.created_at,
+            widget: item.widget
+          })) as WidgetPlacement[],
+          error: null 
+        };
       }
     } catch (error) {
       console.error(`Error fetching widget placements for dashboard ${dashboardId}:`, error);
@@ -464,8 +479,8 @@ export class WidgetService {
         .from('widget_placements')
         .select(`
           id,
-          dashboard_version_id,
-          dashboard_versions:dashboard_version_id(id, version_name)
+          version_id,
+          dashboard_versions:version_id(id, name)
         `)
         .eq('widget_id', widgetId);
         
@@ -484,21 +499,21 @@ export class WidgetService {
       if (draftError) throw draftError;
       
       // Process and combine the data
-      const publishedData = (publishedPlacements || []).map(placement => ({
+      const publishedData = publishedPlacements ? publishedPlacements.map(placement => ({
         id: `pub-${placement.id}`,
-        dashboard_id: placement.dashboard_version_id,
-        dashboard_name: placement.dashboard_versions?.version_name || 'Unnamed Dashboard Version',
+        dashboard_id: placement.version_id,
+        dashboard_name: placement.dashboard_versions?.name || 'Unnamed Dashboard Version',
         is_published: true,
         placement_id: placement.id,
-      }));
+      })) : [];
       
-      const draftData = (draftPlacements || []).map(placement => ({
+      const draftData = draftPlacements ? draftPlacements.map(placement => ({
         id: `draft-${placement.id}`,
         dashboard_id: placement.draft_id,
         dashboard_name: placement.dashboard_drafts?.name || 'Unnamed Draft',
         is_published: false,
         placement_id: placement.id,
-      }));
+      })) : [];
       
       return { 
         data: [...publishedData, ...draftData], 

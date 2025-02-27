@@ -164,23 +164,25 @@ export function isWidgetType(
 /**
  * Published widget placement type
  */
-export type PublishedWidgetPlacement = {
-  created_at: string | null;
-  dashboard_version_id: string;
-  height: number;
+export interface PublishedWidgetPlacement {
   id: string;
-  layout_type: string;
+  version_id: string;
+  widget_id: string;
   position_x: number;
   position_y: number;
-  widget_id: string;
   width: number;
-};
+  height: number;
+  layout_type: string;
+  created_at: string | null;
+  widget?: Widget;
+}
 
 /**
  * Draft widget placement type
  */
 export type DraftWidgetPlacement = {
   created_at: string | null;
+  created_by?: string | null;
   draft_id: string;
   height: number;
   id: string;

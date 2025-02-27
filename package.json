@@ -92,5 +92,37 @@
     "tailwindcss": "^3.4.1",
     "ts-node": "^10.9.2",
     "typescript": "^5"
+  },
+  "jest": {
+    "setupFiles": ["<rootDir>/jest.env.js"],
+    "setupFilesAfterEnv": ["<rootDir>/jest.setup.ts"],
+    "testEnvironment": "jest-environment-jsdom",
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/src/$1",
+      "\\.(css|less|scss|sass)$": "<rootDir>/__mocks__/styleMock.js",
+      "^react-grid-layout(/.+)?$": "<rootDir>/__mocks__/react-grid-layout.js",
+      "^react-resizable(/.+)?$": "<rootDir>/__mocks__/react-resizable.js"
+    },
+    "testMatch": [
+      "**/__tests__/**/*.test.[jt]s?(x)"
+    ],
+    "moduleDirectories": ["node_modules", "<rootDir>/"],
+    "transform": {
+      "^.+\\.(t|j)sx?$": [
+        "@swc/jest",
+        {
+          "jsc": {
+            "transform": {
+              "react": {
+                "runtime": "automatic"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "transformIgnorePatterns": [
+      "node_modules/(?!(lucide-react|@lucide|react-grid-layout|react-resizable)/)"
+    ]
   }
 }

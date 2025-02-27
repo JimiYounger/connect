@@ -164,7 +164,97 @@ export type Database = {
         Row: {
           created_at: string | null
           created_by: string | null
+          dashboard_id: string
+          description: string | null
           id: string
+          is_current: boolean | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          dashboard_id: string
+          description?: string | null
+          id?: string
+          is_current?: boolean | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          dashboard_id?: string
+          description?: string | null
+          id?: string
+          is_current?: boolean | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_drafts_dashboard_id_fkey"
+            columns: ["dashboard_id"]
+            isOneToOne: false
+            referencedRelation: "dashboards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dashboard_versions: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          dashboard_id: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          status: string
+          updated_at: string | null
+          version_number: number
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          dashboard_id: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          status: string
+          updated_at?: string | null
+          version_number: number
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          dashboard_id?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          status?: string
+          updated_at?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_versions_dashboard_id_fkey"
+            columns: ["dashboard_id"]
+            isOneToOne: false
+            referencedRelation: "dashboards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dashboards: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
           name: string
           role_type: string
           updated_at: string | null
@@ -172,7 +262,9 @@ export type Database = {
         Insert: {
           created_at?: string | null
           created_by?: string | null
+          description?: string | null
           id?: string
+          is_active?: boolean | null
           name: string
           role_type: string
           updated_at?: string | null
@@ -180,49 +272,19 @@ export type Database = {
         Update: {
           created_at?: string | null
           created_by?: string | null
+          description?: string | null
           id?: string
+          is_active?: boolean | null
           name?: string
           role_type?: string
           updated_at?: string | null
         }
         Relationships: []
       }
-      dashboard_versions: {
-        Row: {
-          created_at: string | null
-          created_by: string | null
-          go_live_date: string | null
-          id: string
-          role_type: string
-          status: string
-          updated_at: string | null
-          version_name: string
-        }
-        Insert: {
-          created_at?: string | null
-          created_by?: string | null
-          go_live_date?: string | null
-          id?: string
-          role_type: string
-          status: string
-          updated_at?: string | null
-          version_name: string
-        }
-        Update: {
-          created_at?: string | null
-          created_by?: string | null
-          go_live_date?: string | null
-          id?: string
-          role_type?: string
-          status?: string
-          updated_at?: string | null
-          version_name?: string
-        }
-        Relationships: []
-      }
       draft_widget_placements: {
         Row: {
           created_at: string | null
+          created_by: string | null
           draft_id: string
           height: number
           id: string
@@ -234,6 +296,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          created_by?: string | null
           draft_id: string
           height: number
           id?: string
@@ -245,6 +308,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          created_by?: string | null
           draft_id?: string
           height?: number
           id?: string
@@ -617,41 +681,41 @@ export type Database = {
       widget_placements: {
         Row: {
           created_at: string | null
-          dashboard_version_id: string
           height: number
           id: string
           layout_type: string
           position_x: number
           position_y: number
+          version_id: string
           widget_id: string
           width: number
         }
         Insert: {
           created_at?: string | null
-          dashboard_version_id: string
           height: number
           id?: string
           layout_type: string
           position_x: number
           position_y: number
+          version_id: string
           widget_id: string
           width: number
         }
         Update: {
           created_at?: string | null
-          dashboard_version_id?: string
           height?: number
           id?: string
           layout_type?: string
           position_x?: number
           position_y?: number
+          version_id?: string
           widget_id?: string
           width?: number
         }
         Relationships: [
           {
-            foreignKeyName: "widget_placements_dashboard_version_id_fkey"
-            columns: ["dashboard_version_id"]
+            foreignKeyName: "widget_placements_version_id_fkey"
+            columns: ["version_id"]
             isOneToOne: false
             referencedRelation: "dashboard_versions"
             referencedColumns: ["id"]

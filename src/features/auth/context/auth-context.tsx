@@ -92,6 +92,16 @@ export function AuthProvider({
     }
   }, [authState.session, refetchProfile])
 
+  useEffect(() => {
+    console.log("AuthProvider state:", { 
+      session: authState.session, 
+      profile: authState.profile, 
+      isLoading: authState.loading.session || authState.loading.profile || authState.loading.initializing,
+      isSessionLoading: authState.loading.session,
+      isProfileLoading: authState.loading.profile
+    });
+  }, [authState.session, authState.profile, authState.loading.session, authState.loading.profile, authState.loading.initializing])
+
   const contextValue = useMemo(() => ({
     ...authState,
     loading: {

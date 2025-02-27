@@ -11,7 +11,6 @@ import {
   DraftWidgetPlacement,
   WidgetPlacement as _WidgetPlacement
 } from '../../types';
-import { widgetService } from '../../services/widget-service';
 import { widgetRegistry } from '../../registry';
 import { useWidgets } from '../../hooks/use-widgets';
 import { Button } from '@/components/ui/button';
@@ -61,12 +60,9 @@ export const DashboardEditor: React.FC<DashboardEditorProps> = ({
   onPublish
 }) => {
   const _router = useRouter();
-  // Replace placeholder session with actual auth
-  const { profile } = useAuth();
-  const userId = profile?.id || '';
-  
-  // Add authentication check
-  const [authError, setAuthError] = useState<boolean>(false);
+  const { profile, session, loading } = useAuth();
+  const isAuthLoading = loading?.any;
+  const userId = profile?.id || (session?.user?.id || '');
   
   // State for layouts
   const [layouts, setLayouts] = useState<{ [key: string]: any[] }>({});
@@ -130,10 +126,42 @@ export const DashboardEditor: React.FC<DashboardEditorProps> = ({
     if (!dashboardId) return;
     
     try {
-      const { data, error } = await widgetService.getWidgetPlacementsForDashboard(
-        dashboardId,
-        true // isDraft
-      );
+      // First check if there's an existing draft for this dashboard
+      const { data: dashboard, error: dashboardError } = await dashboardService.getDashboardById(dashboardId);
+      
+      if (dashboardError) throw dashboardError;
+      if (!dashboard) throw new Error(`Dashboard ${dashboardId} not found`);
+      
+      // Try to get latest draft or create one if it doesn't exist
+      let draft;
+      const { data: existingDraft, error: draftError } = await dashboardService.getLatestDraftForDashboard(dashboardId);
+      
+      if (draftError) {
+        console.error('Error finding draft:', draftError);
+      }
+      
+      // If no draft exists, create one
+      if (!existingDraft) {
+        console.log('No existing draft found. Creating new draft.');
+        const actualUserId = userId || '';
+        const { data: newDraft, error: createError } = await dashboardService.createDraft(
+          dashboardId,
+          actualUserId
+        );
+        
+        if (createError) throw createError;
+        if (!newDraft) throw new Error('Failed to create draft');
+        
+        draft = newDraft;
+      } else {
+        draft = existingDraft;
+      }
+      
+      // Store the draft ID for later use
+      setDraftId(draft.id);
+      
+      // Now load widget placements for this draft
+      const { data, error } = await dashboardService.getDraftWidgetPlacements(draft.id);
       
       if (error) throw error;
       
@@ -158,12 +186,15 @@ export const DashboardEditor: React.FC<DashboardEditorProps> = ({
         
         setPlacedWidgets(widgetMap);
         setLayouts({ lg: layoutItems });
-        setDraftId((data[0] as DraftWidgetPlacement).draft_id || '');
+      } else {
+        // If no placements exist, initialize with empty layout
+        setLayouts({ lg: [] });
       }
     } catch (error) {
       console.error('Error loading draft layout:', error);
+      alert(`Error loading dashboard: ${(error as Error).message}`);
     }
-  }, [dashboardId]);
+  }, [dashboardId, userId]);
   
   // Load layout on component mount if no initial layout provided
   useEffect(() => {
@@ -241,11 +272,16 @@ export const DashboardEditor: React.FC<DashboardEditorProps> = ({
   
   // Convert layout to widget placements
   const layoutToWidgetPlacements = (): DraftWidgetPlacement[] => {
+    if (!draftId) {
+      console.error('No draftId available to create placements');
+      return [];
+    }
+    
     const currentLayout = layouts[currentBreakpoint] || [];
     
     return currentLayout.map(item => ({
       id: `draft_${item.i}_${Date.now()}`,
-      draft_id: draftId || `draft_${dashboardId}_${Date.now()}`,
+      draft_id: draftId,
       widget_id: item.i,
       position_x: item.x,
       position_y: item.y,
@@ -267,26 +303,22 @@ export const DashboardEditor: React.FC<DashboardEditorProps> = ({
       alert('Authentication required');
       return;
     }
+    
+    if (!draftId) {
+      alert('No draft available. Please create a draft first.');
+      return;
+    }
 
     setIsSaving(true);
     
     try {
       const widgetPlacements = layoutToWidgetPlacements();
       
-      // If no draftId yet, create one
-      if (!draftId) {
-        const newDraftId = `draft_${dashboardId}_${Date.now()}`;
-        setDraftId(newDraftId);
-        widgetPlacements.forEach(placement => {
-          placement.draft_id = newDraftId;
-        });
-      }
-      
-      // Call dashboard service to save draft
+      // Call dashboard service to save draft placements
       const { data: _data, error } = await dashboardService.replaceDraftWidgetPlacements(
-        draftId || `draft_${dashboardId}_${Date.now()}`, 
+        draftId, 
         widgetPlacements.map(p => ({
-          draft_id: p.draft_id,
+          draft_id: draftId,
           widget_id: p.widget_id,
           position_x: p.position_x,
           position_y: p.position_y,
@@ -316,16 +348,40 @@ export const DashboardEditor: React.FC<DashboardEditorProps> = ({
   
   // Publish the current layout
   const publishLayout = async () => {
-    if (!dashboardId) return;
+    if (!dashboardId || !draftId) {
+      alert('Dashboard and draft information required');
+      return;
+    }
     
     setIsPublishing(true);
     
     try {
+      // Save the draft first to ensure latest changes are included
       const widgetPlacements = layoutToWidgetPlacements();
+      await dashboardService.replaceDraftWidgetPlacements(
+        draftId, 
+        widgetPlacements.map(p => ({
+          draft_id: draftId,
+          widget_id: p.widget_id,
+          position_x: p.position_x,
+          position_y: p.position_y,
+          width: p.width,
+          height: p.height,
+          layout_type: p.layout_type,
+          created_by: userId
+        }))
+      );
       
-      // Call API to publish layout
-      // This is a placeholder - implement the actual API call
-      // await widgetService.publishDashboard(dashboardId, widgetPlacements);
+      // Publish the draft as a new version
+      const actualUserId = userId || '';
+      const { data: version, error } = await dashboardService.publishDashboardVersion(
+        draftId,
+        actualUserId,
+        `Published from Editor ${new Date().toLocaleDateString()}`,
+        'Created using Dashboard Editor'
+      );
+      
+      if (error) throw error;
       
       // Call onPublish callback if provided
       if (onPublish) {
@@ -333,27 +389,17 @@ export const DashboardEditor: React.FC<DashboardEditorProps> = ({
       }
       
       // Show success message
-      alert('Dashboard published successfully!');
+      alert(`Dashboard published successfully as version ${version?.version_number || 'unknown'}!`);
     } catch (error) {
       console.error('Error publishing layout:', error);
-      alert('Error publishing layout. Please try again.');
+      alert(`Error publishing layout: ${(error as Error).message}`);
     } finally {
       setIsPublishing(false);
     }
   };
   
   // Render widget component
-  const renderWidget = (widgetId: string) => {
-    const widget = placedWidgets.get(widgetId);
-    
-    if (!widget) {
-      return (
-        <div className="bg-red-100 p-4 rounded-md">
-          <p className="text-red-500">Widget not found</p>
-        </div>
-      );
-    }
-    
+  const renderWidget = (widget: Widget) => {
     // Get the component from the registry
     const WidgetComponent = widgetRegistry.getComponent(widget.widget_type);
     
@@ -376,10 +422,10 @@ export const DashboardEditor: React.FC<DashboardEditorProps> = ({
       <div 
         className={`
           w-full h-full p-2 border-2 rounded-md overflow-hidden
-          ${selectedWidgetId === widgetId ? 'border-blue-500' : 'border-gray-200'}
+          ${selectedWidgetId === widget.id ? 'border-blue-500' : 'border-gray-200'}
           bg-white
         `}
-        onClick={() => setSelectedWidgetId(widgetId)}
+        onClick={() => setSelectedWidgetId(widget.id)}
       >
         <div className="flex justify-between items-center mb-2">
           <h3 className="text-sm font-medium truncate">{widget.name}</h3>
@@ -388,7 +434,7 @@ export const DashboardEditor: React.FC<DashboardEditorProps> = ({
               className="p-1 text-gray-500 hover:text-gray-700"
               onClick={(e) => {
                 e.stopPropagation();
-                setSelectedWidgetId(widgetId);
+                setSelectedWidgetId(widget.id);
               }}
             >
               <Settings size={14} />
@@ -397,7 +443,7 @@ export const DashboardEditor: React.FC<DashboardEditorProps> = ({
               className="p-1 text-red-500 hover:text-red-700"
               onClick={(e) => {
                 e.stopPropagation();
-                removeWidget(widgetId);
+                removeWidget(widget.id);
               }}
             >
               <Trash2 size={14} />
@@ -412,15 +458,6 @@ export const DashboardEditor: React.FC<DashboardEditorProps> = ({
     );
   };
   
-  // Check for authentication
-  useEffect(() => {
-    if (!profile && !isLoadingWidgets) {
-      setAuthError(true);
-    } else {
-      setAuthError(false);
-    }
-  }, [profile, isLoadingWidgets]);
-  
   // Add this to handle the case where there's no data yet
   useEffect(() => {
     // Display a message to the user when the component first loads
@@ -432,20 +469,28 @@ export const DashboardEditor: React.FC<DashboardEditorProps> = ({
     }
   }, [isLoadingWidgets, initialLayout, dashboardId, loadDraftLayout]);
   
-  // Return auth error if no user
-  if (authError) {
+  // Wait for auth to be ready before rendering the editor
+  if (isAuthLoading || (!profile && !session?.user?.id)) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-8 bg-gray-50">
-        <div className="text-center bg-white p-6 rounded-lg shadow-md max-w-md">
-          <h2 className="text-xl font-bold text-red-600 mb-4">Authentication Required</h2>
-          <p className="mb-4">You need to be logged in to access the dashboard editor.</p>
-          <Button 
-            onClick={() => _router.push('/auth/login')}
-            variant="default"
-          >
-            Log In
-          </Button>
-        </div>
+      <div className="flex flex-col items-center justify-center h-full p-8">
+        <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+        <p className="text-muted-foreground">Loading user profile...</p>
+      </div>
+    );
+  }
+  
+  // Show an authentication error if no session
+  if (!session) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-8 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300">
+        <h2 className="text-xl font-semibold mb-2">Authentication Required</h2>
+        <p className="text-gray-600 mb-4">You need to be logged in to access the dashboard editor.</p>
+        <Button 
+          onClick={() => window.location.href = '/login'}
+          variant="default"
+        >
+          Log In
+        </Button>
       </div>
     );
   }
@@ -523,18 +568,25 @@ export const DashboardEditor: React.FC<DashboardEditorProps> = ({
               breakpoints={BREAKPOINTS}
               cols={COLS}
               rowHeight={100}
+              margin={[16, 16]}
+              containerPadding={[0, 0]}
               onLayoutChange={handleLayoutChange}
               onBreakpointChange={handleBreakpointChange}
               isDraggable={!isPreviewMode}
               isResizable={!isPreviewMode}
               compactType="vertical"
-              margin={[16, 16]}
             >
-              {layouts[currentBreakpoint]?.map(item => (
-                <div key={item.i} className="bg-white rounded-lg shadow-sm overflow-hidden">
-                  {renderWidget(item.i)}
-                </div>
-              ))}
+              {layouts[currentBreakpoint]?.map((layoutItem) => {
+                const widget = placedWidgets.get(layoutItem.i);
+                if (!widget) return null;
+                
+                // Important - if there's any auth check here, temporarily disable it
+                return (
+                  <div key={layoutItem.i} className="widget-container">
+                    {renderWidget(widget)}
+                  </div>
+                );
+              })}
             </ResponsiveGridLayout>
             
             {/* Empty state */}

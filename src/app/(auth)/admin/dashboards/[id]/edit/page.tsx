@@ -37,7 +37,7 @@ import { DashboardEditor } from '@/features/widgets/components/admin/dashboard-e
 
 export default function EditDashboardPage() {
   const params = useParams();
-  const dashboardId = params.id as string;
+  const dashboardId = typeof params.id === 'string' ? params.id : '';
   const router = useRouter();
   const { toast } = useToast();
   
@@ -93,7 +93,11 @@ export default function EditDashboardPage() {
   // Fetch dashboard data
   useEffect(() => {
     async function fetchDashboard() {
-      if (!dashboardId || !session?.user.id) return;
+      if (!dashboardId || dashboardId.trim() === '' || !session?.user.id) {
+        setError(new Error('Invalid dashboard ID'));
+        setIsLoading(false);
+        return;
+      }
       
       try {
         setIsLoading(true);

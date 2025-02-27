@@ -5,7 +5,7 @@ import type {
   DraftWidgetPlacement,
   WidgetPlacement
 } from '../types';
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as _uuidv4 } from 'uuid';
 
 /**
  * Interface for dashboard data
@@ -53,8 +53,11 @@ interface DashboardDraft {
  * Service for managing dashboard layouts and configurations
  */
 export class DashboardService {
-  // Simplify to only use the browser client
+  /**
+   * Get the Supabase client with current auth session
+   */
   private getClient() {
+    // Make sure to get a client with the current session
     return createBrowserClient();
   }
   
@@ -73,21 +76,20 @@ export class DashboardService {
     try {
       const supabase = this.getClient();
       
-      // Using the correct table name from the schema
+      // Query the actual dashboards table, not dashboard_drafts
       let query = supabase
-        .from('dashboard_drafts') // Using dashboard_drafts instead of custom_dashboards
+        .from('dashboards')
         .select('*');
       
       // Apply filters
       if (options?.isPublished !== undefined) {
-        query = query.eq('is_published', options.isPublished);
+        query = query.eq('is_active', options.isPublished); // Use is_active from schema
       }
       
       // Role-based access filter
       if (options?.roleIds && options.roleIds.length > 0) {
-        // This assumes your dashboards table has a role_access JSONB column
-        // that contains an array of role IDs that can access the dashboard
-        query = query.or(`role_access.cs.{${options.roleIds.join(',')}},created_by.eq.${userId}`);
+        // Match dashboards where role_type is in the user's roles, or created by the user
+        query = query.or(`role_type.in.(${options.roleIds.join(',')}),created_by.eq.${userId}`);
       } else {
         // If no roles specified, only show dashboards created by the user
         query = query.eq('created_by', userId);
@@ -110,13 +112,13 @@ export class DashboardService {
       const dashboards: Dashboard[] = data.map(item => ({
         id: item.id,
         name: item.name,
-        description: '',
-        is_published: false, // Default value since it might not exist in the schema
+        description: item.description || '',
+        is_published: item.is_active || false, // Map is_active to is_published
         created_by: item.created_by || '',
         created_at: item.created_at || new Date().toISOString(),
         updated_at: item.updated_at || new Date().toISOString(),
         is_default: false, // Default value since it might not exist in the schema
-        role_access: item.role_type ? [item.role_type] : []
+        role_access: item.role_type ? [item.role_type] : [] // Use role_type field from schema
       }));
       
       return { data: dashboards, error: null };
@@ -133,32 +135,46 @@ export class DashboardService {
     dashboardId: string
   ): Promise<{ data: Dashboard | null; error: Error | null }> {
     try {
+      if (!dashboardId || dashboardId.trim() === '') {
+        return { data: null, error: new Error('Invalid dashboard ID') };
+      }
+      
       const supabase = this.getClient();
+      console.log(`Fetching dashboard with ID: ${dashboardId}`);
+      
+      // Use dashboards table (not dashboard_drafts)
       const { data, error } = await supabase
-        .from('dashboard_drafts') // Using dashboard_drafts instead of custom_dashboards
+        .from('dashboards')  // Changed from dashboard_drafts
         .select('*')
         .eq('id', dashboardId)
         .single();
         
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching dashboard:', error);
+        throw error;
+      }
+      
+      if (!data) {
+        throw new Error(`Dashboard not found: ${dashboardId}`);
+      }
       
       // Transform the data to match the Dashboard interface
       const dashboard: Dashboard = {
         id: data.id,
         name: data.name,
-        description: '',
-        is_published: false, // Default value since it might not exist in the schema
+        description: data.description || '',
+        is_published: data.is_active || false,
         created_by: data.created_by || '',
         created_at: data.created_at || new Date().toISOString(),
         updated_at: data.updated_at || new Date().toISOString(),
-        is_default: false, // Default value since it might not exist in the schema
-        role_access: data.role_type ? [data.role_type] : []
+        is_default: false,
+        role_access: [data.role_type] 
       };
         
       return { data: dashboard, error: null };
     } catch (error) {
       console.error(`Error fetching dashboard ${dashboardId}:`, error);
-      return { data: null, error: error as Error };
+      return { data: null, error: error instanceof Error ? error : new Error(String(error)) };
     }
   }
   
@@ -172,51 +188,60 @@ export class DashboardService {
     try {
       const supabase = this.getClient();
       
-      // Try with capitalized role types
-      const validRoleTypes = ['Admin', 'Executive', 'Manager', 'Closer', 'Setter'];
-      let roleType = 'Admin'; // Default
+      // Get the role type from the role_access array if it exists
+      const role_type = dashboard.role_access && dashboard.role_access.length > 0 
+        ? dashboard.role_access[0] 
+        : 'user'; // Default role type
       
-      if (dashboard.role_access && dashboard.role_access.length > 0) {
-        // Capitalize first letter
-        const requestedRole = dashboard.role_access[0].charAt(0).toUpperCase() + 
-                             dashboard.role_access[0].slice(1).toLowerCase();
-        if (validRoleTypes.includes(requestedRole)) {
-          roleType = requestedRole;
-        }
-      }
-      
-      console.log('Attempting to create dashboard with role_type:', roleType);
-      
-      const { data, error } = await supabase
-        .from('dashboard_drafts')
-        .insert({
-          name: dashboard.name || 'Untitled Dashboard',
-          created_by: userId,
-          updated_at: new Date().toISOString(),
-          role_type: roleType
-        })
-        .select()
-        .single();
-        
-      if (error) throw error;
-      
-      // Transform the data to match the Dashboard interface
-      const newDashboard: Dashboard = {
-        id: data.id,
-        name: data.name,
-        description: '', // We'll keep this in the interface but not send to DB
-        is_published: false,
-        created_by: data.created_by || '',
-        created_at: data.created_at || new Date().toISOString(),
-        updated_at: data.updated_at || new Date().toISOString(),
-        is_default: false,
-        role_access: data.role_type ? [data.role_type] : []
+      // Create dashboard object with proper field names to match database schema
+      const dashboardToCreate = {
+        name: dashboard.name || 'Untitled Dashboard',
+        description: dashboard.description || '',
+        created_by: userId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        is_active: true,  // This field exists in the DB schema instead of is_published
+        role_type: role_type, // This is the required field according to the error
       };
       
-      return { data: newDashboard, error: null };
+      console.log('Creating dashboard with data:', dashboardToCreate);
+      
+      const { data, error } = await supabase
+        .from('dashboards')
+        .insert(dashboardToCreate)
+        .select('*')
+        .single();
+      
+      if (error) {
+        console.error('Supabase insert error:', error);
+        throw new Error(error.message || 'Failed to create dashboard');
+      }
+      
+      // Map the database schema to your Dashboard interface
+      if (data) {
+        // Convert DB schema to your Dashboard interface
+        const dashboard: Dashboard = {
+          id: data.id,
+          name: data.name,
+          description: data.description || '',
+          is_published: data.is_active || false,  // Map from is_active to is_published
+          created_by: data.created_by || '',
+          created_at: data.created_at || new Date().toISOString(),
+          updated_at: data.updated_at || new Date().toISOString(),
+          is_default: false,
+          role_access: [data.role_type]  // Convert role_type to role_access array
+        };
+        
+        // Create an initial draft for this dashboard
+        await this.createDraft(data.id, userId);
+        
+        return { data: dashboard, error: null };
+      }
+      
+      return { data: null, error: new Error('Failed to create dashboard - no data returned') };
     } catch (error) {
-      console.error('Error creating dashboard:', error);
-      return { data: null, error: error as Error };
+      console.error('Error in createDashboard:', error);
+      return { data: null, error: error instanceof Error ? error : new Error(String(error)) };
     }
   }
   
@@ -237,12 +262,9 @@ export class DashboardService {
       
       if (updates.name) draftUpdates.name = updates.name;
       if (updates.description) draftUpdates.description = updates.description;
-      if (updates.role_access && updates.role_access.length > 0) {
-        draftUpdates.role_type = updates.role_access[0];
-      }
       
       const { data, error } = await supabase
-        .from('dashboard_drafts') // Using dashboard_drafts instead of custom_dashboards
+        .from('dashboard_drafts')
         .update(draftUpdates)
         .eq('id', dashboardId)
         .select()
@@ -260,7 +282,7 @@ export class DashboardService {
         created_at: data.created_at || new Date().toISOString(),
         updated_at: data.updated_at || new Date().toISOString(),
         is_default: updates.is_default || false,
-        role_access: data.role_type ? [data.role_type] : []
+        role_access: [] // Remove reference to data.role_type
       };
       
       return { data: updatedDashboard, error: null };
@@ -281,7 +303,7 @@ export class DashboardService {
       
       // Delete the dashboard
       const { error } = await supabase
-        .from('dashboard_drafts') // Using dashboard_drafts instead of custom_dashboards
+        .from('dashboard_drafts')
         .delete()
         .eq('id', dashboardId);
         
@@ -295,137 +317,131 @@ export class DashboardService {
   }
   
   /**
-   * Get the latest draft for a dashboard
+   * Get drafts for a dashboard
    */
-  async getLatestDraft(
+  async getDraftsForDashboard(
     dashboardId: string
-  ): Promise<{ data: DashboardDraft | null; error: Error | null }> {
+  ): Promise<{ data: DashboardDraft[] | null; error: Error | null }> {
     try {
       const supabase = this.getClient();
       
-      // Log the query parameters for debugging
-      console.log(`Fetching latest draft for dashboard: ${dashboardId}`);
-      
       const { data, error } = await supabase
-        .from('draft_widget_placements')
+        .from('dashboard_drafts')
         .select('*')
-        .eq('draft_id', dashboardId)  // Ensure we're using draft_id
-        .order('created_at', { ascending: false })
-        .limit(1);
+        .eq('dashboard_id', dashboardId)
+        .order('created_at', { ascending: false });
         
-      // Detailed error logging
-      if (error) {
-        console.error(`Database error fetching draft: ${error.message}`, error);
-        
-        // Only throw if it's not a "no rows returned" error
-        if (error.code !== 'PGRST116') {
-          throw error;
-        }
-        return { data: null, error: null };
-      }
+      if (error) throw error;
       
-      // If no placements found, return null with detailed log
-      if (!data || data.length === 0) {
-        console.log(`No draft placements found for dashboard ${dashboardId}`);
-        return { data: null, error: null };
-      }
-      
-      console.log(`Found draft placement with ID: ${data[0].id}`);
-      
-      // Create a draft object to return - don't try to access properties that don't exist
-      const draft: DashboardDraft = {
-        id: data[0].id,
-        dashboard_id: data[0].draft_id,
-        created_by: '', // Fixed: Set a default value instead of trying to access nonexistent property
-        created_at: data[0].created_at || new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        name: '', // Fixed: Set a default value instead of trying to access nonexistent property
-        description: '' // Fixed: Set a default value instead of trying to access nonexistent property
-      };
-      
-      return { data: draft, error: null };
+      return { data: data as DashboardDraft[], error: null };
     } catch (error) {
-      console.error(`Error fetching latest draft for dashboard ${dashboardId}:`, error);
+      console.error(`Error fetching drafts for dashboard ${dashboardId}:`, error);
       return { data: null, error: error as Error };
     }
   }
   
   /**
-   * Create a new draft
+   * Get latest draft for a dashboard
+   */
+  async getLatestDraftForDashboard(
+    dashboardId: string
+  ): Promise<{ data: DashboardDraft | null; error: Error | null }> {
+    try {
+      if (!dashboardId || dashboardId.trim() === '') {
+        return { data: null, error: new Error('Invalid dashboard ID') };
+      }
+      
+      const supabase = this.getClient();
+      
+      // First verify the dashboard exists
+      const { data: _dashboardExists, error: dashboardError } = await supabase
+        .from('dashboards')
+        .select('id')
+        .eq('id', dashboardId)
+        .single();
+        
+      if (dashboardError) {
+        console.error('Error checking dashboard existence:', dashboardError);
+        return { data: null, error: new Error(`Dashboard not found: ${dashboardId}`) };
+      }
+      
+      // Now look for drafts
+      const { data, error } = await supabase
+        .from('dashboard_drafts')
+        .select('*')
+        .eq('dashboard_id', dashboardId)
+        .eq('is_current', true)
+        .maybeSingle(); // Use maybeSingle instead of single
+        
+      if (error) {
+        console.error(`Error fetching draft for dashboard ${dashboardId}:`, error);
+        return { data: null, error: new Error(`Failed to fetch draft: ${error.message}`) };
+      }
+      
+      return { data: data as DashboardDraft, error: null };
+    } catch (error) {
+      console.error(`Error fetching draft for dashboard ${dashboardId}:`, error);
+      return { data: null, error: error instanceof Error ? error : new Error(String(error)) };
+    }
+  }
+  
+  /**
+   * Backward compatibility alias for getLatestDraftForDashboard
+   * @deprecated Use getLatestDraftForDashboard instead
+   */
+  async getLatestDraft(
+    dashboardId: string
+  ): Promise<{ data: DashboardDraft | null; error: Error | null }> {
+    console.log('getLatestDraft is deprecated. Please use getLatestDraftForDashboard instead.');
+    return this.getLatestDraftForDashboard(dashboardId);
+  }
+  
+  /**
+   * Create a new dashboard draft
    */
   async createDraft(
     dashboardId: string,
     userId: string
   ): Promise<{ data: DashboardDraft | null; error: Error | null }> {
     try {
-      const supabase = this.getClient();
-      
-      // Create a draft with required fields according to the schema
-      const { data: draftData, error: draftError } = await supabase
-        .from('dashboard_drafts')
-        .insert({
-          // Using role_type and name which are required fields
-          role_type: 'Manager', // Use an appropriate role type from your enum
-          name: `Draft for ${dashboardId}`,
-          created_by: userId,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .select();
-        
-      if (draftError) throw draftError;
-      
-      // We need the draft ID from the newly created draft
-      const draftId = draftData[0].id;
-      
-      // Now we can create the draft_widget_placement
-      // Get an existing widget to use for a valid reference
-      const { data: widgetsData, error: widgetsError } = await supabase
-        .from('widgets')
-        .select('id')
-        .limit(1);
-        
-      if (widgetsError) throw widgetsError;
-      
-      // Only try to create a placement if we have at least one widget
-      if (widgetsData && widgetsData.length > 0) {
-        // Create initial placement with a valid widget ID and correct layout_type
-        const { error: placementError } = await supabase
-          .from('draft_widget_placements')
-          .insert({
-            draft_id: draftId, // Use the newly created draft ID
-            widget_id: widgetsData[0].id, // Use an existing widget ID
-            position_x: 0,
-            position_y: 0,
-            width: 3,
-            height: 2,
-            layout_type: 'desktop', // Use valid value: 'desktop' or 'mobile'
-            created_at: new Date().toISOString()
-          });
-          
-        if (placementError) {
-          console.warn('Could not create initial placement:', placementError);
-          // Continue anyway as we already created the draft
-        }
+      if (!dashboardId || dashboardId.trim() === '') {
+        throw new Error('Invalid dashboard ID: cannot create draft with empty ID');
       }
       
-      // Return the created draft
-      // Since we're storing the dashboardId association in our client code, 
-      // keep it in the return value even though it's not in the database
-      const draft: DashboardDraft = {
-        id: draftId,
-        dashboard_id: dashboardId, // We keep this for client-side reference
-        created_by: userId,
-        created_at: draftData[0].created_at || new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        name: draftData[0].name,
-        description: ''
-      };
+      const supabase = this.getClient();
       
-      return { data: draft, error: null };
+      console.log(`Creating draft for dashboard ${dashboardId} and user ${userId}`);
+      
+      // Check if the dashboard exists first
+      const { data: _existingDashboard, error: checkError } = await supabase
+        .from('dashboards')
+        .select('id')
+        .eq('id', dashboardId)
+        .single();
+        
+      if (checkError) {
+        console.error('Error checking dashboard existence:', checkError);
+        throw new Error(`Dashboard not found: ${dashboardId}`);
+      }
+      
+      const { data, error } = await supabase
+        .from('dashboard_drafts')
+        .insert({
+          dashboard_id: dashboardId,
+          name: 'Draft', // Set a default name
+          created_by: userId,
+          updated_at: new Date().toISOString(),
+          is_current: true // Mark as current draft
+        })
+        .select('*')
+        .single();
+      
+      if (error) throw error;
+      
+      return { data: data as DashboardDraft, error: null };
     } catch (error) {
-      console.error(`Error creating draft for dashboard ${dashboardId}:`, error);
-      return { data: null, error: error as Error };
+      console.error('Error creating dashboard draft:', error);
+      return { data: null, error: error instanceof Error ? error : new Error(String(error)) };
     }
   }
   
@@ -438,23 +454,28 @@ export class DashboardService {
     try {
       const supabase = this.getClient();
       
+      // Get the draft from dashboard_drafts table
       const { data, error } = await supabase
-        .from('draft_widget_placements')
+        .from('dashboard_drafts')
         .select('*')
         .eq('id', draftId)
         .single();
         
       if (error) throw error;
       
+      if (!data) {
+        throw new Error(`Draft with ID ${draftId} not found`);
+      }
+      
       // Create a draft object to return
       const draft: DashboardDraft = {
         id: data.id,
-        dashboard_id: data.draft_id,
-        created_by: '', // This information might not be available
+        dashboard_id: data.dashboard_id,
+        created_by: data.created_by || '',
         created_at: data.created_at || new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        name: '', // This information might not be available
-        description: '' // This information might not be available
+        updated_at: data.updated_at || new Date().toISOString(),
+        name: data.name || '',
+        description: data.description || ''
       };
       
       return { data: draft, error: null };
@@ -480,8 +501,12 @@ export class DashboardService {
         .delete()
         .eq('draft_id', draftId);
       
-      // Then insert the new placements
-      // Make sure all required fields are present, but don't include created_by
+      // Check if there are any placements to insert
+      if (placements.length === 0) {
+        return { data: [], error: null };
+      }
+      
+      // Then insert the new placements with all required fields
       const placementsWithDefaults = placements.map(placement => ({
         draft_id: draftId,
         widget_id: placement.widget_id || '',
@@ -490,7 +515,9 @@ export class DashboardService {
         width: placement.width || 3,
         height: placement.height || 2,
         layout_type: placement.layout_type || 'grid',
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        // Include created_by if available in the placement
+        created_by: placement.created_by || null
       }));
       
       const { data, error } = await supabase
@@ -553,7 +580,7 @@ export class DashboardService {
       if (draftError) throw draftError;
       if (!draft) throw new Error(`Draft ${draftId} not found`);
       
-      // Get the dashboard to find the current version number
+      // Get the dashboard
       const { data: dashboard, error: dashboardError } = await this.getDashboardById(draft.dashboard_id);
       
       if (dashboardError) throw dashboardError;
@@ -569,24 +596,22 @@ export class DashboardService {
         
       if (versionsError) throw versionsError;
       
-      // Safely access version_number with type checking
       const nextVersionNumber = versions && versions.length > 0 && 
         'version_number' in versions[0] ? 
         (versions[0] as any).version_number + 1 : 1;
       
-      // Create a new version
+      // Create a new version with all required fields
       const { data: version, error: versionError } = await supabase
         .from('dashboard_versions')
         .insert({
+          dashboard_id: draft.dashboard_id,
           version_number: nextVersionNumber,
           created_by: userId,
+          created_at: new Date().toISOString(),
           is_active: true,
-          name: name || `Version ${nextVersionNumber}`,
-          description: description || '',
-          role_type: 'user',
-          status: 'active',
-          version_name: name || `Version ${nextVersionNumber}`,
-          created_at: new Date().toISOString()
+          name: name || draft.name || `Version ${nextVersionNumber}`,
+          description: description || draft.description || '',
+          status: 'active' // Required field per schema
         })
         .select()
         .single();
@@ -609,9 +634,9 @@ export class DashboardService {
       if (placementsError) throw placementsError;
       if (!draftPlacements) throw new Error(`No placements found for draft ${draftId}`);
       
-      // Convert draft placements to published placements
-      const publishedPlacements = draftPlacements.map(placement => ({
-        dashboard_version_id: version.id,
+      // Convert draft placements to version placements
+      const versionPlacements = draftPlacements.map(placement => ({
+        version_id: version.id,
         widget_id: placement.widget_id,
         position_x: placement.position_x,
         position_y: placement.position_y,
@@ -621,14 +646,24 @@ export class DashboardService {
         created_at: new Date().toISOString()
       }));
       
-      // Insert the published placements
-      await supabase
-        .from('widget_placements')
-        .insert(publishedPlacements);
+      // Insert the version placements
+      if (versionPlacements.length > 0) {
+        const { error: insertError } = await supabase
+          .from('widget_placements')
+          .insert(versionPlacements);
+          
+        if (insertError) throw insertError;
+      }
       
-      // Update the dashboard to published state if it's not already
+      // Update the dashboard to active state if it's not already
       if (!dashboard.is_published) {
-        await this.updateDashboard(draft.dashboard_id, { is_published: true });
+        await supabase
+          .from('dashboards')
+          .update({ 
+            is_active: true,
+            updated_at: new Date().toISOString() 
+          })
+          .eq('id', draft.dashboard_id);
       }
       
       return { data: version as unknown as DashboardVersion, error: null };
@@ -678,13 +713,29 @@ export class DashboardService {
           *,
           widget:widgets (*)
         `)
-        .eq('dashboard_version_id', versionId)
+        .eq('version_id', versionId) // Changed from dashboard_version_id to version_id
         .order('position_y', { ascending: true })
         .order('position_x', { ascending: true });
         
       if (error) throw error;
       
-      return { data: data as WidgetPlacement[], error: null };
+      // Return data as WidgetPlacement[] after applying proper type conversion
+      // This is a type casting issue that needs to be handled appropriately
+      return { 
+        data: data.map(item => ({
+          id: item.id,
+          version_id: item.version_id,
+          widget_id: item.widget_id,
+          position_x: item.position_x,
+          position_y: item.position_y,
+          width: item.width,
+          height: item.height,
+          layout_type: item.layout_type,
+          created_at: item.created_at,
+          widget: item.widget
+        })) as WidgetPlacement[], 
+        error: null 
+      };
     } catch (error) {
       console.error(`Error fetching widget placements for version ${versionId}:`, error);
       return { data: null, error: error as Error };
@@ -717,7 +768,6 @@ export class DashboardService {
   
   /**
    * Replace all widget placements for a draft
-   * This is more efficient than deleting and then adding placements separately
    */
   async replaceDraftWidgetPlacements(
     draftId: string,
@@ -739,9 +789,10 @@ export class DashboardService {
         return { data: [], error: null };
       }
       
-      // Then insert the new placements
+      // Then insert the new placements with all required fields
       const placementsWithTimestamp = placements.map(placement => ({
         ...placement,
+        draft_id: draftId, // Ensure draft_id is set
         created_at: new Date().toISOString()
       }));
       

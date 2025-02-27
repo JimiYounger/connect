@@ -68,6 +68,8 @@ export default function NewDashboardPage() {
     setIsSubmitting(true);
     
     try {
+      console.log('Creating dashboard with values:', values);
+      
       // Create a new dashboard
       const { data: dashboard, error } = await dashboardService.createDashboard({
         name: values.name,
@@ -77,10 +79,17 @@ export default function NewDashboardPage() {
         is_published: false,
       }, session.user.id);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Dashboard creation error details:', error);
+        throw error;
+      }
       
       if (!dashboard) {
         throw new Error('Failed to create dashboard');
+      }
+      
+      if (!dashboard?.id || dashboard.id.trim() === '') {
+        throw new Error('Dashboard created but returned an invalid ID');
       }
       
       toast({
@@ -89,6 +98,7 @@ export default function NewDashboardPage() {
       });
       
       // Redirect to the edit page
+      console.log(`Redirecting to dashboard edit page with ID: ${dashboard.id}`);
       router.push(`/admin/dashboards/${dashboard.id}/edit`);
     } catch (error) {
       console.error('Error creating dashboard:', error);

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Responsive, WidthProvider, Layout } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
-import { WidgetPlacement, Widget } from '../types';
+import { WidgetPlacement, Widget, PublishedWidgetPlacement, DraftWidgetPlacement } from '../types';
 import { DefaultWidget, withStandardWidget } from './base-widget';
 
 // Widget renderer component that handles the onRender callback
@@ -41,7 +41,7 @@ function WidgetRenderer({
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
 export interface WidgetGridProps {
-  placements: WidgetPlacement[];
+  placements: Array<PublishedWidgetPlacement | DraftWidgetPlacement>;
   widgets: Record<string, Widget>;
   onWidgetRender?: (widgetId: string) => void;
   onWidgetInteraction?: (widgetId: string, interactionType: string) => void;
@@ -171,8 +171,16 @@ export function WidgetGrid({
     }
   };
 
+  const getWidgetId = (placement: PublishedWidgetPlacement | DraftWidgetPlacement) => {
+    return placement.widget_id;
+  };
+
+  const getKey = (placement: PublishedWidgetPlacement | DraftWidgetPlacement) => {
+    return placement.id;
+  };
+
   return (
-    <div className={`widget-grid-container ${className || ''}`}>
+    <div className={`widget-grid-container ${className || ''}`} data-testid="widget-grid-container">
       {isLoading ? (
         <div className="flex justify-center p-8">
           <div className="animate-pulse flex space-x-4">
@@ -204,13 +212,13 @@ export function WidgetGrid({
           draggableHandle=".widget-drag-handle"
         >
           {placements.map(placement => {
-            const widget = widgets[placement.widget_id];
+            const widget = widgets[getWidgetId(placement)];
             
             if (!widget) return null;
             
             return (
               <div 
-                key={placement.id} 
+                key={getKey(placement)} 
                 className="bg-white rounded-lg shadow overflow-hidden"
               >
                 <div className="widget-drag-handle px-4 py-2 bg-gray-50 cursor-move border-b flex justify-between items-center">
@@ -229,8 +237,8 @@ export function WidgetGrid({
                   <WidgetRenderer
                     widget={widget}
                     placement={placement}
-                    onRender={() => onWidgetRender?.(widget.id)}
-                    onInteraction={(type: string) => onWidgetInteraction?.(widget.id, type)}
+                    onRender={() => onWidgetRender?.(getWidgetId(placement))}
+                    onInteraction={(type: string) => onWidgetInteraction?.(getWidgetId(placement), type)}
                   />
                 </div>
               </div>

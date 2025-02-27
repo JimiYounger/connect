@@ -6,7 +6,13 @@ import React, { useEffect, useState } from 'react';
 import { useWidgets } from '../hooks/use-widgets';
 import { WidgetGrid } from './widget-grid';
 import { widgetService } from '../services/widget-service';
-import { Widget } from '../types';
+import { dashboardService } from '../services/dashboard-service';
+import { 
+  Widget, 
+  WidgetPlacement as _ImportedWidgetPlacement,
+  DraftWidgetPlacement as ImportedDraftWidgetPlacement,
+  PublishedWidgetPlacement as ImportedPublishedWidgetPlacement
+} from '../types';
 import { useAuth } from '@/features/auth/context/auth-context';
 import { Layout } from 'react-grid-layout';
 
@@ -16,29 +22,12 @@ interface DashboardViewProps {
   className?: string;
 }
 
-type PublishedWidgetPlacement = {
-  created_at: string | null;
-  dashboard_version_id: string;
-  height: number;
-  id: string;
-  layout_type: string;
-  position_x: number;
-  position_y: number;
-  widget_id: string;
-  width: number;
+// Update the type to match the new schema
+type PublishedWidgetPlacement = ImportedPublishedWidgetPlacement & {
+  version_id: string; // Add this to match our DB schema
 };
 
-type DraftWidgetPlacement = {
-  created_at: string | null;
-  draft_id: string;
-  height: number;
-  id: string;
-  layout_type: string;
-  position_x: number;
-  position_y: number;
-  widget_id: string;
-  width: number;
-};
+type DraftWidgetPlacement = ImportedDraftWidgetPlacement;
 
 type WidgetPlacement = PublishedWidgetPlacement | DraftWidgetPlacement;
 
@@ -78,15 +67,38 @@ export function DashboardView({ dashboardId, isDraft = false, className }: Dashb
       setPlacementsError(null);
       
       try {
-        const { data, error } = await widgetService.getWidgetPlacementsForDashboard(
-          dashboardId, 
-          isDraft
-        );
-        
-        if (error) throw error;
-        
-        // Just set the data directly, no type assertion needed with any[] type
-        setPlacements(data || []);
+        if (isDraft) {
+          // For draft view, first get the draft then its placements
+          const { data: drafts, error: draftError } = await dashboardService.getDraftsForDashboard(dashboardId);
+          
+          if (draftError) throw draftError;
+          if (!drafts || drafts.length === 0) {
+            throw new Error(`No drafts found for dashboard ${dashboardId}`);
+          }
+          
+          // Use the first draft (or we could look for the "current" draft)
+          const currentDraft = drafts[0];
+          
+          // Now get placements for this draft
+          const { data, error } = await dashboardService.getDraftWidgetPlacements(currentDraft.id);
+          
+          if (error) throw error;
+          setPlacements(data || [] as unknown as WidgetPlacement[]);
+        } else {
+          // For published view, first get the active version
+          const { data: version, error: versionError } = await dashboardService.getActiveDashboardVersion(dashboardId);
+          
+          if (versionError) throw versionError;
+          if (!version) {
+            throw new Error(`No active version found for dashboard ${dashboardId}`);
+          }
+          
+          // Now get placements for this version
+          const { data, error } = await dashboardService.getWidgetPlacementsForVersion(version.id);
+          
+          if (error) throw error;
+          setPlacements(data || [] as unknown as WidgetPlacement[]);
+        }
       } catch (err) {
         console.error('Error fetching dashboard placements:', err);
         setPlacementsError(err as Error);
@@ -122,7 +134,7 @@ export function DashboardView({ dashboardId, isDraft = false, className }: Dashb
     // if you want server-side layout storage:
     /*
     if (userId && dashboardId) {
-      widgetService.saveDashboardLayout(dashboardId, currentLayout, userId);
+      dashboardService.saveLayout(dashboardId, currentLayout, userId, isDraft);
     }
     */
   };
@@ -165,9 +177,9 @@ export function DashboardView({ dashboardId, isDraft = false, className }: Dashb
         onLayoutChange={handleLayoutChange}
         isLoading={isLoading}
         className="py-4"
-        isDraggable={!isDraft}
-        isResizable={!isDraft}
-        saveLayout={true}
+        isDraggable={false} // Set to false for both draft & published views (read-only)
+        isResizable={false} // Set to false for both draft & published views (read-only)
+        saveLayout={false}  // Don't save layout changes from the viewer
         userId={userId}
       />
     </div>
