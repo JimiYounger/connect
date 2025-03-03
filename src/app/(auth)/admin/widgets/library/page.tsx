@@ -122,9 +122,8 @@ export default function AdminWidgetLibraryPage() {
         <TabsContent value="browse" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="md:col-span-2">
-              <Card className="h-[600px]">
-
-                <CardContent className="h-[calc(100%-5rem)]">
+              <Card className="h-[calc(100vh-240px)]">
+                <CardContent className="h-[calc(100%-1rem)] pt-6">
                   <WidgetDndProvider onDragEnd={handleDragEnd}>
                     <WidgetLibrary
                       userId={session.user.id}
@@ -138,7 +137,7 @@ export default function AdminWidgetLibraryPage() {
             </div>
             
             <div>
-              <Card className="h-[600px]">
+              <Card className="h-[calc(100vh-240px)]">
                 <CardHeader className="pb-3">
                   <CardTitle>Widget Details</CardTitle>
                   <CardDescription>

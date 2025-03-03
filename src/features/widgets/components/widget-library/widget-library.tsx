@@ -23,17 +23,17 @@ interface WidgetLibraryProps {
 
 // Size ratio to pixel dimensions mapping (base size for 1:1)
 const SIZE_RATIO_MAP: Record<WidgetSizeRatio, { width: number; height: number }> = {
-  '1:1': { width: 120, height: 120 },     // Small square
-  '2:1': { width: 240, height: 120 },     // Wide rectangle
-  '1:2': { width: 120, height: 240 },     // Tall rectangle
-  '3:2': { width: 360, height: 240 },     // Landscape (3:2 ratio)
-  '2:3': { width: 240, height: 360 },     // Portrait (2:3 ratio)
-  '4:3': { width: 480, height: 360 },     // Standard (4:3 ratio)
-  '3:4': { width: 360, height: 480 },     // Vertical (3:4 ratio)
-  '2:2': { width: 240, height: 240 },     // Medium square
-  '4:4': { width: 480, height: 480 },     // Large square
-  '2:4': { width: 240, height: 480 },     // Tall rectangle (2x4)
-  '4:2': { width: 480, height: 240 },     // Wide rectangle (4x2)
+  '1:1': { width: 86, height: 86 },       // Small square
+  '2:1': { width: 172, height: 86 },      // Wide rectangle
+  '1:2': { width: 86, height: 172 },      // Tall rectangle
+  '3:2': { width: 257, height: 172 },     // Landscape (3:2 ratio)
+  '2:3': { width: 172, height: 257 },     // Portrait (2:3 ratio)
+  '4:3': { width: 343, height: 257 },     // Standard (4:3 ratio)
+  '3:4': { width: 257, height: 343 },     // Vertical (3:4 ratio)
+  '2:2': { width: 172, height: 172 },     // Medium square
+  '4:4': { width: 343, height: 343 },     // Large square
+  '2:4': { width: 172, height: 343 },     // Tall rectangle (2x4)
+  '4:2': { width: 343, height: 172 },     // Wide rectangle (4x2)
 };
 
 // Widget item that can be dragged
@@ -64,7 +64,7 @@ const DraggableWidgetItem: React.FC<{
   
   // Determine the appropriate border radius based on widget shape
   // For circle widgets, use 50% border radius, otherwise use the iOS-style 14px
-  const borderRadius = isCircle ? '50%' : '14px';
+  const borderRadius = isCircle ? '50%' : '50px';
   
   return (
     <motion.div 
@@ -268,7 +268,7 @@ export const WidgetLibrary: React.FC<WidgetLibraryProps> = ({
         </div>
       </div>
       
-      <ScrollArea className="flex-1 px-4">
+      <ScrollArea className="flex-1 px-4 overflow-y-auto">
         {isLoading ? (
           <div className="flex items-center justify-center h-40">
             <div className="animate-pulse flex space-x-2">
@@ -368,9 +368,9 @@ const styles = `
   .ios-widget-grid {
     display: flex;
     flex-wrap: wrap;
-    gap: 1px;
-    padding: 1px 0;
-    justify-content: center;
+    gap: 0px;
+    padding: 0px 0;
+    justify-content: left;
     background-color: transparent;
   }
   

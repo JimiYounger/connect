@@ -7,17 +7,17 @@ import { WidgetRenderer } from '../widget-renderer';
 
 // Size ratio to pixel dimensions mapping (base size for 1:1)
 const SIZE_RATIO_MAP: Record<WidgetSizeRatio, { width: number; height: number }> = {
-  '1:1': { width: 120, height: 120 },     // Small square
-  '2:1': { width: 240, height: 120 },     // Wide rectangle
-  '1:2': { width: 120, height: 240 },     // Tall rectangle
-  '3:2': { width: 360, height: 240 },     // Landscape (3:2 ratio)
-  '2:3': { width: 240, height: 360 },     // Portrait (2:3 ratio)
-  '4:3': { width: 480, height: 360 },     // Standard (4:3 ratio)
-  '3:4': { width: 360, height: 480 },     // Vertical (3:4 ratio)
-  '2:2': { width: 240, height: 240 },     // Medium square
-  '4:4': { width: 480, height: 480 },     // Large square
-  '2:4': { width: 240, height: 480 },     // Tall rectangle (2x4)
-  '4:2': { width: 480, height: 240 },     // Wide rectangle (4x2)
+  '1:1': { width: 86, height: 86 },       // Small square
+  '2:1': { width: 172, height: 86 },      // Wide rectangle
+  '1:2': { width: 86, height: 172 },      // Tall rectangle
+  '3:2': { width: 257, height: 172 },     // Landscape (3:2 ratio)
+  '2:3': { width: 172, height: 257 },     // Portrait (2:3 ratio)
+  '4:3': { width: 343, height: 257 },     // Standard (4:3 ratio)
+  '3:4': { width: 257, height: 343 },     // Vertical (3:4 ratio)
+  '2:2': { width: 172, height: 172 },     // Medium square
+  '4:4': { width: 343, height: 343 },     // Large square
+  '2:4': { width: 172, height: 343 },     // Tall rectangle (2x4)
+  '4:2': { width: 343, height: 172 },     // Wide rectangle (4x2)
 };
 
 interface WidgetDndContextProps {
@@ -81,14 +81,20 @@ export const WidgetDndProvider: React.FC<WidgetDndContextProps> = ({
         <DragOverlay>
           {activeWidget && activeConfiguration && (
             <div className="ios-drag-overlay" style={{
-              overflow: 'hidden'
-            }}>
+              overflow: 'hidden',
+        borderRadius: activeWidget.shape === 'circle' ? '50%' : '50px', // Match the 50px border-radius
+        backgroundColor: 'white', // Set explicit background color
+        width: SIZE_RATIO_MAP[activeWidget.size_ratio as WidgetSizeRatio]?.width || 120,
+        height: SIZE_RATIO_MAP[activeWidget.size_ratio as WidgetSizeRatio]?.height || 120,
+      }}
+      >
               <WidgetRenderer
                 widget={activeWidget}
                 configuration={activeConfiguration}
                 width={SIZE_RATIO_MAP[activeWidget.size_ratio as WidgetSizeRatio]?.width || 120}
                 height={SIZE_RATIO_MAP[activeWidget.size_ratio as WidgetSizeRatio]?.height || 120}
-                borderRadius={activeWidget.shape === 'circle' ? '50%' : '14px'}
+                borderRadius={activeWidget.shape === 'circle' ? '50%' : '50px'}
+                style={{ backgroundColor: 'white' }}
               />
             </div>
           )}
@@ -105,6 +111,8 @@ const dragStyles = `
     opacity: 0.9;
     box-shadow: 0 8px 20px rgba(0,0,0,0.15);
     pointer-events: none;
+    background-color: white;
+    overflow: hidden;
   }
 `;
 
