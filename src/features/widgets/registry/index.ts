@@ -3,7 +3,7 @@
 import { WidgetRegistry } from './widget-registry';
 import type { BaseWidgetProps } from '../types';
 
-// Export the singleton instance
+// Create and export the singleton instance
 export const widgetRegistry = WidgetRegistry.getInstance();
 
 // Export the class for advanced usage
@@ -17,9 +17,7 @@ export function registerWidget<T extends BaseWidgetProps>(
   widgetRegistry.register(type, component);
 }
 
-// Convenience function to get a widget component
-export function getWidgetComponent<T extends BaseWidgetProps>(
-  type: string
-): React.ComponentType<T> {
-  return widgetRegistry.getComponent<T>(type);
-} 
+// Export the function to get a widget component
+export const getWidgetComponent = (type: string) => {
+  return widgetRegistry.getComponent(type);
+}; 

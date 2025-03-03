@@ -23,6 +23,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label as _Label } from '@/components/ui/label';
 import { Slider as _Slider } from '@/components/ui/slider';
 import { WidgetType } from '@/features/widgets/types';
+import { DynamicUrlBuilder } from '@/features/widgets/components/admin/form-fields/dynamic-url-builder';
 
 interface WidgetConfigurationProps {
   type: WidgetType;
@@ -54,8 +55,8 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
     if (type === WidgetType.REDIRECT) {
       setValue('config.redirectUrl', _config.redirectUrl || '');
       setValue('config.description', _config.description || '');
-      setValue('config.settings.openInNewTab', _config.settings?.openInNewTab || false);
-      setValue('config.settings.trackClicks', _config.settings?.trackClicks || false);
+      setValue('config.settings.openInNewTab', true);
+      setValue('config.settings.trackClicks', true);
     } else if (type === WidgetType.DATA_VISUALIZATION) {
       setValue('config.dataSource', _config.dataSource || '');
       setValue('config.chartType', _config.chartType || '');
@@ -78,15 +79,18 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
               name="config.redirectUrl"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Redirect URL</FormLabel>
+                  <FormLabel>Dynamic Redirect URL</FormLabel>
                   <FormControl>
-                    <SafeInput 
-                      placeholder="https://example.com" 
-                      {...field}
+                    <DynamicUrlBuilder
+                      value={field.value || ''}
+                      onChange={(value: string) => {
+                        field.onChange(value);
+                        setValue('config.redirectUrl', value);
+                      }}
                     />
                   </FormControl>
                   <FormDescription>
-                    The URL to redirect to when the widget is clicked
+                    The URL where users will be redirected. You can insert dynamic user fields that will be replaced with each user&apos;s data.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -114,50 +118,10 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
               )}
             />
             
-            <div className="space-y-4 mt-4">
-              <h3 className="text-lg font-medium">Link Settings</h3>
-              
-              <FormField
-                control={control}
-                name="config.settings.openInNewTab"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Open in New Tab</FormLabel>
-                      <FormDescription>
-                        Open link in a new browser tab
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <SafeSwitch
-                        checked={!!field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={control}
-                name="config.settings.trackClicks"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Track Clicks</FormLabel>
-                      <FormDescription>
-                        Track when users click this link
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <SafeSwitch
-                        checked={!!field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+            <div className="mt-4 p-3 bg-gray-50 rounded-md">
+              <p className="text-sm text-muted-foreground">
+                Links will automatically open in a new tab and track clicks for analytics.
+              </p>
             </div>
           </>
         );

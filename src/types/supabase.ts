@@ -745,7 +745,6 @@ export type Database = {
           public: boolean
           shape: string
           size_ratio: string
-          target_url: string | null
           thumbnail_url: string | null
           updated_at: string | null
           widget_type: string
@@ -765,7 +764,6 @@ export type Database = {
           public?: boolean
           shape: string
           size_ratio: string
-          target_url?: string | null
           thumbnail_url?: string | null
           updated_at?: string | null
           widget_type: string
@@ -785,7 +783,6 @@ export type Database = {
           public?: boolean
           shape?: string
           size_ratio?: string
-          target_url?: string | null
           thumbnail_url?: string | null
           updated_at?: string | null
           widget_type?: string
@@ -851,6 +848,14 @@ export type Database = {
           p_end_date: string
         }
         Returns: boolean
+      }
+      set_widget_configuration: {
+        Args: {
+          p_widget_id: string
+          p_config: Json
+          p_created_by?: string
+        }
+        Returns: Json
       }
       sync_user_profile: {
         Args: {
@@ -982,3 +987,28 @@ export type CompositeTypes<
   : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
     ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
+
+export interface UserProfile {
+  id: string;
+  user_id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone?: string;
+  airtable_id?: string;
+  salesforce_id?: string;
+  team?: string;
+  area?: string;
+  region?: string;
+  role?: string;
+  role_type?: string;
+  user_key?: string;
+  created_at?: string;
+  updated_at?: string;
+  avatar_url?: string;
+  is_active?: boolean;
+  is_admin?: boolean;
+  is_verified?: boolean;
+  last_sign_in?: string;
+  preferences?: Record<string, any>;
+}

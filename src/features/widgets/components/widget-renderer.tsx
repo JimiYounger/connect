@@ -26,6 +26,7 @@ interface WidgetRendererProps {
   isLoading?: boolean;
   className?: string;
   style?: React.CSSProperties;
+  borderRadius?: string | number;
 }
 
 // Context for sharing widget state with child components
@@ -53,6 +54,7 @@ export const WidgetRenderer: React.FC<WidgetRendererProps> = ({
   isLoading: initialIsLoading = false,
   className = '',
   style = {},
+  borderRadius = 0,
 }) => {
   const [isLoading, setLoading] = useState(initialIsLoading);
   const [error, setError] = useState<Error | null>(null);
@@ -115,6 +117,8 @@ export const WidgetRenderer: React.FC<WidgetRendererProps> = ({
           position: 'relative',
           width: `${width}px`,
           height: `${height}px`,
+          borderRadius: borderRadius,
+          overflow: 'hidden',
           ...style,
         }}
       >
@@ -129,6 +133,27 @@ export const EnhancedWidgetRenderer = withWidgetBase(WidgetRenderer, {
   trackAnalytics: true,
   responsiveResize: true,
 });
+
+/**
+ * Utility function to process dynamic URLs with user data
+ * This can be imported and used by widget components that need it
+ */
+export const processDynamicUrl = (url: string, userData: any) => {
+  if (!url || !userData) return url;
+  
+  let processedUrl = url;
+  
+  // Define regex to match {{user.field}} patterns
+  const placeholderRegex = /\{\{user\.([a-zA-Z_]+)\}\}/g;
+  
+  // Replace all placeholders with actual user data
+  processedUrl = processedUrl.replace(placeholderRegex, (match, field) => {
+    const value = userData[field];
+    return value ? encodeURIComponent(value) : '';
+  });
+  
+  return processedUrl;
+};
 
 // Simple usage example
 export default WidgetRenderer; 

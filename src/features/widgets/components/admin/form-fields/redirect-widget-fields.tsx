@@ -11,10 +11,10 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
+import { DynamicUrlBuilder } from './dynamic-url-builder';
 
 export function RedirectWidgetFields() {
-  const { control } = useFormContext();
+  const { control, setValue } = useFormContext();
   
   return (
     <div className="space-y-6">
@@ -84,41 +84,29 @@ export function RedirectWidgetFields() {
         name="config.redirectUrl"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Redirect URL</FormLabel>
+            <FormLabel>Dynamic Redirect URL</FormLabel>
             <FormControl>
-              <Input 
-                placeholder="https://example.com/destination" 
-                {...field} 
+              <DynamicUrlBuilder
+                value={field.value || ''}
+                onChange={(value) => {
+                  field.onChange(value);
+                  setValue('config.redirectUrl', value);
+                }}
               />
             </FormControl>
             <FormDescription>
-              The URL where users will be redirected when clicking this widget
+              The URL where users will be redirected. You can insert dynamic user fields that will be replaced with each user&apos;s data.
             </FormDescription>
             <FormMessage />
           </FormItem>
         )}
       />
       
-      <FormField
-        control={control}
-        name="config.settings.openInNewTab"
-        render={({ field }) => (
-          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-            <div className="space-y-0.5">
-              <FormLabel className="text-base">Open in New Tab</FormLabel>
-              <FormDescription>
-                Open the link in a new browser tab when clicked
-              </FormDescription>
-            </div>
-            <FormControl>
-              <Switch
-                checked={field.value}
-                onCheckedChange={field.onChange}
-              />
-            </FormControl>
-          </FormItem>
-        )}
-      />
+      <div className="mt-4 p-3 bg-gray-50 rounded-md">
+        <p className="text-sm text-muted-foreground">
+          Links will automatically open in a new tab and track clicks for analytics.
+        </p>
+      </div>
     </div>
   );
 } 

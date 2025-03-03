@@ -23,13 +23,17 @@ export function ImageUpload({ value, onChange, className }: ImageUploadProps) {
       setIsUploading(true)
       
       // Save the file to our database
+      console.log('Saving file to database:', fileInfo);
       const storedFile = await saveFile(fileInfo)
+      console.log('File saved to database, received ID:', storedFile?.id);
       
       // Pass both the CDN URL and the file ID to the parent component
       if (storedFile) {
+        console.log('Passing file ID to parent component:', storedFile.id);
         onChange(fileInfo.cdnUrl, storedFile.id)
       } else {
         // Fallback in case file saving fails
+        console.log('No stored file returned, passing only URL');
         onChange(fileInfo.cdnUrl)
       }
     } catch (error) {

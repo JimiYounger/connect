@@ -184,8 +184,12 @@ export function BasicInformation({ categories }: BasicInformationProps) {
               <ImageUpload
                 value={field.value}
                 onChange={(url: string, fileId?: string) => {
+                  console.log('ImageUpload onChange called with URL:', url);
+                  console.log('ImageUpload onChange called with fileId:', fileId);
+                  
                   _setValue('thumbnail_url', url);
                   if (fileId) {
+                    console.log('Setting file_id in form:', fileId);
                     _setValue('file_id', fileId);
                   }
                   

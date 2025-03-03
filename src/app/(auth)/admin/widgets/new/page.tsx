@@ -145,6 +145,7 @@ const combinedSchema = z.object({
   ...basicInfoSchema.shape,
   config: z.record(z.any()),
   styles: z.record(z.any()),
+  file_id: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof combinedSchema>;
@@ -197,6 +198,7 @@ export default function NewWidgetPage() {
         padding: '30px',
         customCSS: ''
       },
+      file_id: undefined,
     },
     mode: 'onChange',
   });
@@ -300,6 +302,14 @@ export default function NewWidgetPage() {
     setIsCreating(true);
     
     try {
+      // Log the form data to help with debugging
+      console.log('Creating widget with data:', {
+        name: data.name,
+        shape: data.shape,
+        size_ratio: data.size_ratio,
+        userId: session.user.id,
+      });
+      
       // Create widget
       const { data: widget, error } = await widgetService.createWidget({
         name: data.name,
@@ -311,6 +321,9 @@ export default function NewWidgetPage() {
         display_type: WidgetDisplayType.IFRAME,
         is_public: true,
         is_published: true,
+        shape: data.shape,
+        size_ratio: data.size_ratio,
+        file_id: data.file_id,
       });
       
       if (error) throw error;
@@ -341,6 +354,11 @@ export default function NewWidgetPage() {
       );
       
       if (configError) throw configError;
+      
+      console.log('Form values before submission:', {
+        ...data,
+        file_id: data.file_id // Log the file_id specifically
+      });
       
       toast({
         title: "Widget Created",
@@ -556,7 +574,7 @@ export default function NewWidgetPage() {
                 </CardHeader>
                 <CardContent className="border-t pt-4">
                   <div
-                    className="mx-auto flex flex-col justify-end overflow-hidden"
+                    className="mx-auto flex flex-col overflow-hidden"
                     style={{
                       borderRadius: watch('shape') === WidgetShape.CIRCLE 
                         ? '50%' 
@@ -568,21 +586,37 @@ export default function NewWidgetPage() {
                       backgroundPosition: 'center',
                       width: `${dimensions.width}px`,
                       height: `${dimensions.height}px`,
-                      maxWidth: '100%'
+                      maxWidth: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: watch('shape') === WidgetShape.CIRCLE ? 'center' : 'flex-end',
+                      alignItems: watch('shape') === WidgetShape.CIRCLE ? 'center' : 'flex-start',
+                      textAlign: watch('shape') === WidgetShape.CIRCLE ? 'center' : 'left',
                     }}
                   >
                     {!watch('thumbnail_url') && (
-                      <div className="flex flex-col items-start w-full pb-4">
+                      <div 
+                        className={`flex flex-col w-full ${watch('shape') === WidgetShape.CIRCLE ? 'items-center pb-0' : 'items-start pb-4'}`}
+                        style={{
+                          margin: watch('shape') === WidgetShape.CIRCLE ? '0' : undefined,
+                        }}
+                      >
                         <h3 
                           className="font-semibold text-2xl md:text-3xl" 
-                          style={{ color: watch('styles.titleColor') || '#000000' }}
+                          style={{ 
+                            color: watch('styles.titleColor') || '#000000',
+                            margin: watch('shape') === WidgetShape.CIRCLE ? '0 0 4px 0' : undefined,
+                          }}
                         >
                           {watch('config.title') || watch('name') || 'Widget Title'}
                         </h3>
                         {watch('config.subtitle') && (
                           <p 
-                            className="text-lg mt-1" 
-                            style={{ color: watch('styles.textColor') || '#333333' }}
+                            className="text-lg" 
+                            style={{ 
+                              color: watch('styles.textColor') || '#333333',
+                              margin: watch('shape') === WidgetShape.CIRCLE ? '0' : '4px 0 0 0',
+                            }}
                           >
                             {watch('config.subtitle')}
                           </p>

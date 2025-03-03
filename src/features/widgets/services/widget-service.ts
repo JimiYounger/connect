@@ -12,7 +12,8 @@ import type {
 
 import { 
   WidgetType,
-  WidgetDisplayType
+  WidgetDisplayType,
+  WidgetShape as _WidgetShape
 } from '../types';
 
 // Define interface for widget interactions since it's missing from Database type
@@ -80,7 +81,8 @@ export class WidgetService {
       
       if (error) throw error;
       
-      return { data, error: null };
+      // Cast the data to Widget[] to fix type error
+      return { data: data as unknown as Widget[], error: null };
     } catch (error) {
       console.error('Error fetching widgets:', error);
       return { data: null, error: error as Error };
@@ -105,7 +107,8 @@ export class WidgetService {
         
       if (error) throw error;
       
-      return { data, error: null };
+      // Cast the data to Widget to fix type error
+      return { data: data as unknown as Widget, error: null };
     } catch (error) {
       console.error('Error fetching widget:', error);
       return { data: null, error: error as Error };
@@ -242,20 +245,51 @@ export class WidgetService {
     try {
       const supabase = this.getClient();
       
-      // Create new configuration entry
-      const { data, error } = await supabase
+      // Check if configuration already exists
+      const { data: existingConfig, error: checkError } = await supabase
         .from('widget_configurations')
-        .insert({
-          widget_id: widgetId,
-          created_by: userId,
-          ...configuration
-        })
-        .select()
+        .select('id')
+        .eq('widget_id', widgetId)
         .single();
         
-      if (error) throw error;
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
       
-      return { data, error: null };
+      const now = new Date().toISOString();
+      
+      if (existingConfig) {
+        // Update existing configuration
+        const { data, error } = await supabase
+          .from('widget_configurations')
+          .update({
+            ...configuration,
+            updated_at: now,
+            updated_by: userId
+          })
+          .eq('id', existingConfig.id)
+          .select()
+          .single();
+          
+        if (error) throw error;
+        return { data, error: null };
+      } else {
+        // Create new configuration
+        const { data, error } = await supabase
+          .from('widget_configurations')
+          .insert({
+            widget_id: widgetId,
+            created_by: userId,
+            created_at: now,
+            updated_at: now,
+            ...configuration
+          })
+          .select()
+          .single();
+          
+        if (error) throw error;
+        return { data, error: null };
+      }
     } catch (error) {
       console.error('Error saving widget configuration:', error);
       return { data: null, error: error as Error };
@@ -354,7 +388,7 @@ export class WidgetService {
       }));
       
       return { 
-        data: processedData, 
+        data: processedData as unknown as Widget[], 
         error: null,
         pagination: {
           total: count || 0,
@@ -404,6 +438,8 @@ export class WidgetService {
       file_id?: string;
       is_public?: boolean;
       is_published?: boolean;
+      shape?: string;
+      size_ratio?: string;
     }
   ): Promise<{ data: Widget | null; error: Error | null }> {
     try {
@@ -411,24 +447,30 @@ export class WidgetService {
       
       const now = new Date().toISOString();
       
-      // Ensure we're using fields that exist in the Widget type definition
+      // Log the incoming data to verify file_id is present
+      console.log('Creating widget with data:', widgetData);
+      console.log('File ID received:', widgetData.file_id);
+      
       const widgetInsert = {
         widget_type: widgetData.widget_type,
         name: widgetData.name,
         description: widgetData.description || null,
         category_id: widgetData.category_id || null,
         created_at: now,
+        created_by: widgetData.created_by,
         display_type: widgetData.display_type || WidgetDisplayType.IFRAME,
         component_path: null,
-        shape: 'square', // default value
-        size_ratio: '1:1', // default value
-        public: true, // Always set to true
+        shape: widgetData.shape || 'square',
+        size_ratio: widgetData.size_ratio || '1:1',
+        public: true,
         is_active: true,
-        is_published: true, // Set to published by default
+        is_published: true,
         thumbnail_url: widgetData.thumbnail_url || null,
         file_id: widgetData.file_id || null,
-        // Don't include created_by as it doesn't seem to exist in the Widget type
       };
+      
+      // Log the data being inserted to help with debugging
+      console.log('Inserting widget with data:', widgetInsert);
       
       const { data, error } = await supabase
         .from('widgets')
@@ -438,7 +480,10 @@ export class WidgetService {
         
       if (error) throw error;
       
-      return { data, error: null };
+      // Log the result to verify file_id was saved
+      console.log('Widget created successfully:', data);
+      
+      return { data: data as unknown as Widget, error: null };
     } catch (error) {
       console.error('Error creating widget:', error);
       return { data: null, error: error as Error };
@@ -535,28 +580,31 @@ export class WidgetService {
     try {
       const supabase = this.getClient();
       
-      // Ensure widgets are always public and published
-      const updatedData = {
-        ...widgetData,
+      // Rename size_ratio to _size_ratio to indicate it's intentionally unused
+      const { shape, size_ratio: _size_ratio, ...updatedData } = widgetData;
+      
+      const finalData = {
+        ...updatedData,
+        // Convert shape enum to string if it exists
+        ...(shape && { shape: shape.toString() }),
         public: true,
         is_published: true
       };
       
-      // Remove any is_public property if it exists
-      if ('is_public' in updatedData) {
-        delete updatedData.is_public;
+      if ('is_public' in finalData) {
+        delete finalData.is_public;
       }
       
       const { data, error } = await supabase
         .from('widgets')
-        .update(updatedData)
+        .update(finalData)
         .eq('id', widgetId)
         .select()
         .single();
         
       if (error) throw error;
       
-      return { data, error: null };
+      return { data: data as unknown as Widget, error: null };
     } catch (error) {
       console.error('Error updating widget:', error);
       return { data: null, error: error as Error };
@@ -813,6 +861,76 @@ export class WidgetService {
       console.error('Error creating widget configuration:', error);
       return { data: null, error: error as Error };
     }
+  }
+
+  /**
+   * Create configuration for a redirect widget
+   */
+  async createRedirectWidgetConfig(
+    widgetId: string,
+    userId: string,
+    data: {
+      redirectUrl: string;
+      title?: string;
+      subtitle?: string;
+      styles?: {
+        backgroundColor?: string;
+        titleColor?: string;
+        textColor?: string;
+        borderRadius?: string;
+        padding?: string;
+      }
+    }
+  ): Promise<{ data: WidgetConfiguration | null; error: Error | null }> {
+    return this.saveWidgetConfiguration(
+      widgetId,
+      {
+        config: {
+          redirectUrl: data.redirectUrl,
+          title: data.title || '',
+          subtitle: data.subtitle || '',
+          styles: {
+            backgroundColor: data.styles?.backgroundColor || '#ffffff',
+            titleColor: data.styles?.titleColor || '#000000',
+            textColor: data.styles?.textColor || '#000000',
+            borderRadius: data.styles?.borderRadius || '8px',
+            padding: data.styles?.padding || '16px'
+          }
+        }
+      },
+      userId
+    );
+  }
+
+  /**
+   * Create configuration for an iframe widget
+   */
+  async createIframeWidgetConfig(
+    widgetId: string,
+    userId: string,
+    data: {
+      iframeUrl: string;
+      height?: string;
+      styles?: {
+        borderRadius?: string;
+        padding?: string;
+      }
+    }
+  ): Promise<{ data: WidgetConfiguration | null; error: Error | null }> {
+    return this.saveWidgetConfiguration(
+      widgetId,
+      {
+        config: {
+          iframeUrl: data.iframeUrl,
+          height: data.height || '400px',
+          styles: {
+            borderRadius: data.styles?.borderRadius || '8px',
+            padding: data.styles?.padding || '16px'
+          }
+        }
+      },
+      userId
+    );
   }
 }
 

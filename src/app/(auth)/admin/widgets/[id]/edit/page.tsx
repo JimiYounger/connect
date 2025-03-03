@@ -112,7 +112,7 @@ interface WidgetStyles {
 }
 
 // Add this utility function at the top of your file
-const isValidHexColor = (color: string) => {
+const _isValidHexColor = (color: string) => {
   return /^#([0-9A-F]{3}){1,2}$/i.test(color);
 };
 
@@ -651,38 +651,49 @@ export default function EditWidgetPage() {
                 <CardContent className="border-t pt-4">
                   <div className="relative">
                     <div
-                      className="mx-auto flex flex-col justify-end overflow-hidden"
+                      className="mx-auto flex flex-col overflow-hidden"
                       style={{
-                        position: 'relative',
-                        borderRadius: watch('shape') === WidgetShape.CIRCLE 
+                        borderRadius: widgetShape === WidgetShape.CIRCLE 
                           ? '50%' 
                           : '50px',
                         padding: '30px',
-                        backgroundColor: (() => {
-                          if (watch('thumbnail_url')) return 'transparent';
-                          const bgColor = watch('styles.backgroundColor');
-                          return bgColor && isValidHexColor(bgColor) ? bgColor : '#ffffff';
-                        })(),
+                        backgroundColor: watch('thumbnail_url') ? 'transparent' : (watch('styles.backgroundColor') || '#ffffff'),
                         backgroundImage: watch('thumbnail_url') ? `url(${watch('thumbnail_url')})` : 'none',
                         backgroundSize: 'cover',
                         backgroundPosition: 'center',
                         width: `${dimensions.width}px`,
                         height: `${dimensions.height}px`,
-                        maxWidth: '100%'
+                        maxWidth: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: widgetShape === WidgetShape.CIRCLE ? 'center' : 'flex-end',
+                        alignItems: widgetShape === WidgetShape.CIRCLE ? 'center' : 'flex-start',
+                        textAlign: widgetShape === WidgetShape.CIRCLE ? 'center' : 'left',
                       }}
                     >
                       {!watch('thumbnail_url') && (
-                        <div className="flex flex-col items-start w-full pb-4">
+                        <div 
+                          className={`flex flex-col w-full ${widgetShape === WidgetShape.CIRCLE ? 'items-center pb-0' : 'items-start pb-4'}`}
+                          style={{
+                            margin: widgetShape === WidgetShape.CIRCLE ? '0' : undefined,
+                          }}
+                        >
                           <h3 
                             className="font-semibold text-2xl md:text-3xl" 
-                            style={{ color: watch('styles.titleColor') || '#000000' }}
+                            style={{ 
+                              color: watch('styles.titleColor') || '#000000',
+                              margin: widgetShape === WidgetShape.CIRCLE ? '0 0 4px 0' : undefined,
+                            }}
                           >
                             {watch('config.title') || watch('name') || 'Widget Title'}
                           </h3>
                           {(watch('config.subtitle') || formValues.config?.subtitle) && (
                             <p 
-                              className="text-lg mt-1" 
-                              style={{ color: watch('styles.textColor') || '#333333' }}
+                              className="text-lg" 
+                              style={{ 
+                                color: watch('styles.textColor') || '#333333',
+                                margin: widgetShape === WidgetShape.CIRCLE ? '0' : '4px 0 0 0',
+                              }}
                             >
                               {watch('config.subtitle') || formValues.config?.subtitle || 'Subtitle'}
                             </p>
