@@ -13,8 +13,6 @@ export const RedirectWidget: React.FC<RedirectWidgetProps> = ({
   widget,
   configuration,
   onInteraction,
-  _width,
-  _height,
 }) => {
   const { session } = useAuth();
   const { profile } = useProfile(session);

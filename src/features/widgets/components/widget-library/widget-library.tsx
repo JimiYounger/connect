@@ -21,26 +21,48 @@ interface WidgetLibraryProps {
   className?: string;
 }
 
-// Size ratio to pixel dimensions mapping (base size for 1:1)
+// Constants for the grid system
+const GRID_COLUMNS = 4;           // Number of columns in the grid
+const GRID_BASE_UNIT = 74;        // Base unit size in pixels
+const GRID_GAP = 10;              // Gap between widgets
+
+// Calculate dimensions based on grid units
+const getWidgetDimensions = (widthUnits: number, heightUnits: number) => {
+  // Width calculation: (base units × width) + (gaps × (width-1))
+  const width = (GRID_BASE_UNIT * widthUnits) + (GRID_GAP * (widthUnits - 1));
+  
+  // Height calculation: (base units × height) + (gaps × (height-1))
+  const height = (GRID_BASE_UNIT * heightUnits) + (GRID_GAP * (heightUnits - 1));
+  
+  return { width, height };
+};
+
+// Updated SIZE_RATIO_MAP with precise iOS-style dimensions
 const SIZE_RATIO_MAP: Record<WidgetSizeRatio, { width: number; height: number }> = {
-  '1:1': { width: 86, height: 86 },       // Small square
-  '2:1': { width: 172, height: 86 },      // Wide rectangle
-  '1:2': { width: 86, height: 172 },      // Tall rectangle
-  '3:2': { width: 257, height: 172 },     // Landscape (3:2 ratio)
-  '2:3': { width: 172, height: 257 },     // Portrait (2:3 ratio)
-  '4:3': { width: 343, height: 257 },     // Standard (4:3 ratio)
-  '3:4': { width: 257, height: 343 },     // Vertical (3:4 ratio)
-  '2:2': { width: 172, height: 172 },     // Medium square
-  '4:4': { width: 343, height: 343 },     // Large square
-  '2:4': { width: 172, height: 343 },     // Tall rectangle (2x4)
-  '4:2': { width: 343, height: 172 },     // Wide rectangle (4x2)
+  // Square widgets
+  '1:1': getWidgetDimensions(1, 1),     // Small (1×1)
+  '2:2': getWidgetDimensions(2, 2),     // Medium (2×2)
+  '4:4': getWidgetDimensions(4, 4),     // Large (4×4)
+  
+  // Rectangular widgets
+  '2:1': getWidgetDimensions(2, 1),     // Wide (2×1)
+  '1:2': getWidgetDimensions(1, 2),     // Tall (1×2)
+  '4:2': getWidgetDimensions(4, 2),     // Wide rectangle (4×2)
+  '2:4': getWidgetDimensions(2, 4),     // Tall rectangle (2×4)
+  
+  // Other common iOS widget sizes
+  '3:2': getWidgetDimensions(3, 2),
+  '2:3': getWidgetDimensions(2, 3),
+  '4:3': getWidgetDimensions(4, 3),
+  '3:4': getWidgetDimensions(3, 4),
 };
 
 // Widget item that can be dragged
 const DraggableWidgetItem: React.FC<{
   widget: Widget;
   onSelect?: (widget: Widget) => void;
-}> = ({ widget, onSelect }) => {
+  className?: string;
+}> = ({ widget, onSelect, className }) => {
   const { configuration } = useWidgetConfiguration({
     widgetId: widget.id,
     type: widget.widget_type,
@@ -63,17 +85,18 @@ const DraggableWidgetItem: React.FC<{
   const isCircle = widget.shape === 'circle';
   
   // Determine the appropriate border radius based on widget shape
-  // For circle widgets, use 50% border radius, otherwise use the iOS-style 14px
   const borderRadius = isCircle ? '50%' : '50px';
+  
+  // Get the grid span class based on the size ratio
+  const sizeClass = `widget-size-${widget.size_ratio?.replace(':', '-')}`;
   
   return (
     <motion.div 
-      className="widget-container"
+      className={cn("widget-container", sizeClass, className)}
       style={{
         width: `${dimensions.width}px`,
         height: `${dimensions.height}px`,
         overflow: 'hidden',
-        margin: '8px',
         boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
         borderRadius: borderRadius,
         position: 'relative',
@@ -359,25 +382,40 @@ export const WidgetLibrary: React.FC<WidgetLibraryProps> = ({
   );
 };
 
-// Replace the old CSS with iOS-style widget grid and fix border-radius issues
+// Replace the old CSS with iOS-style widget grid using Grid layout
 const styles = `
   .widget-library {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
   
   .ios-widget-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0px;
-    padding: 0px 0;
-    justify-content: left;
+    display: grid;
+    grid-template-columns: repeat(${GRID_COLUMNS}, ${GRID_BASE_UNIT}px);
+    grid-auto-rows: ${GRID_BASE_UNIT}px;
+    gap: ${GRID_GAP}px;
+    padding: 0;
+    justify-content: center;  /* This centers the grid horizontally */
     background-color: transparent;
   }
   
+  /* Widget size classes - these control grid placement */
   .widget-container {
     position: relative;
     background-color: transparent;
   }
+  
+  /* Size-specific grid spans */
+  .widget-size-1-1 { grid-column: span 1; grid-row: span 1; }
+  .widget-size-2-1 { grid-column: span 2; grid-row: span 1; }
+  .widget-size-1-2 { grid-column: span 1; grid-row: span 2; }
+  .widget-size-2-2 { grid-column: span 2; grid-row: span 2; }
+  .widget-size-3-2 { grid-column: span 3; grid-row: span 2; }
+  .widget-size-2-3 { grid-column: span 2; grid-row: span 3; }
+  .widget-size-4-2 { grid-column: span 4; grid-row: span 2; }
+  .widget-size-2-4 { grid-column: span 2; grid-row: span 4; }
+  .widget-size-4-3 { grid-column: span 4; grid-row: span 3; }
+  .widget-size-3-4 { grid-column: span 3; grid-row: span 4; }
+  .widget-size-4-4 { grid-column: span 4; grid-row: span 4; }
   
   .widget-card {
     position: relative;
@@ -421,4 +459,4 @@ if (typeof document !== 'undefined') {
   const styleElement = document.createElement('style');
   styleElement.textContent = styles;
   document.head.appendChild(styleElement);
-} 
+}
