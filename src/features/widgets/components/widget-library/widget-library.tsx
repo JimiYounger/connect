@@ -1,18 +1,18 @@
 // my-app/src/features/widgets/components/widget-library/widget-library.tsx
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useWidgets } from '../../hooks/use-widgets';
 import { useWidgetConfiguration } from '../../hooks/use-widget-configuration';
 import { WidgetRenderer } from '../widget-renderer';
 import { Widget, WidgetCategory, WidgetSizeRatio, WidgetConfigData } from '../../types';
 import { useDraggable } from '@dnd-kit/core';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Pagination } from '@/components/ui/pagination';
-import { Search } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PaginationContent, PaginationItem, PaginationLink, PaginationPrevious, PaginationNext } from '@/components/ui/pagination';
 import { motion } from 'framer-motion';
+import '@/features/widgets/styles/widget-library.css';
 
 interface WidgetLibraryProps {
   userId: string;
@@ -22,7 +22,7 @@ interface WidgetLibraryProps {
 }
 
 // Constants for the grid system
-const GRID_COLUMNS = 4;           // Number of columns in the grid
+const _GRID_COLUMNS = 4;           // Number of columns in the grid
 const GRID_BASE_UNIT = 74;        // Base unit size in pixels
 const GRID_GAP = 10;              // Gap between widgets
 
@@ -136,72 +136,58 @@ const DraggableWidgetItem: React.FC<{
 export const WidgetLibrary: React.FC<WidgetLibraryProps> = ({
   userId,
   onWidgetSelect,
-  categories = [],
+  categories: propCategories = [],
   className,
 }) => {
   // State for search and pagination
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedRatio, setSelectedRatio] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
   
   // Fetch widgets
-  const { widgets, isLoading, error, refetch: _refetch } = useWidgets({
+  const { widgets, isLoading, error } = useWidgets({
     userId,
     isPublished: true,
   });
   
+  // Use provided categories or create a memoized empty array
+  const categories = useMemo(() => propCategories || [], [propCategories]);
+  
   // Collect available size ratios from current widgets
   const availableRatios = useMemo(() => {
     const ratioSet = new Set<string>();
-    widgets.forEach(widget => {
+    widgets?.forEach(widget => {
       if (widget.size_ratio) {
         ratioSet.add(widget.size_ratio as string);
       }
     });
-    return Array.from(ratioSet).sort((a, b) => {
-      // Sort by area (largest first)
-      const dimensionsA = SIZE_RATIO_MAP[a as WidgetSizeRatio] || SIZE_RATIO_MAP['1:1'];
-      const dimensionsB = SIZE_RATIO_MAP[b as WidgetSizeRatio] || SIZE_RATIO_MAP['1:1'];
-      const areaA = dimensionsA.width * dimensionsA.height;
-      const areaB = dimensionsB.width * dimensionsB.height;
-      return areaB - areaA;
-    });
+    return Array.from(ratioSet).sort();
   }, [widgets]);
   
-  // Filter and sort widgets based on search query, selected category, and size
+  // Filter widgets based on search and category
   const filteredWidgets = useMemo(() => {
-    // First filter the widgets
-    const filtered = widgets.filter(widget => {
+    if (!widgets) return [];
+    
+    return widgets.filter(widget => {
+      // Filter by search query
       const matchesSearch = 
         searchQuery === '' || 
         widget.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (widget.description && widget.description.toLowerCase().includes(searchQuery.toLowerCase()));
       
+      // Filter by category
       const matchesCategory = 
         selectedCategory === 'all' || 
         widget.category_id === selectedCategory;
       
-      const matchesRatio =
-        selectedRatio === 'all' ||
+      // Filter by size ratio
+      const matchesRatio = 
+        selectedRatio === 'all' || 
         widget.size_ratio === selectedRatio;
       
       return matchesSearch && matchesCategory && matchesRatio;
-    });
-    
-    // Then sort them by size (largest to smallest)
-    return filtered.sort((a, b) => {
-      // Get dimensions for each widget
-      const dimensionsA = SIZE_RATIO_MAP[a.size_ratio as WidgetSizeRatio] || SIZE_RATIO_MAP['1:1'];
-      const dimensionsB = SIZE_RATIO_MAP[b.size_ratio as WidgetSizeRatio] || SIZE_RATIO_MAP['1:1'];
-      
-      // Calculate total area
-      const areaA = dimensionsA.width * dimensionsA.height;
-      const areaB = dimensionsB.width * dimensionsB.height;
-      
-      // Sort largest to smallest
-      return areaB - areaA;
     });
   }, [widgets, searchQuery, selectedCategory, selectedRatio]);
   
@@ -221,7 +207,7 @@ export const WidgetLibrary: React.FC<WidgetLibraryProps> = ({
     const grouped: Record<string, Widget[]> = {};
     
     // Initialize with empty arrays for all categories
-    categories.forEach(category => {
+    categories.forEach((category: WidgetCategory) => {
       grouped[category.id] = [];
     });
     
@@ -242,6 +228,19 @@ export const WidgetLibrary: React.FC<WidgetLibraryProps> = ({
   
   // Calculate total pages
   const totalPages = Math.ceil(filteredWidgets.length / itemsPerPage);
+  
+  // Add a ref to access the scroll container
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Handle wheel events to enable horizontal scrolling with the mouse wheel
+  const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    
+    if (scrollContainerRef.current) {
+      // Scroll horizontally by the vertical scroll amount (with some multiplier for better feel)
+      scrollContainerRef.current.scrollLeft += event.deltaY * 0.5;
+    }
+  };
   
   return (
     <div className={cn('widget-library flex flex-col h-full font-sans', className)}>
@@ -267,7 +266,7 @@ export const WidgetLibrary: React.FC<WidgetLibraryProps> = ({
                 className="ios-select bg-[#F2F2F7] rounded-full px-3 py-2 text-sm border-0 focus:ring-1 focus:ring-blue-500"
               >
                 <option value="all">All Categories</option>
-                {categories.map((category) => (
+                {categories.map((category: WidgetCategory) => (
                   <option key={category.id} value={category.id}>
                     {category.name}
                   </option>
@@ -291,60 +290,66 @@ export const WidgetLibrary: React.FC<WidgetLibraryProps> = ({
         </div>
       </div>
       
-      <ScrollArea className="flex-1 px-4 overflow-y-auto">
-        {isLoading ? (
-          <div className="flex items-center justify-center h-40">
-            <div className="animate-pulse flex space-x-2">
-              <div className="h-2 w-2 bg-gray-300 rounded-full"></div>
-              <div className="h-2 w-2 bg-gray-300 rounded-full"></div>
-              <div className="h-2 w-2 bg-gray-300 rounded-full"></div>
+      <div 
+        className="flex-1 px-4 overflow-hidden relative" 
+        onWheel={handleWheel}
+        ref={scrollContainerRef}
+      >
+        <div className="overflow-x-auto overflow-y-hidden h-full" style={{ width: "100%" }}>
+          {isLoading ? (
+            <div className="flex items-center justify-center h-40">
+              <div className="animate-pulse flex space-x-2">
+                <div className="h-2 w-2 bg-gray-300 rounded-full"></div>
+                <div className="h-2 w-2 bg-gray-300 rounded-full"></div>
+                <div className="h-2 w-2 bg-gray-300 rounded-full"></div>
+              </div>
             </div>
-          </div>
-        ) : error ? (
-          <div className="text-red-500 p-4">
-            Error loading widgets: {error.message}
-          </div>
-        ) : filteredWidgets.length === 0 ? (
-          <div className="text-gray-500 p-4 text-center">
-            No widgets found. Try adjusting your search.
-          </div>
-        ) : selectedCategory === 'all' ? (
-          // iOS-style grid layout for all widgets
-          <div className="ios-widget-grid">
-            {paginatedWidgets.map((widget) => (
-              <DraggableWidgetItem
-                key={widget.id}
-                widget={widget}
-                onSelect={onWidgetSelect}
-              />
-            ))}
-          </div>
-        ) : (
-          // Category-based layout
-          <div className="space-y-8">
-            {Object.entries(widgetsByCategory).map(([categoryId, categoryWidgets]) => {
-              if (categoryWidgets.length === 0) return null;
-              
-              const categoryName = categories.find(c => c.id === categoryId)?.name || 'Uncategorized';
-              
-              return (
-                <div key={categoryId} className="widget-category">
-                  <h3 className="text-lg font-medium mb-4">{categoryName}</h3>
-                  <div className="ios-widget-grid">
-                    {categoryWidgets.map((widget) => (
-                      <DraggableWidgetItem
-                        key={widget.id}
-                        widget={widget}
-                        onSelect={onWidgetSelect}
-                      />
-                    ))}
+          ) : error ? (
+            <div className="text-red-500 p-4">
+              Error loading widgets: {error.message}
+            </div>
+          ) : filteredWidgets.length === 0 ? (
+            <div className="text-gray-500 p-4 text-center">
+              No widgets found. Try adjusting your search.
+            </div>
+          ) : selectedCategory === 'all' ? (
+            // iOS-style grid layout for all widgets
+            <div className="ios-widget-grid">
+              {paginatedWidgets.map((widget) => (
+                <DraggableWidgetItem
+                  key={widget.id}
+                  widget={widget}
+                  onSelect={onWidgetSelect}
+                />
+              ))}
+            </div>
+          ) : (
+            // Category-based layout
+            <div className="space-y-8 w-max">
+              {Object.entries(widgetsByCategory).map(([categoryId, categoryWidgets]) => {
+                if (categoryWidgets.length === 0) return null;
+                
+                const categoryName = categories.find((c: WidgetCategory) => c.id === categoryId)?.name || 'Uncategorized';
+                
+                return (
+                  <div key={categoryId} className="widget-category">
+                    <h3 className="text-lg font-medium mb-4">{categoryName}</h3>
+                    <div className="ios-widget-grid">
+                      {categoryWidgets.map((widget) => (
+                        <DraggableWidgetItem
+                          key={widget.id}
+                          widget={widget}
+                          onSelect={onWidgetSelect}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </ScrollArea>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
       
       {totalPages > 1 && (
         <div className="widget-library-footer p-4 border-t flex justify-center">
@@ -354,7 +359,9 @@ export const WidgetLibrary: React.FC<WidgetLibraryProps> = ({
                 <PaginationPrevious
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                />
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </PaginationPrevious>
               </PaginationItem>
               
               {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
@@ -372,7 +379,9 @@ export const WidgetLibrary: React.FC<WidgetLibraryProps> = ({
                 <PaginationNext
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                />
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </PaginationNext>
               </PaginationItem>
             </PaginationContent>
           </Pagination>
@@ -381,82 +390,3 @@ export const WidgetLibrary: React.FC<WidgetLibraryProps> = ({
     </div>
   );
 };
-
-// Replace the old CSS with iOS-style widget grid using Grid layout
-const styles = `
-  .widget-library {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  }
-  
-  .ios-widget-grid {
-    display: grid;
-    grid-template-columns: repeat(${GRID_COLUMNS}, ${GRID_BASE_UNIT}px);
-    grid-auto-rows: ${GRID_BASE_UNIT}px;
-    gap: ${GRID_GAP}px;
-    padding: 0;
-    justify-content: center;  /* This centers the grid horizontally */
-    background-color: transparent;
-  }
-  
-  /* Widget size classes - these control grid placement */
-  .widget-container {
-    position: relative;
-    background-color: transparent;
-  }
-  
-  /* Size-specific grid spans */
-  .widget-size-1-1 { grid-column: span 1; grid-row: span 1; }
-  .widget-size-2-1 { grid-column: span 2; grid-row: span 1; }
-  .widget-size-1-2 { grid-column: span 1; grid-row: span 2; }
-  .widget-size-2-2 { grid-column: span 2; grid-row: span 2; }
-  .widget-size-3-2 { grid-column: span 3; grid-row: span 2; }
-  .widget-size-2-3 { grid-column: span 2; grid-row: span 3; }
-  .widget-size-4-2 { grid-column: span 4; grid-row: span 2; }
-  .widget-size-2-4 { grid-column: span 2; grid-row: span 4; }
-  .widget-size-4-3 { grid-column: span 4; grid-row: span 3; }
-  .widget-size-3-4 { grid-column: span 3; grid-row: span 4; }
-  .widget-size-4-4 { grid-column: span 4; grid-row: span 4; }
-  
-  .widget-card {
-    position: relative;
-    background-color: transparent !important; 
-  }
-  
-  .widget-renderer {
-    background-color: transparent !important;
-  }
-  
-  /* Ensure all content inside widgets honors the border radius */
-  .widget-renderer > div {
-    border-radius: inherit;
-    overflow: hidden;
-  }
-  
-  .ios-drag-overlay {
-    transform: scale(1.05);
-    opacity: 0.9;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-    pointer-events: none;
-    background-color: transparent !important;
-  }
-  
-  .ios-select {
-    appearance: none;
-    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-    background-repeat: no-repeat;
-    background-position: right 8px center;
-    background-size: 16px;
-    padding-right: 28px;
-  }
-  
-  .search-input-wrapper:focus-within {
-    box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.3);
-  }
-`;
-
-// Add the styles to the document
-if (typeof document !== 'undefined') {
-  const styleElement = document.createElement('style');
-  styleElement.textContent = styles;
-  document.head.appendChild(styleElement);
-}

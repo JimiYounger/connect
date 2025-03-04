@@ -1,6 +1,6 @@
 // my-app/src/features/widgets/components/widget-library/widget-dnd-context.tsx
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 import { Widget, WidgetConfigData, WidgetSizeRatio } from '../../types';
 import { WidgetRenderer } from '../widget-renderer';
@@ -37,6 +37,42 @@ const WidgetDndContext = createContext<WidgetDndContextValue>({
 
 export const useWidgetDnd = () => useContext(WidgetDndContext);
 
+const DND_STYLES = `
+  .widget-library {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  
+  .ios-widget-grid {
+    display: grid;
+    grid-template-rows: repeat(4, 74px);
+    grid-auto-flow: column;
+    grid-auto-columns: 74px;
+    gap: 10px;
+    padding: 0;
+    justify-content: start;
+    background-color: transparent;
+    width: max-content;
+  }
+  
+  .widget-container {
+    position: relative;
+    background-color: transparent;
+  }
+  
+  /* Size classes - Updated for horizontal flow (rows and columns swapped) */
+  .widget-size-1-1 { grid-row: span 1; grid-column: span 1; }
+  .widget-size-2-1 { grid-row: span 1; grid-column: span 2; }
+  .widget-size-1-2 { grid-row: span 2; grid-column: span 1; }
+  .widget-size-2-2 { grid-row: span 2; grid-column: span 2; }
+  .widget-size-3-2 { grid-row: span 2; grid-column: span 3; }
+  .widget-size-2-3 { grid-row: span 3; grid-column: span 2; }
+  .widget-size-4-2 { grid-row: span 2; grid-column: span 4; }
+  .widget-size-2-4 { grid-row: span 4; grid-column: span 2; }
+  .widget-size-4-3 { grid-row: span 3; grid-column: span 4; }
+  .widget-size-3-4 { grid-row: span 4; grid-column: span 3; }
+  .widget-size-4-4 { grid-row: span 4; grid-column: span 4; }
+`;
+
 export const WidgetDndProvider: React.FC<WidgetDndContextProps> = ({
   children,
   onDragEnd,
@@ -69,6 +105,24 @@ export const WidgetDndProvider: React.FC<WidgetDndContextProps> = ({
     setActiveConfiguration(null);
   };
   
+  // Add useEffect to inject styles
+  useEffect(() => {
+    const styleId = 'widget-dnd-styles';
+    if (!document.getElementById(styleId)) {
+      const styleElement = document.createElement('style');
+      styleElement.id = styleId;
+      styleElement.textContent = DND_STYLES;
+      document.head.appendChild(styleElement);
+    }
+
+    return () => {
+      const existingStyle = document.getElementById(styleId);
+      if (existingStyle) {
+        existingStyle.remove();
+      }
+    };
+  }, []);
+  
   return (
     <WidgetDndContext.Provider value={{ activeWidget, activeConfiguration }}>
       <DndContext
@@ -82,12 +136,12 @@ export const WidgetDndProvider: React.FC<WidgetDndContextProps> = ({
           {activeWidget && activeConfiguration && (
             <div className="ios-drag-overlay" style={{
               overflow: 'hidden',
-        borderRadius: activeWidget.shape === 'circle' ? '50%' : '50px', // Match the 50px border-radius
-        backgroundColor: 'white', // Set explicit background color
-        width: SIZE_RATIO_MAP[activeWidget.size_ratio as WidgetSizeRatio]?.width || 120,
-        height: SIZE_RATIO_MAP[activeWidget.size_ratio as WidgetSizeRatio]?.height || 120,
-      }}
-      >
+              borderRadius: activeWidget.shape === 'circle' ? '50%' : '50px',
+              backgroundColor: 'white',
+              width: SIZE_RATIO_MAP[activeWidget.size_ratio as WidgetSizeRatio]?.width || 120,
+              height: SIZE_RATIO_MAP[activeWidget.size_ratio as WidgetSizeRatio]?.height || 120,
+            }}
+            >
               <WidgetRenderer
                 widget={activeWidget}
                 configuration={activeConfiguration}
