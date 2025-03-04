@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/card";
 import {
   Tabs,
-  TabsContent,
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
@@ -363,7 +362,6 @@ export default function EditDashboardPage() {
                         draftId={_dashboard?.current_draft?.id}
                         userId={session?.user?.id}
                         onPlacementChange={() => fetchDashboard()}
-                        cellSize={74}
                       />
                     </div>
                     <Button
