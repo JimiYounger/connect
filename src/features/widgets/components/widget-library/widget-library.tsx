@@ -24,37 +24,31 @@ interface WidgetLibraryProps {
 // Constants for the grid system
 const _GRID_COLUMNS = 4;           // Number of columns in the grid
 const GRID_BASE_UNIT = 74;        // Base unit size in pixels
-const GRID_GAP = 10;              // Gap between widgets
+const GRID_GAP = 16;              // Gap between widgets
+
+// Add this constant at the top with other constants
+const WIDGET_BORDER_RADIUS = '50px';
 
 // Calculate dimensions based on grid units
 const getWidgetDimensions = (widthUnits: number, heightUnits: number) => {
-  // Width calculation: (base units × width) + (gaps × (width-1))
   const width = (GRID_BASE_UNIT * widthUnits) + (GRID_GAP * (widthUnits - 1));
-  
-  // Height calculation: (base units × height) + (gaps × (height-1))
   const height = (GRID_BASE_UNIT * heightUnits) + (GRID_GAP * (heightUnits - 1));
-  
   return { width, height };
 };
 
 // Updated SIZE_RATIO_MAP with precise iOS-style dimensions
 const SIZE_RATIO_MAP: Record<WidgetSizeRatio, { width: number; height: number }> = {
-  // Square widgets
-  '1:1': getWidgetDimensions(1, 1),     // Small (1×1)
-  '2:2': getWidgetDimensions(2, 2),     // Medium (2×2)
-  '4:4': getWidgetDimensions(4, 4),     // Large (4×4)
-  
-  // Rectangular widgets
-  '2:1': getWidgetDimensions(2, 1),     // Wide (2×1)
-  '1:2': getWidgetDimensions(1, 2),     // Tall (1×2)
-  '4:2': getWidgetDimensions(4, 2),     // Wide rectangle (4×2)
-  '2:4': getWidgetDimensions(2, 4),     // Tall rectangle (2×4)
-  
-  // Other common iOS widget sizes
+  '1:1': getWidgetDimensions(1, 1),
+  '2:1': getWidgetDimensions(2, 1),
+  '1:2': getWidgetDimensions(1, 2),
+  '2:2': getWidgetDimensions(2, 2),
   '3:2': getWidgetDimensions(3, 2),
   '2:3': getWidgetDimensions(2, 3),
   '4:3': getWidgetDimensions(4, 3),
   '3:4': getWidgetDimensions(3, 4),
+  '4:4': getWidgetDimensions(4, 4),
+  '2:4': getWidgetDimensions(2, 4),
+  '4:2': getWidgetDimensions(4, 2),
 };
 
 // Widget item that can be dragged
@@ -84,21 +78,20 @@ const DraggableWidgetItem: React.FC<{
   const dimensions = SIZE_RATIO_MAP[widget.size_ratio as WidgetSizeRatio] || SIZE_RATIO_MAP['1:1'];
   const isCircle = widget.shape === 'circle';
   
-  // Determine the appropriate border radius based on widget shape
-  const borderRadius = isCircle ? '50%' : '50px';
+  // For circles, ensure width and height are equal using the smaller dimension
+  const circleSize = isCircle ? Math.min(dimensions.width, dimensions.height) : null;
   
-  // Get the grid span class based on the size ratio
   const sizeClass = `widget-size-${widget.size_ratio?.replace(':', '-')}`;
   
   return (
     <motion.div 
       className={cn("widget-container", sizeClass, className)}
       style={{
-        width: `${dimensions.width}px`,
-        height: `${dimensions.height}px`,
+        width: isCircle ? `${circleSize}px` : `${dimensions.width}px`,
+        height: isCircle ? `${circleSize}px` : `${dimensions.height}px`,
         overflow: 'hidden',
         boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-        borderRadius: borderRadius,
+        borderRadius: isCircle ? '50%' : WIDGET_BORDER_RADIUS,
         position: 'relative',
         backgroundColor: 'transparent',
       }}
@@ -110,24 +103,49 @@ const DraggableWidgetItem: React.FC<{
         {...listeners}
         {...attributes}
         className={cn(
-          'widget-card relative cursor-grab h-full w-full',
+          'widget-card relative cursor-grab',
           isDragging ? 'opacity-70 z-10' : 'opacity-100'
         )}
-        onClick={() => onSelect?.(widget)}
         style={{ 
           backgroundColor: 'transparent',
-          borderRadius: borderRadius,
-          overflow: 'hidden'
+          borderRadius: isCircle ? '50%' : WIDGET_BORDER_RADIUS,
+          overflow: 'hidden',
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          position: 'relative',
         }}
       >
-        <WidgetRenderer
-          widget={widget}
-          configuration={configData}
-          width={dimensions.width}
-          height={dimensions.height}
-          borderRadius={borderRadius}
-          style={{ backgroundColor: 'transparent' }}
-        />
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: isCircle ? `${circleSize}px` : '100%',
+            height: isCircle ? `${circleSize}px` : '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <WidgetRenderer
+            widget={widget}
+            configuration={configData}
+            width={isCircle ? circleSize! : dimensions.width}
+            height={isCircle ? circleSize! : dimensions.height}
+            borderRadius={isCircle ? '50%' : WIDGET_BORDER_RADIUS}
+            style={{ 
+              backgroundColor: 'transparent',
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+              position: 'relative',
+            }}
+          />
+        </div>
       </div>
     </motion.div>
   );

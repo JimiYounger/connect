@@ -42,11 +42,11 @@ const SIZE_RATIO_TO_GRID = {
   '2:2': { width: 2, height: 2 },
   '3:2': { width: 3, height: 2 },
   '2:3': { width: 2, height: 3 },
+  '4:2': { width: 4, height: 2 },
+  '2:4': { width: 2, height: 4 },
   '4:3': { width: 4, height: 3 },
   '3:4': { width: 3, height: 4 },
   '4:4': { width: 4, height: 4 },
-  '2:4': { width: 2, height: 4 },
-  '4:2': { width: 4, height: 2 },
 } as const;
 
 // Cell droppable component
@@ -70,7 +70,6 @@ function CellDroppable({ x, y, isOccupied, children, grid, cols, rows, cellDimen
 
   const { active, over } = useDndContext();
   const activeWidget = active?.data?.current?.widget;
-  const activeConfig = active?.data?.current?.configuration;
   
   // Calculate affected cells when dragging over any cell
   const getAffectedCells = () => {
@@ -82,15 +81,63 @@ function CellDroppable({ x, y, isOccupied, children, grid, cols, rows, cellDimen
     const sizeRatio = activeWidget.size_ratio || '1:1';
     const dimensions = SIZE_RATIO_TO_GRID[sizeRatio as keyof typeof SIZE_RATIO_TO_GRID];
     
-    const affectedCells: { x: number; y: number }[] = [];
-    
-    // Check if placement would be valid
-    const isValidPlacement = (startX: number, startY: number, width: number, height: number) => {
-      if (startX + width > cols || startY + height > rows) return false;
+    // Adjust search radius based on widget size
+    const findValidPosition = (targetX: number, targetY: number, width: number, height: number) => {
+      // Calculate search boundaries with larger radius for bigger widgets
+      const searchRadius = Math.max(width, height) * 2; // Increased search radius
+      const minX = Math.max(0, targetX - searchRadius);
+      const maxX = Math.min(cols - width, targetX + 1); // Allow searching forward
+      const minY = Math.max(0, targetY - searchRadius);
+      const maxY = Math.min(rows - height, targetY + 1); // Allow searching forward
+
+      // Try the closest positions first
+      const positions = [];
+      for (let dy = -height + 1; dy <= 1; dy++) {
+        for (let dx = -width + 1; dx <= 1; dx++) {
+          const checkX = targetX + dx;
+          const checkY = targetY + dy;
+          if (checkX >= 0 && checkY >= 0 && checkX + width <= cols && checkY + height <= rows) {
+            positions.push({
+              x: checkX,
+              y: checkY,
+              distance: Math.abs(dx) + Math.abs(dy)
+            });
+          }
+        }
+      }
+
+      // Sort positions by distance and try them in order
+      positions.sort((a, b) => a.distance - b.distance);
       
+      for (const pos of positions) {
+        if (isValidPlacement(pos.x, pos.y, width, height)) {
+          return { x: pos.x, y: pos.y };
+        }
+      }
+
+      // If no close positions work, try the wider search area
+      for (let checkY = minY; checkY <= maxY; checkY++) {
+        for (let checkX = minX; checkX <= maxX; checkX++) {
+          if (isValidPlacement(checkX, checkY, width, height)) {
+            return { x: checkX, y: checkY };
+          }
+        }
+      }
+
+      return null;
+    };
+
+    const isValidPlacement = (startX: number, startY: number, width: number, height: number) => {
+      // Check grid boundaries
+      if (startX < 0 || startY < 0 || startX + width > cols || startY + height > rows) {
+        return false;
+      }
+
+      // Check if all required cells are available
       for (let dy = 0; dy < height; dy++) {
         for (let dx = 0; dx < width; dx++) {
-          if (!grid[startY + dy] || !grid[startY + dy][startX + dx] || grid[startY + dy][startX + dx].isOccupied) {
+          const cell = grid[startY + dy]?.[startX + dx];
+          if (!cell || cell.isOccupied) {
             return false;
           }
         }
@@ -98,59 +145,61 @@ function CellDroppable({ x, y, isOccupied, children, grid, cols, rows, cellDimen
       return true;
     };
 
-    // If placement is valid, collect affected cells
-    if (isValidPlacement(overData.x, overData.y, dimensions.width, dimensions.height)) {
+    // Try to find a valid position
+    const validPosition = findValidPosition(
+      overData.x, 
+      overData.y, 
+      dimensions.width, 
+      dimensions.height
+    );
+
+    // If we found a valid position, return the affected cells
+    if (validPosition) {
+      const affectedCells: { x: number; y: number }[] = [];
       for (let dy = 0; dy < dimensions.height; dy++) {
         for (let dx = 0; dx < dimensions.width; dx++) {
-          affectedCells.push({ x: overData.x + dx, y: overData.y + dy });
+          affectedCells.push({ 
+            x: validPosition.x + dx, 
+            y: validPosition.y + dy 
+          });
         }
       }
+      return affectedCells;
     }
 
-    return affectedCells;
+    return [];
   };
 
   const affectedCells = getAffectedCells();
   const isAffected = affectedCells.some(cell => cell.x === x && cell.y === y);
   const isValid = affectedCells.length > 0;
-  
-  // Only show preview if this is the top-left cell of the affected area
-  const isPreviewCell = isAffected && x === affectedCells[0]?.x && y === affectedCells[0]?.y;
-  
+
   return (
-    <div 
+    <div
       ref={setNodeRef}
       className={cn(
-        "relative rounded transition-colors duration-200",
+        "relative rounded transition-all duration-200",
         !isOccupied && (
           isValid 
-            ? isAffected ? "bg-primary/5 border-primary/30" : ""
-            : isOver ? "bg-destructive/10 border-destructive/50" : ""
+            ? isAffected 
+              ? "bg-primary/20 border-primary/50 shadow-inner" 
+              : "hover:bg-primary/5"
+            : isOver 
+              ? "bg-destructive/10 border-destructive/50" 
+              : "hover:bg-muted/50"
         ),
         isOccupied ? "border-transparent" : "border-dashed border-2",
-        "min-h-[100px]"
       )}
       style={{
-        width: '100%',
-        height: '100%',
-        minHeight: '100px'
+        width: `${GRID_CELL_SIZE}px`,
+        height: `${GRID_CELL_SIZE}px`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: isOccupied ? 'default' : 'crosshair',
       }}
     >
       {children}
-      
-      {/* Widget Preview */}
-      {isPreviewCell && activeWidget && !isOccupied && isValid && (
-        <div className="absolute inset-0 pointer-events-none opacity-80">
-          <WidgetRenderer
-            widget={activeWidget}
-            configuration={activeConfig}
-            width={cellDimensions.width * (SIZE_RATIO_TO_GRID[activeWidget.size_ratio as keyof typeof SIZE_RATIO_TO_GRID]?.width || 1)}
-            height={cellDimensions.height * (SIZE_RATIO_TO_GRID[activeWidget.size_ratio as keyof typeof SIZE_RATIO_TO_GRID]?.height || 1)}
-            borderRadius={activeWidget.shape === 'circle' ? '50%' : '12px'}
-            className="widget-preview"
-          />
-        </div>
-      )}
     </div>
   );
 }
@@ -170,6 +219,13 @@ interface DraggableWidgetProps {
   configuration?: any; 
 }
 
+// Add this constant at the top of the file
+const GRID_CELL_SIZE = 74; // Base cell size in pixels
+const GRID_GAP = 16; // Gap between cells in pixels
+
+// Add this constant at the top with other constants
+const WIDGET_BORDER_RADIUS = '50px';
+
 function DraggableWidget({ 
   widget, 
   placementId, 
@@ -181,8 +237,15 @@ function DraggableWidget({
   cellHeight,
   onRemove,
   readOnly = false,
-  configuration: passedConfiguration // Add this line
+  configuration
 }: DraggableWidgetProps) {
+  // Calculate total dimensions including gaps
+  const totalWidth = (width * GRID_CELL_SIZE) + ((width - 1) * GRID_GAP);
+  const totalHeight = (height * GRID_CELL_SIZE) + ((height - 1) * GRID_GAP);
+  
+  const isCircle = widget.shape === 'circle';
+  const circleSize = isCircle ? Math.min(totalWidth, totalHeight) : null;
+
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `placement-${placementId}`,
     data: {
@@ -192,22 +255,20 @@ function DraggableWidget({
       sourceX: x,
       sourceY: y,
       width,
-      height
+      height,
+      configuration
     },
     disabled: readOnly
   });
 
-  const { configuration: fetchedConfiguration } = useWidgetConfiguration({
-    widgetId: widget.id,
-    type: widget.widget_type,
-    enabled: !passedConfiguration // Only fetch if not provided
-  });
-  
-  // Use passed configuration or fetched one
-  const configToUse = passedConfiguration || fetchedConfiguration?.config;
-  
   return (
-    <div className="absolute inset-0">
+    <div 
+      className="absolute inset-0"
+      style={{
+        width: isCircle ? `${circleSize}px` : `${totalWidth}px`,
+        height: isCircle ? `${circleSize}px` : `${totalHeight}px`,
+      }}
+    >
       {!readOnly && (
         <button
           className="absolute top-1 right-1 z-10 p-1 rounded-full bg-background/50 
@@ -230,15 +291,45 @@ function DraggableWidget({
           isDragging && "opacity-50",
           "widget-card"
         )}
+        style={{
+          width: isCircle ? `${circleSize}px` : `${totalWidth}px`,
+          height: isCircle ? `${circleSize}px` : `${totalHeight}px`,
+          borderRadius: isCircle ? '50%' : WIDGET_BORDER_RADIUS,
+          overflow: 'hidden',
+          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
       >
-        <WidgetRenderer
-          widget={widget}
-          configuration={configToUse}
-          width={cellWidth * width}
-          height={cellHeight * height}
-          borderRadius={widget.shape === 'circle' ? '50%' : '12px'}
-          className="placed-widget"
-        />
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: isCircle ? `${circleSize}px` : '100%',
+            height: isCircle ? `${circleSize}px` : '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <WidgetRenderer
+            widget={widget}
+            configuration={configuration}
+            width={isCircle ? circleSize! : totalWidth}
+            height={isCircle ? circleSize! : totalHeight}
+            borderRadius={isCircle ? '50%' : WIDGET_BORDER_RADIUS}
+            className="placed-widget"
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+              position: 'relative',
+            }}
+          />
+        </div>
       </div>
     </div>
   );
@@ -257,7 +348,10 @@ export function DashboardGrid({
 }: DashboardGridProps) {
   const [grid, setGrid] = useState<GridCell[][]>([]);
   const gridRef = useRef<HTMLDivElement>(null);
-  const [cellDimensions, setCellDimensions] = useState({ width: 0, height: 0 });
+  const [cellDimensions] = useState({ 
+    width: GRID_CELL_SIZE, 
+    height: GRID_CELL_SIZE 
+  });
   const [isLoading, setIsLoading] = useState(false);
 
   // Set up droppable area for the entire grid
@@ -269,36 +363,6 @@ export function DashboardGrid({
       cols,
     },
   });
-
-  // Calculate cell dimensions when grid size changes
-  useEffect(() => {
-    const updateCellDimensions = () => {
-      if (!gridRef.current) return;
-      
-      const gridElement = gridRef.current;
-      const totalWidth = gridElement.clientWidth;
-      const totalHeight = gridElement.clientHeight;
-      
-      // Subtract total gap space
-      const horizontalGaps = (cols - 1) * 16; // 16px gap
-      const verticalGaps = (rows - 1) * 16;
-      
-      const cellWidth = (totalWidth - horizontalGaps) / cols;
-      const cellHeight = (totalHeight - verticalGaps) / rows;
-      
-      setCellDimensions({ width: cellWidth, height: cellHeight });
-    };
-
-    updateCellDimensions();
-    
-    // Add resize observer for more reliable dimension updates
-    const resizeObserver = new ResizeObserver(updateCellDimensions);
-    if (gridRef.current) {
-      resizeObserver.observe(gridRef.current);
-    }
-
-    return () => resizeObserver.disconnect();
-  }, [cols, rows, layout]);
 
   // Initialize grid
   useEffect(() => {
@@ -775,21 +839,24 @@ const handlePlaceWidget = async (widget: Widget, x: number, y: number, widgetCon
   return (
     <div 
       ref={(node) => {
-        // Set both refs
         setNodeRef(node);
         if (gridRef.current !== node) {
           gridRef.current = node as HTMLDivElement | null;
         }
       }}
       className={cn(
-        "grid gap-4 p-4 bg-muted/30 rounded-lg relative",
-        layout === 'desktop' ? 'w-full aspect-[11/4]' : 'w-[360px] aspect-[4/11]',
+        "grid bg-muted/30 rounded-lg relative",
+        layout === 'desktop' ? 'w-fit' : 'w-[360px]',
         isLoading && "opacity-70 pointer-events-none",
         className
       )}
       style={{
-        gridTemplateColumns: `repeat(${cols}, 1fr)`,
-        gridTemplateRows: `repeat(${rows}, 1fr)`,
+        gridTemplateColumns: `repeat(${cols}, ${GRID_CELL_SIZE}px)`,
+        gridTemplateRows: `repeat(${rows}, ${GRID_CELL_SIZE}px)`,
+        gap: `${GRID_GAP}px`,
+        padding: `${GRID_GAP * 2}px`,
+        minWidth: `${(cols * GRID_CELL_SIZE) + ((cols - 1) * GRID_GAP) + (GRID_GAP * 4)}px`,
+        minHeight: `${(rows * GRID_CELL_SIZE) + ((rows - 1) * GRID_GAP) + (GRID_GAP * 4)}px`,
       }}
     >
       {isLoading && (
@@ -821,7 +888,7 @@ const handlePlaceWidget = async (widget: Widget, x: number, y: number, widgetCon
                 cellWidth={cellDimensions.width}
                 cellHeight={cellDimensions.height}
                 readOnly={readOnly}
-                configuration={cell.configuration} // Add this line
+                configuration={cell.configuration}
                 onRemove={() => handleRemoveWidget(cell.placementId!, x, y, cell.width!, cell.height!)}
               />
             )}

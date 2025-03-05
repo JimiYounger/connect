@@ -135,9 +135,10 @@ export const WidgetRenderer: React.FC<WidgetRendererProps> = ({
         className={`widget-renderer ${className}`}
         style={{
           position: 'relative',
-          width: `${width}px`,
-          height: `${height}px`,
-          borderRadius: borderRadius,
+          width: width ? `${width}px` : '100%',
+          height: height ? `${height}px` : '100%',
+          minHeight: '100px',
+          borderRadius,
           overflow: 'hidden',
           backgroundColor: 'white',
           boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',

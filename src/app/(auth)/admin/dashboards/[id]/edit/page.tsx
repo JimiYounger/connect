@@ -455,12 +455,13 @@ export default function EditDashboardPage() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="dashboard-grid-container" style={{
-                        gridTemplateColumns: `repeat(${currentTab === 'desktop' ? DESKTOP_GRID.cols : MOBILE_GRID.cols}, 74px)`,
-                        gridAutoRows: '74px'
+                      <div className="dashboard-grid-container overflow-auto" style={{
+                        width: 'fit-content',
+                        maxWidth: '100%',
+                        padding: '1rem',
                       }}>
                         <DashboardGrid
-                          key={`${currentTab}-grid`} // Add a key that changes with tab
+                          key={`${currentTab}-grid`}
                           layout={currentTab}
                           rows={currentTab === 'desktop' ? desktopRows : mobileRows}
                           cols={currentTab === 'desktop' ? DESKTOP_GRID.cols : MOBILE_GRID.cols}
