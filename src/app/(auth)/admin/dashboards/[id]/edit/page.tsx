@@ -2,7 +2,7 @@
 
 'use client'
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -46,6 +46,7 @@ import { DashboardGrid } from '@/features/dashboards/components/dashboard-grid';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
 import '@/features/widgets/styles/widget-library.css';
 import { initializeWidgets } from '@/features/widgets/init-widgets';
+import { initializeWidgetRegistry } from '@/features/widgets/registry';
 
 // Form validation schema
 const formSchema = z.object({
@@ -59,12 +60,25 @@ const formSchema = z.object({
 const DESKTOP_GRID = { rows: 4, cols: 11 };
 const MOBILE_GRID = { rows: 11, cols: 4 };
 
+// Move initialization logic to a separate function
+const initializeWidgetSystem = async () => {
+  try {
+    await initializeWidgetRegistry();
+    await initializeWidgets();
+    return true;
+  } catch (error) {
+    console.error('Failed to initialize widgets:', error);
+    return false;
+  }
+};
+
 export default function EditDashboardPage() {
   const router = useRouter();
   const params = useParams();
   const dashboardId = params.id as string;
   const isNew = dashboardId === 'new';
   const { toast } = useToast();
+  const toastRef = useRef(toast); // Create a ref to store the toast function
   const { session } = useAuth();
   const { profile } = useProfile(session);
   const { userPermissions } = usePermissions(profile);
@@ -77,6 +91,8 @@ export default function EditDashboardPage() {
   const [scheduledPublishDate, setScheduledPublishDate] = useState<Date | undefined>(undefined);
   const [desktopRows, setDesktopRows] = useState(DESKTOP_GRID.rows);
   const [mobileRows, setMobileRows] = useState(MOBILE_GRID.rows);
+  const [currentDraftId, setCurrentDraftId] = useState<string | undefined>(undefined);
+  const [isWidgetsInitialized, setWidgetsInitialized] = useState(false);
   
   // Form setup
   const methods = useForm({
@@ -89,23 +105,65 @@ export default function EditDashboardPage() {
     }
   });
   
+  
   const { reset, handleSubmit } = methods;
   
-  // Memoize the fetchDashboard function
+  // Update the ref whenever toast changes
+  useEffect(() => {
+    toastRef.current = toast;
+  }, [toast]);
+
+  // Modify the initialization effect
+  useEffect(() => {
+    let mounted = true;
+
+    const init = async () => {
+      try {
+        setIsLoading(true);
+        const success = await initializeWidgetSystem();
+        
+        if (mounted) {
+          if (!success) {
+            toastRef.current({ // Use the ref instead of toast directly
+              title: 'Error',
+              description: 'Failed to initialize widgets',
+              variant: 'destructive',
+            });
+          }
+          setWidgetsInitialized(success);
+        }
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    init();
+
+    return () => {
+      mounted = false;
+    };
+  }, []); // Now we can safely use an empty dependency array
+
+  // Modify the fetchDashboard useCallback to depend on isWidgetsInitialized
   const fetchDashboard = useCallback(async () => {
-    if (isNew) {
+    if (isNew || !isWidgetsInitialized) {
       setIsLoading(false);
       return;
     }
 
     try {
-      const { data, error } = await dashboardService.getDashboardById(dashboardId);
+      setIsLoading(true);
       
-      if (error) {
-        console.error('Error loading dashboard:', error);
-        toast({
+      // Load dashboard details
+      const { data, error: dashboardError } = await dashboardService.getDashboardById(dashboardId);
+      
+      if (dashboardError) {
+        console.error('Error loading dashboard:', dashboardError);
+        toastRef.current({
           title: 'Error',
-          description: error.message || 'Failed to load dashboard',
+          description: dashboardError.message || 'Failed to load dashboard',
           variant: 'destructive',
         });
         router.push('/admin/dashboards');
@@ -113,7 +171,7 @@ export default function EditDashboardPage() {
       }
 
       if (!data) {
-        toast({
+        toastRef.current({
           title: 'Not Found',
           description: 'Dashboard not found',
           variant: 'destructive',
@@ -122,16 +180,67 @@ export default function EditDashboardPage() {
         return;
       }
 
-      setDashboard(data);
-      reset({
-        name: data.name,
-        description: data.description || '',
-        role_type: data.role_type,
-        is_active: data.is_active ?? true,
-      });
+      console.log("Dashboard data:", data);
+      console.log("Current draft ID:", data?.current_draft?.id);
+
+      // Check if a draft exists for this dashboard
+      if (!data.current_draft) {
+        console.log("No draft found, creating one...");
+        // Create a draft for this dashboard
+        const { data: draftData, error: draftError } = await dashboardService.createDashboardDraft(dashboardId, {
+          name: data.name,
+          description: data.description || '',
+          is_current: true,
+          created_by: session?.user?.id
+        });
+        
+        if (draftError || !draftData) {
+          console.error('Error creating draft:', draftError);
+          toastRef.current({
+            title: "Error",
+            description: "Failed to create dashboard draft",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        console.log("Draft created successfully:", draftData);
+        setCurrentDraftId(draftData?.id);
+        console.log("Setting draft ID state to:", draftData?.id);
+        
+        // IMPORTANT: Reload the dashboard to get the updated data with the new draft
+        const { data: updatedDashboard, error: refreshError } = await dashboardService.getDashboardById(dashboardId);
+        
+        if (refreshError || !updatedDashboard) {
+          console.error('Error refreshing dashboard data:', refreshError);
+          return;
+        }
+        
+        setDashboard(updatedDashboard);
+        console.log("Dashboard data refreshed with new draft");
+        
+        // Set the form values from the updated dashboard
+        reset({
+          name: updatedDashboard.name,
+          description: updatedDashboard.description || '',
+          role_type: updatedDashboard.role_type,
+          is_active: updatedDashboard.is_active ?? true,
+        });
+      } else {
+        console.log("Using existing draft:", data.current_draft);
+        setDashboard(data);
+        setCurrentDraftId(data.current_draft.id);
+        console.log("Setting draft ID state from existing draft:", data.current_draft.id);
+        reset({
+          name: data.name,
+          description: data.description || '',
+          role_type: data.role_type,
+          is_active: data.is_active ?? true,
+        });
+      }
     } catch (error) {
       console.error('Error loading dashboard:', error);
-      toast({
+      toastRef.current({
         title: 'Error',
         description: 'An unexpected error occurred',
         variant: 'destructive',
@@ -140,17 +249,12 @@ export default function EditDashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [dashboardId, isNew, reset, toast, router]);
+  }, [dashboardId, isNew, reset, toastRef, router, session?.user?.id, isWidgetsInitialized]);
 
   // Use the memoized function in useEffect
   useEffect(() => {
     fetchDashboard();
   }, [fetchDashboard]); // Only depend on the memoized function
-  
-  useEffect(() => {
-    // Initialize all widgets when the page loads
-    initializeWidgets();
-  }, []);
   
   // Handle form submission
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
@@ -175,7 +279,7 @@ export default function EditDashboardPage() {
         throw new Error('No data returned from operation');
       }
 
-      toast({
+      toastRef.current({
         title: 'Success',
         description: isNew ? 'Dashboard created' : 'Dashboard updated',
       });
@@ -185,7 +289,7 @@ export default function EditDashboardPage() {
       }
     } catch (error) {
       console.error('Error saving dashboard:', error);
-      toast({
+      toastRef.current({
         title: 'Error',
         description: 'Failed to save dashboard',
         variant: 'destructive',
@@ -202,7 +306,7 @@ export default function EditDashboardPage() {
       
       if (error) throw error;
       
-      toast({
+      toastRef.current({
         title: 'Success',
         description: scheduleDate 
           ? `Dashboard scheduled for publication on ${scheduleDate.toLocaleString()}`
@@ -215,7 +319,7 @@ export default function EditDashboardPage() {
       
     } catch (error) {
       console.error('Error publishing dashboard:', error);
-      toast({
+      toastRef.current({
         title: 'Error',
         description: 'Failed to publish dashboard. Please try again.',
         variant: 'destructive',
@@ -273,151 +377,162 @@ export default function EditDashboardPage() {
       
       <FormProvider {...methods}>
         <form onSubmit={handleSubmit(onSubmit)}>
-          <WidgetDndProvider onDragEnd={(widget, _configuration) => {
-            console.log('Widget dragged:', widget);
-          }}>
-            {/* Widget Library - Horizontal at the top without redundant title */}
-            <Card className="mb-6">
-              <CardContent className="pt-6">
-                <div className="widget-library-container" style={{ height: '485px', overflowX: 'auto', overflowY: 'hidden' }}>
-                  <WidgetLibrary
-                    userId={session?.user?.id || ''}
-                    className="h-full"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-            
-            {/* Main Content Area */}
-            <div className="space-y-6">
-              {/* Dashboard Details Card - Only shown when "details" tab is active */}
-              {currentTab === 'details' && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Dashboard Details</CardTitle>
-                    <CardDescription>
-                      Edit the basic information for your dashboard
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Name</Label>
-                      <Input
-                        id="name"
-                        {...methods.register('name')}
-                        placeholder="Enter dashboard name"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="description">Description</Label>
-                      <Textarea
-                        id="description"
-                        {...methods.register('description')}
-                        placeholder="Enter dashboard description"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="role_type">Access Level</Label>
-                      <Select
-                        onValueChange={(value) => methods.setValue('role_type', value)}
-                        defaultValue={methods.getValues('role_type')}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select access level" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="User">User</SelectItem>
-                          <SelectItem value="Admin">Admin</SelectItem>
-                          <SelectItem value="SuperAdmin">Super Admin</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+          {isWidgetsInitialized ? (
+            <WidgetDndProvider onDragEnd={(widget, _configuration) => {
+              console.log('Widget dragged:', widget);
+            }}>
+              {/* Widget Library - Horizontal at the top without redundant title */}
+              <Card className="mb-6">
+                <CardContent className="pt-6">
+                  <div className="widget-library-container" style={{ height: '485px', overflowX: 'auto', overflowY: 'hidden' }}>
+                    <WidgetLibrary
+                      userId={session?.user?.id || ''}
+                      className="h-full"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
               
-              {/* Dashboard Grid - Only shown when "desktop" or "mobile" tab is active */}
-              {(currentTab === 'desktop' || currentTab === 'mobile') && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>{currentTab === 'desktop' ? 'Desktop Layout' : 'Mobile Layout'}</CardTitle>
-                    <CardDescription>
-                      {currentTab === 'desktop' 
-                        ? 'Design how your dashboard will look on desktop devices' 
-                        : 'Design how your dashboard will look on mobile devices'}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="dashboard-grid-container" style={{
-                      gridTemplateColumns: `repeat(${currentTab === 'desktop' ? DESKTOP_GRID.cols : MOBILE_GRID.cols}, 74px)`,
-                      gridAutoRows: '74px'
-                    }}>
-                      <DashboardGrid
-                        layout={currentTab}
-                        rows={currentTab === 'desktop' ? desktopRows : mobileRows}
-                        cols={currentTab === 'desktop' ? DESKTOP_GRID.cols : MOBILE_GRID.cols}
-                        dashboardId={dashboardId}
-                        draftId={_dashboard?.current_draft?.id}
-                        userId={session?.user?.id}
-                        onPlacementChange={() => fetchDashboard()}
-                      />
-                    </div>
-                    <Button
-                      variant="outline"
-                      className="mt-4"
-                      onClick={() => currentTab === 'desktop' 
-                        ? setDesktopRows(prev => prev + 1) 
-                        : setMobileRows(prev => prev + 1)}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Row
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-              
-              {/* Tabs Navigation - Moved below the grid */}
-              <Tabs value={currentTab} onValueChange={setCurrentTab} className="mt-6">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="details">Details</TabsTrigger>
-                  <TabsTrigger value="desktop">Desktop Layout</TabsTrigger>
-                  <TabsTrigger value="mobile">Mobile Layout</TabsTrigger>
-                </TabsList>
-              </Tabs>
-              
-              {/* Action Buttons - Moved to the bottom */}
-              <div className="flex flex-wrap gap-4 mt-6 justify-end">
-                <Button type="submit" disabled={isSaving} className="flex-1 md:flex-none">
-                  <Save className="mr-2 h-4 w-4" />
-                  {isSaving ? 'Saving...' : 'Save Changes'}
-                </Button>
-                
-                {!isNew && (
-                  <>
-                    <Button
-                      variant="outline"
-                      className="flex-1 md:flex-none"
-                      onClick={() => window.open(`/dashboards/${dashboardId}/preview`, '_blank')}
-                    >
-                      <Eye className="mr-2 h-4 w-4" />
-                      Preview
-                    </Button>
-                    
-                    <Button
-                      variant="secondary"
-                      className="flex-1 md:flex-none"
-                      onClick={() => setShowPublishDialog(true)}
-                    >
-                      <Calendar className="mr-2 h-4 w-4" />
-                      Publish Options
-                    </Button>
-                  </>
+              {/* Main Content Area */}
+              <div className="space-y-6">
+                {/* Dashboard Details Card - Only shown when "details" tab is active */}
+                {currentTab === 'details' && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Dashboard Details</CardTitle>
+                      <CardDescription>
+                        Edit the basic information for your dashboard
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="name">Name</Label>
+                        <Input
+                          id="name"
+                          {...methods.register('name')}
+                          placeholder="Enter dashboard name"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="description">Description</Label>
+                        <Textarea
+                          id="description"
+                          {...methods.register('description')}
+                          placeholder="Enter dashboard description"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="role_type">Access Level</Label>
+                        <Select
+                          onValueChange={(value) => methods.setValue('role_type', value)}
+                          defaultValue={methods.getValues('role_type')}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select access level" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="User">User</SelectItem>
+                            <SelectItem value="Admin">Admin</SelectItem>
+                            <SelectItem value="SuperAdmin">Super Admin</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </CardContent>
+                  </Card>
                 )}
+                
+                {/* Dashboard Grid - Only shown when "desktop" or "mobile" tab is active */}
+                {(currentTab === 'desktop' || currentTab === 'mobile') && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>{currentTab === 'desktop' ? 'Desktop Layout' : 'Mobile Layout'}</CardTitle>
+                      <CardDescription>
+                        {currentTab === 'desktop' 
+                          ? 'Design how your dashboard will look on desktop devices' 
+                          : 'Design how your dashboard will look on mobile devices'}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="dashboard-grid-container" style={{
+                        gridTemplateColumns: `repeat(${currentTab === 'desktop' ? DESKTOP_GRID.cols : MOBILE_GRID.cols}, 74px)`,
+                        gridAutoRows: '74px'
+                      }}>
+                        <DashboardGrid
+                          key={`${currentTab}-grid`} // Add a key that changes with tab
+                          layout={currentTab}
+                          rows={currentTab === 'desktop' ? desktopRows : mobileRows}
+                          cols={currentTab === 'desktop' ? DESKTOP_GRID.cols : MOBILE_GRID.cols}
+                          dashboardId={dashboardId}
+                          draftId={currentDraftId}
+                          userId={session?.user?.id}
+                          onPlacementChange={() => fetchDashboard()}
+                        />
+                      </div>
+                      <Button
+                        variant="outline"
+                        className="mt-4"
+                        onClick={() => currentTab === 'desktop' 
+                          ? setDesktopRows(prev => prev + 1) 
+                          : setMobileRows(prev => prev + 1)}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Row
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+                
+                {/* Tabs Navigation - Moved below the grid */}
+                <Tabs value={currentTab} onValueChange={setCurrentTab} className="mt-6">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="details">Details</TabsTrigger>
+                    <TabsTrigger value="desktop">Desktop Layout</TabsTrigger>
+                    <TabsTrigger value="mobile">Mobile Layout</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+                
+                {/* Action Buttons - Moved to the bottom */}
+                <div className="flex flex-wrap gap-4 mt-6 justify-end">
+                  <Button type="submit" disabled={isSaving} className="flex-1 md:flex-none">
+                    <Save className="mr-2 h-4 w-4" />
+                    {isSaving ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                  
+                  {!isNew && (
+                    <>
+                      <Button
+                        variant="outline"
+                        className="flex-1 md:flex-none"
+                        onClick={() => window.open(`/dashboards/${dashboardId}/preview`, '_blank')}
+                      >
+                        <Eye className="mr-2 h-4 w-4" />
+                        Preview
+                      </Button>
+                      
+                      <Button
+                        variant="secondary"
+                        className="flex-1 md:flex-none"
+                        onClick={() => setShowPublishDialog(true)}
+                      >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        Publish Options
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </WidgetDndProvider>
+          ) : (
+            <div className="flex items-center justify-center h-40">
+              <div className="animate-pulse flex space-x-2">
+                <div className="h-2 w-2 bg-gray-300 rounded-full"></div>
+                <div className="h-2 w-2 bg-gray-300 rounded-full"></div>
+                <div className="h-2 w-2 bg-gray-300 rounded-full"></div>
               </div>
             </div>
-          </WidgetDndProvider>
+          )}
         </form>
       </FormProvider>
       

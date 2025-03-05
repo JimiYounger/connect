@@ -32,59 +32,61 @@ type CreateDraftPlacementData = {
 
 export const dashboardService = {
   // Get dashboard by ID
-  async getDashboardById(id: string) {
-    try {
-      const supabase = createClient();
-      
-      // First check if the dashboard exists
-      const { data: dashboard, error: dashboardError } = await supabase
-        .from('dashboards')
-        .select('*')
-        .eq('id', id)
-        .single();
+  // Check the getDashboardById function in dashboard-service.ts
+async getDashboardById(id: string) {
+  try {
+    const supabase = createClient();
+    
+    // First check if the dashboard exists
+    const { data: dashboard, error: dashboardError } = await supabase
+      .from('dashboards')
+      .select('*')
+      .eq('id', id)
+      .single();
 
-      if (dashboardError) {
-        if (dashboardError.code === 'PGRST116') {
-          return { 
-            data: null, 
-            error: new Error(`Dashboard with ID ${id} not found`) 
-          };
-        }
-        console.error('Error fetching dashboard:', dashboardError);
-        return { data: null, error: dashboardError };
+    if (dashboardError) {
+      if (dashboardError.code === 'PGRST116') {
+        return { 
+          data: null, 
+          error: new Error(`Dashboard with ID ${id} not found`) 
+        };
       }
-
-      // Then get the latest version
-      const { data: version, error: versionError } = await supabase
-        .from('dashboard_versions')
-        .select('*')
-        .eq('dashboard_id', id)
-        .order('version_number', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (versionError) {
-        console.error('Error fetching dashboard version:', versionError);
-        return { data: null, error: versionError };
-      }
-
-      // Combine the data
-      return {
-        data: {
-          ...dashboard,
-          current_version: version || null
-        },
-        error: null
-      };
-
-    } catch (error) {
-      console.error('Error in getDashboardById:', error);
-      return { 
-        data: null, 
-        error: error instanceof Error ? error : new Error('Unknown error occurred') 
-      };
+      console.error('Error fetching dashboard:', dashboardError);
+      return { data: null, error: dashboardError };
     }
-  },
+
+    // Get the current draft
+    const { data: currentDraft, error: draftError } = await supabase
+      .from('dashboard_drafts')
+      .select('*')
+      .eq('dashboard_id', id)
+      .eq('is_current', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    // NOTE: We're using a single() call here, which can cause the issue you're seeing
+    // if there are multiple drafts. If this fails, let's try a different approach.
+
+    // Combine the data
+    const dashboardWithDraft = {
+      ...dashboard,
+      current_draft: currentDraft || null
+    };
+
+    return {
+      data: dashboardWithDraft,
+      error: null
+    };
+
+  } catch (error) {
+    console.error('Error in getDashboardById:', error);
+    return { 
+      data: null, 
+      error: error instanceof Error ? error : new Error('Unknown error occurred') 
+    };
+  }
+},
 
   // Create new dashboard
   async createDashboard(data: CreateDashboardData) {
@@ -124,6 +126,50 @@ export const dashboardService = {
     }
   },
 
+  async createDashboardDraft(dashboardId: string, data: {
+    name: string;
+    description?: string;
+    is_current?: boolean;
+    created_by?: string;
+  }) {
+    try {
+      const supabase = createClient();
+      
+      // First, set all existing drafts for this dashboard to not current
+      if (data.is_current) {
+        const { error: updateError } = await supabase
+          .from('dashboard_drafts')
+          .update({ is_current: false })
+          .eq('dashboard_id', dashboardId);
+          
+        if (updateError) {
+          console.error('Error updating existing drafts:', updateError);
+        }
+      }
+      
+      // Then create the new draft
+      const { data: draft, error } = await supabase
+        .from('dashboard_drafts')
+        .insert({
+          dashboard_id: dashboardId,
+          name: data.name,
+          description: data.description || null,
+          is_current: data.is_current !== undefined ? data.is_current : true,
+          created_by: data.created_by || null,
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+  
+      if (error) throw error;
+  
+      return { data: draft, error: null };
+    } catch (error) {
+      console.error('Error creating dashboard draft:', error);
+      return { data: null, error };
+    }
+  },
+
   // Update dashboard
   async updateDashboard(id: string, data: Partial<Dashboard>) {
     try {
@@ -151,22 +197,55 @@ export const dashboardService = {
   async getCurrentDraft(dashboardId: string) {
     try {
       const supabase = createClient();
-      const { data, error } = await supabase
+      
+      // Get all current drafts for this dashboard
+      const { data: drafts, error: draftsError } = await supabase
         .from('dashboard_drafts')
-        .select(`
-          *,
-          draft_widget_placements(*)
-        `)
+        .select('*')
         .eq('dashboard_id', dashboardId)
         .eq('is_current', true)
-        .single();
-
-      if (error) {
-        console.error('Error fetching current draft:', error);
-        return { data: null, error };
+        .order('created_at', { ascending: false });
+        
+      if (draftsError) throw draftsError;
+      
+      // If multiple drafts found, use the most recent one
+      if (drafts && drafts.length > 0) {
+        // If more than one draft is found, we should fix the data
+        if (drafts.length > 1) {
+          console.warn(`Found ${drafts.length} current drafts for dashboard ${dashboardId}, using most recent`);
+          
+          // Keep the most recent as current, set others to not current
+          const mostRecentDraft = drafts[0]; // Assuming sorted by created_at desc
+          const draftsToUpdate = drafts.slice(1).map(draft => draft.id);
+          
+          if (draftsToUpdate.length > 0) {
+            await supabase
+              .from('dashboard_drafts')
+              .update({ is_current: false })
+              .in('id', draftsToUpdate);
+          }
+        }
+        
+        // Use the most recent draft
+        const draftId = drafts[0].id;
+        
+        // Get the draft with its placements
+        const { data: draftWithPlacements, error: placementsError } = await supabase
+          .from('dashboard_drafts')
+          .select(`
+            *,
+            draft_widget_placements(*)
+          `)
+          .eq('id', draftId)
+          .single();
+          
+        if (placementsError) throw placementsError;
+        
+        return { data: draftWithPlacements, error: null };
       }
-
-      return { data, error: null };
+      
+      // No drafts found
+      return { data: null, error: null };
     } catch (error) {
       console.error('Error in getCurrentDraft:', error);
       return { data: null, error };

@@ -5,9 +5,11 @@ import { Widget, WidgetSizeRatio } from '@/features/widgets/types';
 import { WidgetRenderer } from '@/features/widgets/components/widget-renderer';
 import { dashboardService } from '../services/dashboard-service'; 
 import { cn } from '@/lib/utils';
-import { useDroppable, useDndMonitor, useDraggable } from '@dnd-kit/core';
+import { useDroppable, useDndMonitor, useDraggable, useDndContext } from '@dnd-kit/core';
 import { Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { initializeWidgets } from '@/features/widgets/init-widgets';
+import { useWidgetConfiguration } from '@/features/widgets/hooks/use-widget-configuration';
 
 interface GridCell {
   x: number;
@@ -44,7 +46,7 @@ const SIZE_RATIO_TO_GRID = {
   '4:4': { width: 4, height: 4 },
   '2:4': { width: 2, height: 4 },
   '4:2': { width: 4, height: 2 },
-};
+} as const;
 
 // Cell droppable component
 interface CellDroppableProps {
@@ -52,25 +54,102 @@ interface CellDroppableProps {
   y: number;
   isOccupied: boolean;
   children: React.ReactNode;
+  grid: GridCell[][];
+  cols: number;
+  rows: number;
+  cellDimensions: { width: number; height: number };
 }
 
-function CellDroppable({ x, y, isOccupied, children }: CellDroppableProps) {
+function CellDroppable({ x, y, isOccupied, children, grid, cols, rows, cellDimensions }: CellDroppableProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: `cell-${x}-${y}`,
     data: { x, y, isOccupied },
     disabled: isOccupied
   });
+
+  const { active, over } = useDndContext();
+  const activeWidget = active?.data?.current?.widget;
+  const activeConfig = active?.data?.current?.configuration;
+  
+  // Calculate affected cells when dragging over any cell
+  const getAffectedCells = () => {
+    if (!activeWidget || !over) return [];
+    
+    const overData = over.data?.current as { x: number; y: number } | undefined;
+    if (!overData) return [];
+    
+    const sizeRatio = activeWidget.size_ratio || '1:1';
+    const dimensions = SIZE_RATIO_TO_GRID[sizeRatio as keyof typeof SIZE_RATIO_TO_GRID];
+    
+    const affectedCells: { x: number; y: number }[] = [];
+    
+    // Check if placement would be valid
+    const isValidPlacement = (startX: number, startY: number, width: number, height: number) => {
+      if (startX + width > cols || startY + height > rows) return false;
+      
+      for (let dy = 0; dy < height; dy++) {
+        for (let dx = 0; dx < width; dx++) {
+          if (!grid[startY + dy] || !grid[startY + dy][startX + dx] || grid[startY + dy][startX + dx].isOccupied) {
+            return false;
+          }
+        }
+      }
+      return true;
+    };
+
+    // If placement is valid, collect affected cells
+    if (isValidPlacement(overData.x, overData.y, dimensions.width, dimensions.height)) {
+      for (let dy = 0; dy < dimensions.height; dy++) {
+        for (let dx = 0; dx < dimensions.width; dx++) {
+          affectedCells.push({ x: overData.x + dx, y: overData.y + dy });
+        }
+      }
+    }
+
+    return affectedCells;
+  };
+
+  const affectedCells = getAffectedCells();
+  const isAffected = affectedCells.some(cell => cell.x === x && cell.y === y);
+  const isValid = affectedCells.length > 0;
+  
+  // Only show preview if this is the top-left cell of the affected area
+  const isPreviewCell = isAffected && x === affectedCells[0]?.x && y === affectedCells[0]?.y;
   
   return (
     <div 
       ref={setNodeRef}
       className={cn(
-        "relative bg-background rounded border min-h-[100px] transition-colors duration-200",
-        isOver && !isOccupied ? "bg-primary/10 border-primary/50" : "",
-        isOccupied ? "border-primary" : "border-dashed"
+        "relative rounded transition-colors duration-200",
+        !isOccupied && (
+          isValid 
+            ? isAffected ? "bg-primary/5 border-primary/30" : ""
+            : isOver ? "bg-destructive/10 border-destructive/50" : ""
+        ),
+        isOccupied ? "border-transparent" : "border-dashed border-2",
+        "min-h-[100px]"
       )}
+      style={{
+        width: '100%',
+        height: '100%',
+        minHeight: '100px'
+      }}
     >
       {children}
+      
+      {/* Widget Preview */}
+      {isPreviewCell && activeWidget && !isOccupied && isValid && (
+        <div className="absolute inset-0 pointer-events-none opacity-80">
+          <WidgetRenderer
+            widget={activeWidget}
+            configuration={activeConfig}
+            width={cellDimensions.width * (SIZE_RATIO_TO_GRID[activeWidget.size_ratio as keyof typeof SIZE_RATIO_TO_GRID]?.width || 1)}
+            height={cellDimensions.height * (SIZE_RATIO_TO_GRID[activeWidget.size_ratio as keyof typeof SIZE_RATIO_TO_GRID]?.height || 1)}
+            borderRadius={activeWidget.shape === 'circle' ? '50%' : '12px'}
+            className="widget-preview"
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -114,6 +193,11 @@ function DraggableWidget({
     },
     disabled: readOnly
   });
+
+  const { configuration } = useWidgetConfiguration({
+    widgetId: widget.id,
+    type: widget.widget_type,
+  });
   
   return (
     <div className="absolute inset-0">
@@ -136,13 +220,17 @@ function DraggableWidget({
         {...attributes}
         className={cn(
           "w-full h-full cursor-grab",
-          isDragging && "opacity-50"
+          isDragging && "opacity-50",
+          "widget-card"
         )}
       >
         <WidgetRenderer
           widget={widget}
+          configuration={configuration?.config}
           width={cellWidth * width}
           height={cellHeight * height}
+          borderRadius={widget.shape === 'circle' ? '50%' : '12px'}
+          className="placed-widget"
         />
       </div>
     </div>
@@ -181,17 +269,29 @@ export function DashboardGrid({
       if (!gridRef.current) return;
       
       const gridElement = gridRef.current;
-      const cellWidth = (gridElement.clientWidth - (16 * (cols - 1))) / cols; // Subtract gap (4 * 4px)
-      const cellHeight = (gridElement.clientHeight - (16 * (rows - 1))) / rows; // Subtract gap (4 * 4px)
+      const totalWidth = gridElement.clientWidth;
+      const totalHeight = gridElement.clientHeight;
+      
+      // Subtract total gap space
+      const horizontalGaps = (cols - 1) * 16; // 16px gap
+      const verticalGaps = (rows - 1) * 16;
+      
+      const cellWidth = (totalWidth - horizontalGaps) / cols;
+      const cellHeight = (totalHeight - verticalGaps) / rows;
       
       setCellDimensions({ width: cellWidth, height: cellHeight });
     };
 
     updateCellDimensions();
-    window.addEventListener('resize', updateCellDimensions);
     
-    return () => window.removeEventListener('resize', updateCellDimensions);
-  }, [rows, cols]);
+    // Add resize observer for more reliable dimension updates
+    const resizeObserver = new ResizeObserver(updateCellDimensions);
+    if (gridRef.current) {
+      resizeObserver.observe(gridRef.current);
+    }
+
+    return () => resizeObserver.disconnect();
+  }, [cols, rows, layout]);
 
   // Initialize grid
   useEffect(() => {
@@ -326,7 +426,22 @@ export function DashboardGrid({
 
   // Handle widget placement from drag and drop
   const handlePlaceWidget = async (widget: Widget, x: number, y: number) => {
-    if (!draftId || !widget || readOnly) return;
+    console.log("handlePlaceWidget called with:", {
+      widget,
+      x,
+      y,
+      draftId,
+      readOnly
+    });
+    
+    if (!draftId || !widget || readOnly) {
+      console.log("Early return from handlePlaceWidget - Missing:", { 
+        hasDraftId: !!draftId, 
+        hasWidget: !!widget, 
+        isReadOnly: readOnly 
+      });
+      return;
+    }
     
     // Get widget dimensions from size ratio
     const sizeRatio = widget.size_ratio as WidgetSizeRatio || '1:1';
@@ -585,15 +700,28 @@ export function DashboardGrid({
     onDragEnd: (event) => {
       const { active, over } = event;
       
-      if (!over || !active) return;
+      console.log("Drag ended - Active:", active);
+      console.log("Drag ended - Over:", over);
+      
+      if (!over || !active) {
+        console.log("No over or active target");
+        return;
+      }
       
       const activeData = active.data.current;
       const overData = over.data.current;
       
-      if (!activeData || !overData) return;
+      console.log("Active data:", activeData);
+      console.log("Over data:", overData);
+      
+      if (!activeData || !overData) {
+        console.log("Missing data in drag operation");
+        return;
+      }
       
       // Handle widget placement from library
       if (activeData.widget && !activeData.type && overData.x !== undefined && overData.y !== undefined) {
+        console.log("Attempting to place widget at:", overData.x, overData.y);
         handlePlaceWidget(activeData.widget, overData.x, overData.y);
         return;
       }
@@ -613,6 +741,15 @@ export function DashboardGrid({
       }
     }
   });
+
+  // Add this useEffect for initialization
+  useEffect(() => {
+    // Initialize widgets when component mounts
+    const init = async () => {
+      await initializeWidgets();
+    };
+    init();
+  }, []); // Empty dependency array means this runs once on mount
 
   if (!grid.length) return null;
 
@@ -649,6 +786,10 @@ export function DashboardGrid({
             x={x} 
             y={y} 
             isOccupied={cell.isOccupied}
+            grid={grid}
+            cols={cols}
+            rows={rows}
+            cellDimensions={cellDimensions}
           >
             {cell.isOccupied && cell.widget && cell.width && cell.height && cell.placementId && (
               <DraggableWidget

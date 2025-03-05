@@ -45,6 +45,7 @@ export class WidgetRegistry {
   private static instance: WidgetRegistry;
   private registry: WidgetComponentRegistry = {};
   private defaultComponent: React.ComponentType<BaseWidgetProps> = DefaultWidgetComponent;
+  private initialized: boolean = false;
 
   /**
    * Get the singleton instance of WidgetRegistry
@@ -57,12 +58,36 @@ export class WidgetRegistry {
   }
 
   /**
+   * Initialize the widget registry
+   */
+  public async initialize() {
+    if (this.initialized) return;
+    
+    try {
+      // Add any default registrations here
+      this.register(WidgetType.CONTENT, DefaultWidgetComponent);
+      
+      // Mark as initialized
+      this.initialized = true;
+      console.log('Widget registry initialized');
+    } catch (error) {
+      console.error('Failed to initialize widget registry:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Register a component for a specific widget type
    */
   public register<T extends BaseWidgetProps>(
     type: WidgetType | string,
     component: React.ComponentType<T>
   ): void {
+    if (!type) {
+      console.warn('Attempted to register widget with no type');
+      return;
+    }
+    
     this.registry[type] = component;
     console.log(`Registered widget component for type: ${type}`);
   }
@@ -71,7 +96,17 @@ export class WidgetRegistry {
    * Get a component for a specific widget type
    */
   public getComponent<T extends BaseWidgetProps>(type: WidgetType | string): React.ComponentType<T> {
-    return (this.registry[type] as React.ComponentType<T>) || this.defaultComponent as unknown as React.ComponentType<T>;
+    if (!this.initialized) {
+      console.warn('Widget registry accessed before initialization');
+    }
+    
+    const component = this.registry[type];
+    if (!component) {
+      console.warn(`No component registered for widget type: ${type}`);
+      return this.defaultComponent as unknown as React.ComponentType<T>;
+    }
+    
+    return component as React.ComponentType<T>;
   }
 
   /**
