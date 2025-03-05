@@ -19,6 +19,7 @@ interface GridCell {
   placementId?: string;
   width?: number;
   height?: number;
+  configuration?: any;
 }
 
 interface DashboardGridProps {
@@ -166,6 +167,7 @@ interface DraggableWidgetProps {
   cellHeight: number;
   onRemove: () => void;
   readOnly?: boolean;
+  configuration?: any; 
 }
 
 function DraggableWidget({ 
@@ -178,7 +180,8 @@ function DraggableWidget({
   cellWidth, 
   cellHeight,
   onRemove,
-  readOnly = false
+  readOnly = false,
+  configuration: passedConfiguration // Add this line
 }: DraggableWidgetProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `placement-${placementId}`,
@@ -194,10 +197,14 @@ function DraggableWidget({
     disabled: readOnly
   });
 
-  const { configuration } = useWidgetConfiguration({
+  const { configuration: fetchedConfiguration } = useWidgetConfiguration({
     widgetId: widget.id,
     type: widget.widget_type,
+    enabled: !passedConfiguration // Only fetch if not provided
   });
+  
+  // Use passed configuration or fetched one
+  const configToUse = passedConfiguration || fetchedConfiguration?.config;
   
   return (
     <div className="absolute inset-0">
@@ -226,7 +233,7 @@ function DraggableWidget({
       >
         <WidgetRenderer
           widget={widget}
-          configuration={configuration?.config}
+          configuration={configToUse}
           width={cellWidth * width}
           height={cellHeight * height}
           borderRadius={widget.shape === 'circle' ? '50%' : '12px'}
@@ -376,6 +383,10 @@ export function DashboardGrid({
               cell.placementId = placement.id;
               cell.width = width;
               cell.height = height;
+              // Store configuration if available in the placement
+              if (placement.widget && placement.widget.configuration) {
+                cell.configuration = placement.widget.configuration;
+              }
             }
           }
         }
@@ -425,23 +436,24 @@ export function DashboardGrid({
   }, [dashboardId, draftId, layout, updateGridWithPlacements]);
 
   // Handle widget placement from drag and drop
-  const handlePlaceWidget = async (widget: Widget, x: number, y: number) => {
-    console.log("handlePlaceWidget called with:", {
-      widget,
-      x,
-      y,
-      draftId,
-      readOnly
+const handlePlaceWidget = async (widget: Widget, x: number, y: number, widgetConfiguration?: any) => {
+  console.log("handlePlaceWidget called with:", {
+    widget,
+    x,
+    y,
+    draftId,
+    readOnly,
+    hasConfiguration: !!widgetConfiguration
+  });
+  
+  if (!draftId || !widget || readOnly) {
+    console.log("Early return from handlePlaceWidget - Missing:", { 
+      hasDraftId: !!draftId, 
+      hasWidget: !!widget, 
+      isReadOnly: readOnly 
     });
-    
-    if (!draftId || !widget || readOnly) {
-      console.log("Early return from handlePlaceWidget - Missing:", { 
-        hasDraftId: !!draftId, 
-        hasWidget: !!widget, 
-        isReadOnly: readOnly 
-      });
-      return;
-    }
+    return;
+  }
     
     // Get widget dimensions from size ratio
     const sizeRatio = widget.size_ratio as WidgetSizeRatio || '1:1';
@@ -504,6 +516,7 @@ export function DashboardGrid({
               newGrid[y][x].placementId = placement.id;
               newGrid[y][x].width = widgetDimensions.width;
               newGrid[y][x].height = widgetDimensions.height;
+              newGrid[y][x].configuration = widgetConfiguration;
             }
           }
         }
@@ -667,6 +680,11 @@ export function DashboardGrid({
               newGrid[newY][newX].placementId = placementId;
               newGrid[newY][newX].width = width;
               newGrid[newY][newX].height = height;
+
+
+              if (newGrid[oldY][oldX].configuration) {
+                newGrid[newY][newX].configuration = newGrid[oldY][oldX].configuration;
+              }
             }
           }
         }
@@ -722,7 +740,8 @@ export function DashboardGrid({
       // Handle widget placement from library
       if (activeData.widget && !activeData.type && overData.x !== undefined && overData.y !== undefined) {
         console.log("Attempting to place widget at:", overData.x, overData.y);
-        handlePlaceWidget(activeData.widget, overData.x, overData.y);
+        // Pass configuration to handlePlaceWidget
+        handlePlaceWidget(activeData.widget, overData.x, overData.y, activeData.configuration);
         return;
       }
       
@@ -802,6 +821,7 @@ export function DashboardGrid({
                 cellWidth={cellDimensions.width}
                 cellHeight={cellDimensions.height}
                 readOnly={readOnly}
+                configuration={cell.configuration} // Add this line
                 onRemove={() => handleRemoveWidget(cell.placementId!, x, y, cell.width!, cell.height!)}
               />
             )}
