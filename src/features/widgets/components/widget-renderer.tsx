@@ -140,8 +140,8 @@ export const WidgetRenderer: React.FC<WidgetRendererProps> = ({
           minHeight: '100px',
           borderRadius,
           overflow: 'hidden',
-          backgroundColor: 'white',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+          backgroundColor: style?.backgroundColor || 'white',
+          boxShadow: style?.boxShadow || '0 2px 8px rgba(0, 0, 0, 0.05)',
           ...style,
         }}
       >

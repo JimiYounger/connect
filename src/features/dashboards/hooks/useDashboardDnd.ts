@@ -165,39 +165,68 @@ export function useDashboardDnd({
       
       console.log("[handlePlaceWidget] Placement created successfully with ID:", placement.id);
       
-      // If we have widget configuration and placement was saved successfully,
-      // save the configuration separately
-      if (widgetConfiguration && placement) {
+      // If we have widget configuration and placement was saved successfully, save the configuration
+      if (placement) {
         try {
+          // Ensure we have a configuration object with a styles property
+          const config = widgetConfiguration || {};
+          
+          // If no styles object exists, create one
+          if (!config.styles) {
+            config.styles = {};
+          }
+          
+          // Set default styling if none is provided
+          if (!config.styles.backgroundColor) {
+            config.styles.backgroundColor = '#ffffff'; // Default white background
+          }
+          
+          if (!config.styles.textColor) {
+            config.styles.textColor = '#000000'; // Default black text
+          }
+          
+          // Add borderRadius if not set
+          if (!config.styles.borderRadius) {
+            config.styles.borderRadius = WIDGET_BORDER_RADIUS;
+          }
+          
           console.log("[handlePlaceWidget] Saving widget configuration:", {
             widgetId: widget.id,
-            config: widgetConfiguration
+            config
           });
           
           await dashboardService.saveWidgetConfiguration(
             widget.id,
-            widgetConfiguration,
+            config,
             userId
           );
           
           console.log("[handlePlaceWidget] Widget configuration saved successfully");
+          
+          // Update the configuration passed to placeWidget with our enhanced config
+          placeWidget(
+            widget, 
+            x, 
+            y, 
+            widgetDimensions.width, 
+            widgetDimensions.height, 
+            placement.id, 
+            config
+          );
         } catch (configErr) {
           console.error('[handlePlaceWidget] Error saving widget configuration:', configErr);
           // Continue anyway since the placement was saved
+          placeWidget(
+            widget, 
+            x, 
+            y, 
+            widgetDimensions.width, 
+            widgetDimensions.height, 
+            placement.id, 
+            widgetConfiguration
+          );
         }
       }
-      
-      // Update the UI with the placed widget
-      console.log("[handlePlaceWidget] Updating UI with placed widget");
-      placeWidget(
-        widget, 
-        x, 
-        y, 
-        widgetDimensions.width, 
-        widgetDimensions.height, 
-        placement.id, 
-        widgetConfiguration
-      );
       
       // Notify parent component of placement change
       if (onPlacementChange) {

@@ -145,6 +145,10 @@ function DraggableWidget({
     disabled: readOnly
   });
 
+  // Extract styling from configuration
+  const backgroundColor = configuration?.styles?.backgroundColor || 'white';
+  const textColor = configuration?.styles?.textColor || 'black';
+  
   return (
     <div 
       className="absolute inset-0"
@@ -184,6 +188,9 @@ function DraggableWidget({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          backgroundColor: backgroundColor,
+          color: textColor,
+          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
         }}
       >
         <div
@@ -211,6 +218,7 @@ function DraggableWidget({
               height: '100%',
               objectFit: 'contain',
               position: 'relative',
+              backgroundColor: 'transparent', // Allow parent's background to show
             }}
           />
         </div>
