@@ -210,23 +210,6 @@ export function useDashboardDnd({
         title: "Widget placed",
         description: `${widget.name} has been added to the dashboard.`,
       });
-
-      // Inside handlePlaceWidget, add after checking if widget can be placed:
-      console.log(`[handlePlaceWidget] Creating rectangular placement for ${widgetDimensions.width}x${widgetDimensions.height} widget at (${x},${y})`);
-
-      // Add a visualization for large widgets
-      if (widgetDimensions.width >= 3 || widgetDimensions.height >= 3) {
-        let visualPlacement = '';
-        for (let y = 0; y < widgetDimensions.height; y++) {
-          let row = '';
-          for (let x = 0; x < widgetDimensions.width; x++) {
-            row += '◼︎ ';
-          }
-          visualPlacement += row + '\n';
-        }
-        console.log('Widget placement shape:');
-        console.log(visualPlacement);
-      }
     } catch (err) {
       console.error('[handlePlaceWidget] Error placing widget:', err);
       
@@ -453,7 +436,6 @@ export function useDashboardDnd({
         
         console.log(`[DragEnd] Attempting to place widget: ${widget.name} (${dimensions.width}x${dimensions.height}) at cursor (${overData.x}, ${overData.y})`);
         
-        // For all widgets, use the same consistent placement strategy
         // Calculate a centered placement position based on cursor
         let finalX = Math.max(0, Math.min(overData.x - Math.floor(dimensions.width / 2), cols - dimensions.width));
         let finalY = Math.max(0, Math.min(overData.y - Math.floor(dimensions.height / 2), rows - dimensions.height));
@@ -499,7 +481,6 @@ export function useDashboardDnd({
       if (activeData.type === 'move' && overData.x !== undefined && overData.y !== undefined) {
         console.log(`[DragEnd] Moving widget from (${activeData.sourceX},${activeData.sourceY}) to (${overData.x},${overData.y})`);
         
-        // Use the same consistent placement strategy for all widget sizes
         // Calculate a centered placement position based on cursor
         let finalX = Math.max(0, Math.min(overData.x - Math.floor(activeData.width / 2), cols - activeData.width));
         let finalY = Math.max(0, Math.min(overData.y - Math.floor(activeData.height / 2), rows - activeData.height));

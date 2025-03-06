@@ -9,7 +9,7 @@ import {
   validatePlacement, 
 } from '@/utils/gridUtils';
 
-// Define the props type (removing isOccupied as it's unused)
+// Define the props type
 interface UseCellDroppableProps {
   x: number;
   y: number;
@@ -27,7 +27,7 @@ export function useAffectedCells({ x, y, grid, cols, rows }: UseCellDroppablePro
   return useMemo(() => {
     // If no active widget or no over data, return empty state
     if (!activeWidget) {
-      return { isAffected: false, isValid: false, affectedCells: [], placementPosition: null };
+      return { isAffected: false, isValid: false, affectedCells: [], placementPosition: null, cursorPosition: null };
     }
     
     // Get widget dimensions
@@ -35,191 +35,113 @@ export function useAffectedCells({ x, y, grid, cols, rows }: UseCellDroppablePro
     const dimensions = SIZE_RATIO_TO_GRID[sizeRatio as WidgetSizeRatio];
     const { width, height } = dimensions;
     
-    // Determine if this is a large widget that needs special handling
-    const isLargeWidget = width >= 3 || height >= 3;
-
     // Track which cell we're directly over (from dnd-kit)
     const overX = over?.data?.current?.x ?? null;
     const overY = over?.data?.current?.y ?? null;
     
-    // For moving widgets, use the current cell's position as anchor point
-    if (activeDragType === 'move') {
-      const activeData = active?.data?.current;
-      if (!activeData) {
-        return { isAffected: false, isValid: false, affectedCells: [], placementPosition: null };
-      }
-      
-      // If we're not over any cell, exit early
-      if (overX === null || overY === null) {
-        return { isAffected: false, isValid: false, affectedCells: [], placementPosition: null };
-      }
-      
-      // Calculate centered placement position
-      let placementX = Math.max(0, Math.min(overX - Math.floor(activeData.width / 2), cols - activeData.width));
-      let placementY = Math.max(0, Math.min(overY - Math.floor(activeData.height / 2), rows - activeData.height));
-
-      // For large widgets, try to snap to even grid positions
-      if (isLargeWidget) {
-        // Try to snap to even grid positions for better alignment
-        if (activeData.width >= 4 || activeData.height >= 4) {
-          // For very large widgets, prefer positions divisible by 4
-          placementX = Math.floor(placementX / 4) * 4;
-          placementY = Math.floor(placementY / 4) * 4;
-        } else if (activeData.width >= 2 || activeData.height >= 2) {
-          // For medium widgets, prefer positions divisible by 2
-          placementX = Math.floor(placementX / 2) * 2;
-          placementY = Math.floor(placementY / 2) * 2;
-        }
-        
-        // Make sure we're still in bounds after snapping
-        placementX = Math.max(0, Math.min(placementX, cols - activeData.width));
-        placementY = Math.max(0, Math.min(placementY, rows - activeData.height));
-      }
-
-      // Validate the potential placement
-      const { isValid } = validatePlacement(
-        placementX, 
-        placementY, 
-        activeData.width, 
-        activeData.height,
-        grid,
-        cols,
-        rows
-      );
-      
-      if (isValid) {
-        const cells = [];
-        for (let dy = 0; dy < activeData.height; dy++) {
-          for (let dx = 0; dx < activeData.width; dx++) {
-            cells.push({ x: placementX + dx, y: placementY + dy });
-          }
-        }
-        
-        const cellIsAffected = cells.some(cell => cell.x === x && cell.y === y);
-        
-        return { 
-          isAffected: cellIsAffected, 
-          isValid: true, 
-          affectedCells: cells,
-          placementPosition: { x: placementX, y: placementY }
-        };
-      }
-      
-      // Try to find another valid position
-      const validPosition = findValidPosition(
-        overX, 
-        overY, 
-        activeData.width, 
-        activeData.height,
-        grid,
-        cols,
-        rows
-      );
-      
-      if (validPosition) {
-        const cells = [];
-        for (let dy = 0; dy < activeData.height; dy++) {
-          for (let dx = 0; dx < activeData.width; dx++) {
-            cells.push({ x: validPosition.x + dx, y: validPosition.y + dy });
-          }
-        }
-        
-        const cellIsAffected = cells.some(cell => cell.x === x && cell.y === y);
-        
-        return { 
-          isAffected: cellIsAffected, 
-          isValid: true, 
-          affectedCells: cells,
-          placementPosition: validPosition
-        };
-      }
-    }
-    
-    // For new widget placement
+    // If we're not over any cell, exit early
     if (overX === null || overY === null) {
-      return { isAffected: false, isValid: false, affectedCells: [], placementPosition: null };
+      return { isAffected: false, isValid: false, affectedCells: [], placementPosition: null, cursorPosition: null };
     }
     
-    // Calculate centered placement
-    let placementX = Math.max(0, Math.min(overX - Math.floor(width / 2), cols - width));
-    let placementY = Math.max(0, Math.min(overY - Math.floor(height / 2), rows - height));
+    // Store the cursor position (where user is currently hovering)
+    const cursorPosition = { x: overX, y: overY };
     
-    // For large widgets, try to snap to even grid positions
-    if (isLargeWidget) {
-      // Try to snap to even grid positions for better alignment
-      if (width >= 4 || height >= 4) {
-        // For very large widgets, prefer positions divisible by 4
-        placementX = Math.floor(placementX / 4) * 4;
-        placementY = Math.floor(placementY / 4) * 4;
-      } else if (width >= 2 || height >= 2) {
-        // For medium widgets, prefer positions divisible by 2
-        placementX = Math.floor(placementX / 2) * 2;
-        placementY = Math.floor(placementY / 2) * 2;
-      }
-      
-      // Make sure we're still in bounds after snapping
-      placementX = Math.max(0, Math.min(placementX, cols - width));
-      placementY = Math.max(0, Math.min(placementY, rows - height));
-    }
+    // Calculate centered placement position - consistent for all widget sizes
+    // This centers the widget on the cursor for more intuitive placement
+    const placementX = Math.max(0, Math.min(overX - Math.floor(width / 2), cols - width));
+    const placementY = Math.max(0, Math.min(overY - Math.floor(height / 2), rows - height));
     
-    // Validate placement
+    // For moving widgets, use the provided dimensions
+    const activeWidth = activeDragType === 'move' ? active?.data?.current?.width || width : width;
+    const activeHeight = activeDragType === 'move' ? active?.data?.current?.height || height : height;
+    
+    // Validate the potential placement
     const { isValid } = validatePlacement(
       placementX, 
       placementY, 
-      width, 
-      height,
+      activeWidth, 
+      activeHeight,
       grid,
       cols,
       rows
     );
     
-    if (isValid) {
-      const cells = [];
-      for (let dy = 0; dy < height; dy++) {
-        for (let dx = 0; dx < width; dx++) {
-          cells.push({ x: placementX + dx, y: placementY + dy });
+    // Always calculate affected cells based on cursor position for consistency
+    // This makes the preview responsive to cursor movement
+    const affectedCells = [];
+    for (let dy = 0; dy < activeHeight; dy++) {
+      for (let dx = 0; dx < activeWidth; dx++) {
+        const cellX = placementX + dx;
+        const cellY = placementY + dy;
+        
+        // Ensure we're within grid boundaries
+        if (cellX >= 0 && cellX < cols && cellY >= 0 && cellY < rows) {
+          affectedCells.push({ x: cellX, y: cellY });
         }
       }
-      
-      const cellIsAffected = cells.some(cell => cell.x === x && cell.y === y);
-      
+    }
+    
+    // Check if this specific cell is affected
+    const cellIsAffected = affectedCells.some(cell => cell.x === x && cell.y === y);
+    
+    // If the initial placement is valid, use it
+    if (isValid) {
       return { 
         isAffected: cellIsAffected, 
         isValid: true, 
-        affectedCells: cells,
-        placementPosition: { x: placementX, y: placementY }
+        affectedCells,
+        placementPosition: { x: placementX, y: placementY },
+        cursorPosition
       };
     }
     
-    // If direct placement is not valid, try to find a valid position
+    // If direct placement is not valid, try to find a valid position nearby
     const validPosition = findValidPosition(
       overX, 
       overY, 
-      width, 
-      height,
+      activeWidth, 
+      activeHeight,
       grid,
       cols,
       rows
     );
     
     if (validPosition) {
-      const cells = [];
-      for (let dy = 0; dy < height; dy++) {
-        for (let dx = 0; dx < width; dx++) {
-          cells.push({ x: validPosition.x + dx, y: validPosition.y + dy });
+      // Calculate new affected cells for the valid position
+      const newAffectedCells = [];
+      for (let dy = 0; dy < activeHeight; dy++) {
+        for (let dx = 0; dx < activeWidth; dx++) {
+          const cellX = validPosition.x + dx;
+          const cellY = validPosition.y + dy;
+          
+          // Ensure we're within grid boundaries
+          if (cellX >= 0 && cellX < cols && cellY >= 0 && cellY < rows) {
+            newAffectedCells.push({ x: cellX, y: cellY });
+          }
         }
       }
       
-      const cellIsAffected = cells.some(cell => cell.x === x && cell.y === y);
+      // Check if this specific cell is affected by the valid position
+      const newCellIsAffected = newAffectedCells.some(cell => cell.x === x && cell.y === y);
       
       return { 
-        isAffected: cellIsAffected, 
+        isAffected: newCellIsAffected, 
         isValid: true, 
-        affectedCells: cells,
-        placementPosition: validPosition
+        affectedCells: newAffectedCells,
+        placementPosition: validPosition,
+        cursorPosition
       };
     }
     
-    return { isAffected: false, isValid: false, affectedCells: [], placementPosition: null };
+    // If no valid position found, still return cursor-centered placement for preview
+    // but mark it as invalid for visual feedback
+    return { 
+      isAffected: cellIsAffected, 
+      isValid: false, 
+      affectedCells,
+      placementPosition: { x: placementX, y: placementY },
+      cursorPosition
+    };
   }, [active, over, activeWidget, activeDragType, x, y, grid, cols, rows]);
 }

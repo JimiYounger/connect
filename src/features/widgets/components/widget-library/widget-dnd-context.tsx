@@ -42,7 +42,7 @@ const WidgetDndContext = createContext<WidgetDndContextValue>({
 
 export const useWidgetDnd = () => useContext(WidgetDndContext);
 
-// Update the DND_STYLES
+// Enhanced DND_STYLES with better feedback
 const DND_STYLES = `
   .widget-library {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -63,6 +63,27 @@ const DND_STYLES = `
   .widget-container {
     position: relative;
     background-color: transparent;
+    transition: transform 0.15s ease-in-out, opacity 0.15s ease-in-out;
+  }
+  
+  .widget-container:hover {
+    transform: translateY(-2px);
+    opacity: 0.95;
+  }
+  
+  /* Draggable widget styles */
+  .widget-draggable {
+    cursor: grab;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  .widget-draggable:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+  }
+  
+  .widget-draggable:active {
+    cursor: grabbing;
   }
   
   /* Size classes with exact dimensions */
@@ -80,7 +101,31 @@ const DND_STYLES = `
     height: ${calculateDimensions(2, 2).height}px !important;
   }
   
-  /* Add similar rules for other sizes */
+  /* Overlay styles */
+  .ios-drag-overlay {
+    transform: scale(1.05);
+    opacity: 0.9;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+    pointer-events: none;
+    transition: transform 0.15s ease-out;
+    position: relative;
+  }
+  
+  .widget-label {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0,0,0,0.7);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 10;
+    opacity: 0.9;
+    pointer-events: none;
+  }
 `;
 
 export const WidgetDndProvider: React.FC<WidgetDndContextProps> = ({
@@ -90,11 +135,11 @@ export const WidgetDndProvider: React.FC<WidgetDndContextProps> = ({
   const [activeWidget, setActiveWidget] = useState<Widget | null>(null);
   const [activeConfiguration, setActiveConfiguration] = useState<WidgetConfigData | null>(null);
   
-  // Configure sensors
+  // Configure sensors with improved sensitivity
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8, // 8px of movement required before drag starts
+        distance: 5, // Reduced from 8px to make dragging more responsive
       },
     })
   );
@@ -147,8 +192,8 @@ export const WidgetDndProvider: React.FC<WidgetDndContextProps> = ({
             <div 
               className="ios-drag-overlay" 
               style={{
-                opacity: 0.8,
-                transform: 'scale(1.02)',
+                opacity: 0.85,
+                transform: 'scale(1.05)',
                 pointerEvents: 'none',
                 overflow: 'hidden',
                 borderRadius: activeWidget.shape === 'circle' ? '50%' : WIDGET_BORDER_RADIUS,
@@ -165,20 +210,18 @@ export const WidgetDndProvider: React.FC<WidgetDndContextProps> = ({
                       SIZE_RATIO_MAP[activeWidget.size_ratio as WidgetSizeRatio]?.height || 120
                     )}px`
                   : `${SIZE_RATIO_MAP[activeWidget.size_ratio as WidgetSizeRatio]?.height || 120}px`,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                boxShadow: '0 10px 25px rgba(0,0,0,0.15), 0 0 0 2px rgba(var(--primary), 0.3)',
                 transition: 'transform 100ms ease',
               }}
             >
-              {(activeWidget.size_ratio === '4:4' || 
-                activeWidget.size_ratio === '4:2' || 
-                activeWidget.size_ratio === '2:4') && (
-                <div 
-                  className="absolute top-2 right-2 px-2 py-1 bg-black/50 text-white text-xs rounded-full"
-                  style={{ zIndex: 10 }}
-                >
-                  {activeWidget.size_ratio.replace(':', '×')}
-                </div>
-              )}
+              {/* Always show size label for clearer feedback */}
+              <div 
+                className="widget-label"
+                style={{ zIndex: 10 }}
+              >
+                {activeWidget.name} ({activeWidget.size_ratio.replace(':', '×')})
+              </div>
+              
               <div style={{
                 position: 'absolute',
                 top: '50%',
@@ -225,14 +268,24 @@ export const WidgetDndProvider: React.FC<WidgetDndContextProps> = ({
   );
 };
 
-// Update the dragStyles
-const dragStyles = `  .ios-drag-overlay {
+// Update the dragStyles with enhanced visual feedback
+const dragStyles = `
+  .ios-drag-overlay {
     transform: scale(1.05);
-    opacity: 0.9;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    opacity: 0.95;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15), 0 0 0 2px rgba(var(--primary), 0.3);
     pointer-events: none;
     background-color: white;
     overflow: hidden;
+    z-index: 1000;
+  }
+  
+  .ios-drag-overlay::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom right, rgba(var(--primary), 0.05), transparent);
+    pointer-events: none;
   }
 `;
 

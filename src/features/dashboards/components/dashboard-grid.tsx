@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Widget } from '@/features/widgets/types';
 import { WidgetRenderer } from '@/features/widgets/components/widget-renderer';
 import { cn } from '@/lib/utils';
-import { useDroppable, useDraggable } from '@dnd-kit/core';
+import { useDroppable, useDraggable, useDndMonitor, DragEndEvent, DragMoveEvent } from '@dnd-kit/core';
 import { Trash2 } from 'lucide-react';
 import { initializeWidgets } from '@/features/widgets/init-widgets';
 // Import from utility files
@@ -26,7 +26,6 @@ import { useGridState } from '../hooks/useGridState';
 import { useGridDimensions } from '../hooks/useGridDimensions';
 import { useGridPersistence } from '../hooks/useGridPersistence';
 import { useDashboardDnd } from '../hooks/useDashboardDnd';
-import { useDndMonitor } from '@dnd-kit/core';
 
 interface DashboardGridProps {
   layout: 'mobile' | 'desktop';
@@ -58,7 +57,7 @@ function CellDroppable({ x, y, isOccupied, children, grid, cols, rows }: CellDro
     disabled: isOccupied
   });
 
-  // Use the hook to detect affected cells - remove isOccupied parameter
+  // Use the hook to detect affected cells
   const { isAffected, isValid } = useAffectedCells({
     x, y, grid, cols, rows
   });
@@ -69,8 +68,10 @@ function CellDroppable({ x, y, isOccupied, children, grid, cols, rows }: CellDro
       data-cell-id={`cell-${x}-${y}`}
       data-affected={isAffected}
       data-valid={isValid}
+      data-x={x}
+      data-y={y}
       className={cn(
-        "relative rounded transition-all duration-200",
+        "relative rounded transition-all duration-150",
         !isOccupied && (
           isValid 
             ? isAffected 
@@ -78,7 +79,9 @@ function CellDroppable({ x, y, isOccupied, children, grid, cols, rows }: CellDro
               : "hover:bg-primary/5"
             : isOver 
               ? "bg-destructive/10 border-destructive/50" 
-              : "hover:bg-muted/50"
+              : isAffected
+                ? "bg-destructive/10 border-destructive/30"
+                : "hover:bg-muted/50"
         ),
         isOccupied ? "border-transparent" : "border-dashed border-2",
       )}
@@ -216,10 +219,6 @@ function DraggableWidget({
   );
 }
 
-// Add this helper function at the top of the file
-const isLargeWidget = (width: number, height: number) => 
-  width >= 4 || height >= 4 || (width * height) >= 8;
-
 export function DashboardGrid({ 
   layout, 
   rows, 
@@ -293,17 +292,41 @@ export function DashboardGrid({
     init();
   }, []);
 
-  // Enhanced drag preview state
+  // Enhanced drag preview state with cursor position tracking
   const [dragPreview, setDragPreview] = useState<{
     widget: Widget;
     position: { x: number, y: number } | null;
+    cursorPosition: { x: number, y: number } | null;
     width: number;
     height: number;
     isValid: boolean;
     affectedCells: {x: number; y: number}[];
+    isOverGrid: boolean;
   } | null>(null);
+
+  // Track mouse position during drag
+  const [mousePosition, setMousePosition] = useState<{x: number, y: number} | null>(null);
+  const gridBounds = useRef<DOMRect | null>(null);
   
-  // Use enhanced useDndMonitor
+  // Update grid bounds when the component mounts or resizes
+  useEffect(() => {
+    if (gridRef.current) {
+      gridBounds.current = gridRef.current.getBoundingClientRect();
+    }
+    
+    const updateBounds = () => {
+      if (gridRef.current) {
+        gridBounds.current = gridRef.current.getBoundingClientRect();
+      }
+    };
+    
+    window.addEventListener('resize', updateBounds);
+    return () => {
+      window.removeEventListener('resize', updateBounds);
+    };
+  }, []);
+  
+  // Use enhanced useDndMonitor with move tracking
   useDndMonitor({
     onDragStart: (event) => {
       const { active } = event;
@@ -322,95 +345,116 @@ export function DashboardGrid({
       setDragPreview({
         widget: activeWidget,
         position: null, // Will be set during drag
+        cursorPosition: null, // Will be set during drag
         width: dimensions.width,
         height: dimensions.height,
         isValid: false,
-        affectedCells: []
+        affectedCells: [],
+        isOverGrid: false
       });
       
       console.log(`[DragStart] Widget: ${activeWidget.name} (${dimensions.width}x${dimensions.height})`);
     },
+    onDragMove: (event: DragMoveEvent) => {
+      if (!dragPreview?.widget) return;
+      
+      // Track mouse position
+      const { clientX, clientY } = event.activatorEvent as MouseEvent;
+      
+      if (gridBounds.current) {
+        // Convert client coordinates to grid-relative coordinates
+        const gridX = clientX - gridBounds.current.left;
+        const gridY = clientY - gridBounds.current.top;
+        
+        // Check if cursor is over the grid
+        const isOverGrid = 
+          gridX >= 0 && 
+          gridX <= gridBounds.current.width && 
+          gridY >= 0 && 
+          gridY <= gridBounds.current.height;
+        
+        setMousePosition({ x: gridX, y: gridY });
+        
+        // Update preview isOverGrid state
+        if (dragPreview.isOverGrid !== isOverGrid) {
+          setDragPreview(prev => prev ? { ...prev, isOverGrid } : null);
+        }
+      }
+    },
     onDragEnd: () => {
       setDragPreview(null);
+      setMousePosition(null);
     },
     onDragCancel: () => {
       setDragPreview(null);
+      setMousePosition(null);
     }
   });
   
-  // Update the preview effect
+  // Enhanced preview effect - always shows preview near cursor position
   useEffect(() => {
-    if (!dragPreview?.widget) return;
+    if (!dragPreview?.widget || !mousePosition) return;
     
+    // Calculate cell coordinates from mouse position
+    const cellX = Math.floor(mousePosition.x / (GRID_CELL_SIZE + GRID_GAP));
+    const cellY = Math.floor(mousePosition.y / (GRID_CELL_SIZE + GRID_GAP));
+    
+    // Ensure cell coordinates are within grid bounds
+    const boundedCellX = Math.max(0, Math.min(cellX, cols - 1));
+    const boundedCellY = Math.max(0, Math.min(cellY, rows - 1));
+    
+    // Get affected cells from the DOM
     const affectedCells: {x: number; y: number}[] = [];
     let foundValid = false;
     let position = null;
     
-    // Check if this is a large widget
-    const isLarge = isLargeWidget(dragPreview.width, dragPreview.height);
-    
-    // For large widgets, we'll be more lenient with preview positions
-    const checkRadius = isLarge ? 2 : 0;
-    
+    // Find the valid position
     for (let y = 0; y < rows; y++) {
       for (let x = 0; x < cols; x++) {
         const cellElement = document.querySelector(`[data-cell-id="cell-${x}-${y}"]`);
         if (cellElement?.getAttribute('data-affected') === 'true') {
           affectedCells.push({x, y});
           
-          if (cellElement?.getAttribute('data-valid') === 'true') {
-            // For large widgets, prefer positions aligned to grid boundaries
-            if (isLarge) {
-              // Prefer positions that align with grid boundaries
-              const isAligned = x % 2 === 0 && y % 2 === 0;
-              if (isAligned && !position) {
-                position = {x, y};
-                foundValid = true;
-              }
-            } else if (!position) {
-              position = {x, y};
-              foundValid = true;
-            }
-          }
-        }
-        
-        // For large widgets, also check nearby cells
-        if (isLarge && !position) {
-          for (let dy = -checkRadius; dy <= checkRadius; dy++) {
-            for (let dx = -checkRadius; dx <= checkRadius; dx++) {
-              const nearbyX = x + dx;
-              const nearbyY = y + dy;
-              if (nearbyX >= 0 && nearbyX < cols && nearbyY >= 0 && nearbyY < rows) {
-                const nearbyCellElement = document.querySelector(
-                  `[data-cell-id="cell-${nearbyX}-${nearbyY}"]`
-                );
-                if (nearbyCellElement?.getAttribute('data-valid') === 'true') {
-                  position = {x: nearbyX, y: nearbyY};
-                  foundValid = true;
-                  break;
-                }
-              }
-            }
-            if (position) break;
+          if (cellElement?.getAttribute('data-valid') === 'true' && !position) {
+            position = {x, y};
+            foundValid = true;
           }
         }
       }
-      if (position && !isLarge) break; // For small widgets, stop at first valid position
     }
+    
+    // Calculate cursor-centered position for preview
+    // This ensures the preview is always near the cursor
+    const centerX = Math.max(0, Math.min(boundedCellX - Math.floor(dragPreview.width / 2), cols - dragPreview.width));
+    const centerY = Math.max(0, Math.min(boundedCellY - Math.floor(dragPreview.height / 2), rows - dragPreview.height));
+    
+    // Use the cell position if valid, otherwise use center position
+    const finalPosition = position || { x: centerX, y: centerY };
     
     // Update preview state
     setDragPreview(prev => {
-      if (!prev?.position || prev.position.x !== position?.x || prev.position.y !== position?.y) {
+      if (!prev) return null;
+      
+      // Only update if position has changed to avoid extra renders
+      if (!prev.position || 
+          !prev.cursorPosition ||
+          prev.position.x !== finalPosition.x || 
+          prev.position.y !== finalPosition.y ||
+          prev.cursorPosition.x !== boundedCellX ||
+          prev.cursorPosition.y !== boundedCellY ||
+          prev.isValid !== foundValid
+      ) {
         return {
-          ...prev!,
-          position: position || null,
+          ...prev,
+          position: finalPosition,
+          cursorPosition: { x: boundedCellX, y: boundedCellY },
           isValid: foundValid,
           affectedCells,
         };
       }
       return prev;
     });
-  }, [dragPreview?.widget, cols, rows]);
+  }, [dragPreview?.widget, mousePosition, cols, rows, dragPreview?.width, dragPreview?.height]);
 
   if (!grid.length) return null;
 
@@ -463,39 +507,53 @@ export function DashboardGrid({
         ))
       )}
       
-      {/* Enhanced drag preview overlay */}
-      {dragPreview && dragPreview.position && (
-        <div 
-          className={cn(
-            "absolute pointer-events-none z-10 transition-all duration-150",
-            dragPreview.isValid 
-              ? 'border-2 border-primary/70 bg-primary/10' 
-              : 'border-2 border-destructive/70 bg-destructive/10'
-          )}
-          style={{
-            left: `${dragPreview.position.x * (GRID_CELL_SIZE + GRID_GAP)}px`,
-            top: `${dragPreview.position.y * (GRID_CELL_SIZE + GRID_GAP)}px`,
-            width: `${dragPreview.width * GRID_CELL_SIZE + (dragPreview.width - 1) * GRID_GAP}px`,
-            height: `${dragPreview.height * GRID_CELL_SIZE + (dragPreview.height - 1) * GRID_GAP}px`,
-            borderRadius: '8px',
-            boxShadow: dragPreview.isValid 
-              ? '0 0 20px rgba(var(--primary), 0.3)' 
-              : '0 0 20px rgba(var(--destructive), 0.3)',
-          }}
-        >
-          {/* Enhanced label for larger widgets */}
-          {isLargeWidget(dragPreview.width, dragPreview.height) && (
+      {/* Enhanced drag preview overlay - always visible during drag */}
+      {dragPreview && mousePosition && dragPreview.isOverGrid && (
+        <>
+          {/* Preview overlay at placement position */}
+          <div 
+            className={cn(
+              "absolute pointer-events-none z-10 transition-all duration-150",
+              dragPreview.isValid 
+                ? 'border-2 border-primary/70 bg-primary/10' 
+                : 'border-2 border-destructive/70 bg-destructive/10'
+            )}
+            style={{
+              left: `${dragPreview.position?.x! * (GRID_CELL_SIZE + GRID_GAP)}px`,
+              top: `${dragPreview.position?.y! * (GRID_CELL_SIZE + GRID_GAP)}px`,
+              width: `${dragPreview.width * GRID_CELL_SIZE + (dragPreview.width - 1) * GRID_GAP}px`,
+              height: `${dragPreview.height * GRID_CELL_SIZE + (dragPreview.height - 1) * GRID_GAP}px`,
+              borderRadius: '8px',
+              boxShadow: dragPreview.isValid 
+                ? '0 0 20px rgba(var(--primary), 0.3)' 
+                : '0 0 20px rgba(var(--destructive), 0.3)',
+              opacity: 0.9,
+            }}
+          >
+            {/* Widget info label - always visible */}
             <div className={cn(
               "absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2",
               "text-sm font-medium px-3 py-1.5 rounded-full backdrop-blur-sm",
               dragPreview.isValid 
-                ? "bg-primary/40 text-primary-foreground" 
-                : "bg-destructive/40 text-destructive-foreground"
+                ? "bg-primary/60 text-primary-foreground" 
+                : "bg-destructive/60 text-destructive-foreground"
             )}>
               {dragPreview.widget.name} ({dragPreview.width}×{dragPreview.height})
             </div>
-          )}
-        </div>
+          </div>
+          
+          {/* Cursor position indicator */}
+          <div 
+            className="absolute pointer-events-none z-9 rounded-full border-2 border-primary animate-pulse"
+            style={{
+              left: `${dragPreview.cursorPosition?.x! * (GRID_CELL_SIZE + GRID_GAP)}px`,
+              top: `${dragPreview.cursorPosition?.y! * (GRID_CELL_SIZE + GRID_GAP)}px`,
+              width: `${GRID_CELL_SIZE}px`,
+              height: `${GRID_CELL_SIZE}px`,
+              opacity: 0.6,
+            }}
+          />
+        </>
       )}
     </div>
   );
