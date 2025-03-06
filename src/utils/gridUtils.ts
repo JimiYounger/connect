@@ -200,187 +200,6 @@ export const validatePlacement = (
 };
 
 /**
- * Enhanced findValidPosition with better search algorithm
- */
-export const findValidPosition = (
-  targetX: number,
-  targetY: number,
-  width: number,
-  height: number,
-  grid: GridCell[][],
-  cols: number,
-  rows: number
-): { x: number; y: number } | null => {
-  // Optimize search pattern for large widgets
-  const isLargeWidget = width >= 3 || height >= 3;
-  
-  // Get all possible positions sorted by distance
-  const positions = getAllPossiblePositions(targetX, targetY, width, height, cols, rows, isLargeWidget);
-  
-  // Try each position until we find a valid one
-  for (const pos of positions) {
-    const { isValid } = validatePlacement(pos.x, pos.y, width, height, grid, cols, rows);
-    if (isValid) {
-      return { x: pos.x, y: pos.y };
-    }
-  }
-  
-  return null;
-};
-
-/**
- * Get widget dimensions from size ratio
- */
-export const getWidgetGridDimensions = (sizeRatio: WidgetSizeRatio) => {
-  return SIZE_RATIO_TO_GRID[sizeRatio] || SIZE_RATIO_TO_GRID['1:1'];
-};
-
-/**
- * Initialize an empty grid with caching
- */
-export const initializeGrid = (rows: number, cols: number): GridCell[][] => {
-  const cacheKey = `${rows}:${cols}`;
-  
-  if (initialGridCache.has(cacheKey)) {
-    // Return a deep copy to prevent mutations of cached data
-    return JSON.parse(JSON.stringify(initialGridCache.get(cacheKey)));
-  }
-  
-  const grid: GridCell[][] = [];
-  for (let y = 0; y < rows; y++) {
-    grid[y] = [];
-    for (let x = 0; x < cols; x++) {
-      grid[y][x] = {
-        x,
-        y,
-        isOccupied: false,
-      };
-    }
-  }
-  
-  // Store a copy in the cache
-  initialGridCache.set(cacheKey, JSON.parse(JSON.stringify(grid)));
-  
-  return grid;
-};
-
-// Add these interfaces if they don't exist
-export interface WidgetDimensions {
-  width: number;
-  height: number;
-}
-
-export interface CircularDimensions extends WidgetDimensions {
-  circleSize: number | null;
-}
-
-// Add this helper function for circular widgets with caching
-export const getCircularWidgetDimensions = (width: number, height: number): CircularDimensions => {
-  const cacheKey = `circular:${width}:${height}`;
-  
-  if (dimensionsCache.has(cacheKey)) {
-    return { ...dimensionsCache.get(cacheKey) } as CircularDimensions;
-  }
-  
-  const dimensions = getWidgetDimensions(width, height);
-  const circleSize = Math.min(dimensions.width, dimensions.height);
-  
-  const result = {
-    ...dimensions,
-    circleSize
-  };
-  
-  dimensionsCache.set(cacheKey, result);
-  return { ...result };
-};
-
-/**
- * Calculates total width and height including gaps with caching
- */
-export const calculateTotalDimensions = (width: number, height: number) => {
-  const cacheKey = `total:${width}:${height}`;
-  
-  if (totalDimensionsCache.has(cacheKey)) {
-    return { ...totalDimensionsCache.get(cacheKey) };
-  }
-  
-  const totalWidth = (width * GRID_CELL_SIZE) + ((width - 1) * GRID_GAP);
-  const totalHeight = (height * GRID_CELL_SIZE) + ((height - 1) * GRID_GAP);
-  
-  const result = { totalWidth, totalHeight };
-  totalDimensionsCache.set(cacheKey, result);
-  
-  return { ...result };
-};
-
-/**
- * Update the grid when placing a new widget
- */
-export const placeWidgetOnGrid = (
-  grid: GridCell[][],
-  x: number,
-  y: number,
-  widget: Widget,
-  placementId: string,
-  width: number,
-  height: number,
-  configuration?: any
-): GridCell[][] => {
-  const newGrid = [...grid];
-  
-  for (let dy = 0; dy < height; dy++) {
-    for (let dx = 0; dx < width; dx++) {
-      if (newGrid[y + dy] && newGrid[y + dy][x + dx]) {
-        newGrid[y + dy][x + dx].isOccupied = true;
-        
-        // Only store widget info in the top-left cell
-        if (dx === 0 && dy === 0) {
-          newGrid[y][x].widget = widget;
-          newGrid[y][x].placementId = placementId;
-          newGrid[y][x].width = width;
-          newGrid[y][x].height = height;
-          newGrid[y][x].configuration = configuration;
-        }
-      }
-    }
-  }
-  
-  return newGrid;
-};
-
-/**
- * Remove a widget from the grid
- */
-export const removeWidgetFromGrid = (
-  grid: GridCell[][],
-  x: number,
-  y: number,
-  width: number,
-  height: number
-): GridCell[][] => {
-  const newGrid = [...grid];
-  
-  for (let dy = 0; dy < height; dy++) {
-    for (let dx = 0; dx < width; dx++) {
-      if (newGrid[y + dy] && newGrid[y + dy][x + dx]) {
-        newGrid[y + dy][x + dx].isOccupied = false;
-        
-        // Clear widget info from the top-left cell
-        if (dx === 0 && dy === 0) {
-          delete newGrid[y][x].widget;
-          delete newGrid[y][x].placementId;
-          delete newGrid[y][x].width;
-          delete newGrid[y][x].height;
-          delete newGrid[y][x].configuration;
-        }
-      }
-    }
-  }
-  
-  return newGrid;
-};
-
-/**
  * Finds the optimal placement position for a widget with magnetic snap
  * behavior especially for larger widgets
  */
@@ -539,6 +358,217 @@ export const findOptimalPlacement = (
   
   // If no valid position found, return null
   return null;
+};
+
+/**
+ * Enhanced findValidPosition with better search algorithm
+ * that uses the more comprehensive findOptimalPlacement
+ */
+export const findValidPosition = (
+  targetX: number,
+  targetY: number,
+  width: number,
+  height: number,
+  grid: GridCell[][],
+  cols: number,
+  rows: number
+): { x: number; y: number } | null => {
+  // For large widgets, use our enhanced placement algorithm
+  if (width >= 3 || height >= 3) {
+    return findOptimalPlacement(targetX, targetY, width, height, grid, cols, rows);
+  }
+  
+  // For small widgets, use a simpler algorithm
+  // First try the exact position
+  const exactValid = validatePlacement(targetX, targetY, width, height, grid, cols, rows);
+  if (exactValid.isValid) {
+    return { x: targetX, y: targetY };
+  }
+  
+  // Then try a centered position
+  const centerX = Math.max(0, Math.min(targetX - Math.floor(width / 2), cols - width));
+  const centerY = Math.max(0, Math.min(targetY - Math.floor(height / 2), rows - height));
+  
+  if (centerX !== targetX || centerY !== targetY) {
+    const centerValid = validatePlacement(centerX, centerY, width, height, grid, cols, rows);
+    if (centerValid.isValid) {
+      return { x: centerX, y: centerY };
+    }
+  }
+  
+  // Fall back to the simpler spiral search for small widgets
+  const maxRadius = Math.max(cols, rows);
+  for (let radius = 1; radius <= maxRadius; radius++) {
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        if (Math.abs(dx) + Math.abs(dy) === radius) {
+          const x = targetX + dx;
+          const y = targetY + dy;
+          
+          if (x >= 0 && y >= 0 && x + width <= cols && y + height <= rows) {
+            const { isValid } = validatePlacement(x, y, width, height, grid, cols, rows);
+            if (isValid) {
+              return { x, y };
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  return null;
+};
+
+/**
+ * Get widget dimensions from size ratio
+ */
+export const getWidgetGridDimensions = (sizeRatio: WidgetSizeRatio) => {
+  return SIZE_RATIO_TO_GRID[sizeRatio] || SIZE_RATIO_TO_GRID['1:1'];
+};
+
+/**
+ * Initialize an empty grid with caching
+ */
+export const initializeGrid = (rows: number, cols: number): GridCell[][] => {
+  const cacheKey = `${rows}:${cols}`;
+  
+  if (initialGridCache.has(cacheKey)) {
+    // Return a deep copy to prevent mutations of cached data
+    return JSON.parse(JSON.stringify(initialGridCache.get(cacheKey)));
+  }
+  
+  const grid: GridCell[][] = [];
+  for (let y = 0; y < rows; y++) {
+    grid[y] = [];
+    for (let x = 0; x < cols; x++) {
+      grid[y][x] = {
+        x,
+        y,
+        isOccupied: false,
+      };
+    }
+  }
+  
+  // Store a copy in the cache
+  initialGridCache.set(cacheKey, JSON.parse(JSON.stringify(grid)));
+  
+  return grid;
+};
+
+// Add these interfaces if they don't exist
+export interface WidgetDimensions {
+  width: number;
+  height: number;
+}
+
+export interface CircularDimensions extends WidgetDimensions {
+  circleSize: number | null;
+}
+
+// Add this helper function for circular widgets with caching
+export const getCircularWidgetDimensions = (width: number, height: number): CircularDimensions => {
+  const cacheKey = `circular:${width}:${height}`;
+  
+  if (dimensionsCache.has(cacheKey)) {
+    return { ...dimensionsCache.get(cacheKey) } as CircularDimensions;
+  }
+  
+  const dimensions = getWidgetDimensions(width, height);
+  const circleSize = Math.min(dimensions.width, dimensions.height);
+  
+  const result = {
+    ...dimensions,
+    circleSize
+  };
+  
+  dimensionsCache.set(cacheKey, result);
+  return { ...result };
+};
+
+/**
+ * Calculates total width and height including gaps with caching
+ */
+export const calculateTotalDimensions = (width: number, height: number) => {
+  const cacheKey = `total:${width}:${height}`;
+  
+  if (totalDimensionsCache.has(cacheKey)) {
+    return { ...totalDimensionsCache.get(cacheKey) };
+  }
+  
+  const totalWidth = (width * GRID_CELL_SIZE) + ((width - 1) * GRID_GAP);
+  const totalHeight = (height * GRID_CELL_SIZE) + ((height - 1) * GRID_GAP);
+  
+  const result = { totalWidth, totalHeight };
+  totalDimensionsCache.set(cacheKey, result);
+  
+  return { ...result };
+};
+
+/**
+ * Update the grid when placing a new widget
+ */
+export const placeWidgetOnGrid = (
+  grid: GridCell[][],
+  x: number,
+  y: number,
+  widget: Widget,
+  placementId: string,
+  width: number,
+  height: number,
+  configuration?: any
+): GridCell[][] => {
+  const newGrid = [...grid];
+  
+  for (let dy = 0; dy < height; dy++) {
+    for (let dx = 0; dx < width; dx++) {
+      if (newGrid[y + dy] && newGrid[y + dy][x + dx]) {
+        newGrid[y + dy][x + dx].isOccupied = true;
+        
+        // Only store widget info in the top-left cell
+        if (dx === 0 && dy === 0) {
+          newGrid[y][x].widget = widget;
+          newGrid[y][x].placementId = placementId;
+          newGrid[y][x].width = width;
+          newGrid[y][x].height = height;
+          newGrid[y][x].configuration = configuration;
+        }
+      }
+    }
+  }
+  
+  return newGrid;
+};
+
+/**
+ * Remove a widget from the grid
+ */
+export const removeWidgetFromGrid = (
+  grid: GridCell[][],
+  x: number,
+  y: number,
+  width: number,
+  height: number
+): GridCell[][] => {
+  const newGrid = [...grid];
+  
+  for (let dy = 0; dy < height; dy++) {
+    for (let dx = 0; dx < width; dx++) {
+      if (newGrid[y + dy] && newGrid[y + dy][x + dx]) {
+        newGrid[y + dy][x + dx].isOccupied = false;
+        
+        // Clear widget info from the top-left cell
+        if (dx === 0 && dy === 0) {
+          delete newGrid[y][x].widget;
+          delete newGrid[y][x].placementId;
+          delete newGrid[y][x].width;
+          delete newGrid[y][x].height;
+          delete newGrid[y][x].configuration;
+        }
+      }
+    }
+  }
+  
+  return newGrid;
 };
 
 /**

@@ -58,9 +58,9 @@ function CellDroppable({ x, y, isOccupied, children, grid, cols, rows }: CellDro
     disabled: isOccupied
   });
 
-  // Use the hook to detect affected cells
+  // Use the hook to detect affected cells - remove isOccupied parameter
   const { isAffected, isValid } = useAffectedCells({
-    x, y, isOccupied, grid, cols, rows
+    x, y, grid, cols, rows
   });
 
   return (
