@@ -56,7 +56,7 @@ async getDashboardById(id: string) {
     }
 
     // Get the current draft
-    const { data: currentDraft, error: draftError } = await supabase
+    const { data: currentDraft, error: _draftError } = await supabase
       .from('dashboard_drafts')
       .select('*')
       .eq('dashboard_id', id)
@@ -215,7 +215,7 @@ async getDashboardById(id: string) {
           console.warn(`Found ${drafts.length} current drafts for dashboard ${dashboardId}, using most recent`);
           
           // Keep the most recent as current, set others to not current
-          const mostRecentDraft = drafts[0]; // Assuming sorted by created_at desc
+          const _mostRecentDraft = drafts[0]; // Assuming sorted by created_at desc
           const draftsToUpdate = drafts.slice(1).map(draft => draft.id);
           
           if (draftsToUpdate.length > 0) {
@@ -376,6 +376,44 @@ async getDashboardById(id: string) {
     } catch (error) {
       console.error('Error in getWidgetById:', error);
       return { data: null, error };
+    }
+  },
+
+  // Save widget configuration
+  async saveWidgetConfiguration(widgetId: string, configData: any, userId?: string) {
+    const supabase = createClient();
+    
+    // Check if a configuration already exists for this widget
+    const { data: existingConfig } = await supabase
+      .from('widget_configurations')
+      .select('id')
+      .eq('widget_id', widgetId)
+      .maybeSingle();
+    
+    if (existingConfig) {
+      // Update existing configuration
+      return supabase
+        .from('widget_configurations')
+        .update({
+          config: configData,
+          updated_at: new Date().toISOString(),
+          updated_by: userId || null
+        })
+        .eq('id', existingConfig.id)
+        .select()
+        .single();
+    } else {
+      // Create new configuration
+      return supabase
+        .from('widget_configurations')
+        .insert({
+          widget_id: widgetId,
+          config: configData,
+          created_by: userId || null,
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single();
     }
   },
 }; 

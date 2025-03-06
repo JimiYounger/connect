@@ -4,10 +4,7 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 import { Widget, WidgetConfigData, WidgetSizeRatio } from '../../types';
 import { WidgetRenderer } from '../widget-renderer';
-
-// Update the SIZE_RATIO_MAP to use consistent dimensions
-const GRID_CELL_SIZE = 74; // Base cell size in pixels
-const GRID_GAP = 16; // Gap between cells in pixels
+import { SIZE_RATIO_TO_GRID, GRID_CELL_SIZE, GRID_GAP, WIDGET_BORDER_RADIUS } from '@/config/uiConfig';
 
 // Function to calculate dimensions including gaps
 const calculateDimensions = (widthUnits: number, heightUnits: number) => {
@@ -16,22 +13,17 @@ const calculateDimensions = (widthUnits: number, heightUnits: number) => {
   return { width, height };
 };
 
-const SIZE_RATIO_MAP: Record<WidgetSizeRatio, { width: number; height: number }> = {
-  '1:1': calculateDimensions(1, 1),     // Small square
-  '2:1': calculateDimensions(2, 1),     // Wide rectangle
-  '1:2': calculateDimensions(1, 2),     // Tall rectangle
-  '2:2': calculateDimensions(2, 2),     // Medium square
-  '3:2': calculateDimensions(3, 2),     // Landscape
-  '2:3': calculateDimensions(2, 3),     // Portrait
-  '4:3': calculateDimensions(4, 3),     // Standard
-  '3:4': calculateDimensions(3, 4),     // Vertical
-  '4:4': calculateDimensions(4, 4),     // Large square
-  '2:4': calculateDimensions(2, 4),     // Tall rectangle
-  '4:2': calculateDimensions(4, 2),     // Wide rectangle
-};
-
-// Add this constant for consistent border radius
-const WIDGET_BORDER_RADIUS = '50px';
+// Create your SIZE_RATIO_MAP based on the shared SIZE_RATIO_TO_GRID
+const SIZE_RATIO_MAP: Record<WidgetSizeRatio, { width: number; height: number }> = Object.entries(SIZE_RATIO_TO_GRID).reduce(
+  (acc, [ratio, dimensions]) => ({
+    ...acc,
+    [ratio]: calculateDimensions(
+      dimensions.width, 
+      dimensions.height
+    )
+  }), 
+  {} as Record<WidgetSizeRatio, { width: number; height: number }>
+);
 
 interface WidgetDndContextProps {
   children: ReactNode;
@@ -155,8 +147,8 @@ export const WidgetDndProvider: React.FC<WidgetDndContextProps> = ({
             <div 
               className="ios-drag-overlay" 
               style={{
-                opacity: 0.9,
-                transform: 'scale(1.05)',
+                opacity: 0.8,
+                transform: 'scale(1.02)',
                 pointerEvents: 'none',
                 overflow: 'hidden',
                 borderRadius: activeWidget.shape === 'circle' ? '50%' : WIDGET_BORDER_RADIUS,
@@ -173,10 +165,20 @@ export const WidgetDndProvider: React.FC<WidgetDndContextProps> = ({
                       SIZE_RATIO_MAP[activeWidget.size_ratio as WidgetSizeRatio]?.height || 120
                     )}px`
                   : `${SIZE_RATIO_MAP[activeWidget.size_ratio as WidgetSizeRatio]?.height || 120}px`,
-                boxShadow: '0 8px 20px rgba(0,0,0,0.15)',
-                transition: 'transform 120ms ease',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                transition: 'transform 100ms ease',
               }}
             >
+              {(activeWidget.size_ratio === '4:4' || 
+                activeWidget.size_ratio === '4:2' || 
+                activeWidget.size_ratio === '2:4') && (
+                <div 
+                  className="absolute top-2 right-2 px-2 py-1 bg-black/50 text-white text-xs rounded-full"
+                  style={{ zIndex: 10 }}
+                >
+                  {activeWidget.size_ratio.replace(':', '×')}
+                </div>
+              )}
               <div style={{
                 position: 'absolute',
                 top: '50%',
