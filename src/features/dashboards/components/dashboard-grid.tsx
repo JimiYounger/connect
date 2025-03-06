@@ -469,9 +469,13 @@ export function DashboardGrid({
       className={cn(
         containerClasses,
         isLoading && "opacity-70 pointer-events-none",
-        className
+        className,
+        "mx-auto"
       )}
-      style={gridStyles}
+      style={{
+        ...gridStyles,
+        margin: '0 auto',
+      }}
     >
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10 rounded-lg">

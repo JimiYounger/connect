@@ -23,11 +23,10 @@ export function useAffectedCells({ x, y, grid, cols, rows }: UseCellDroppablePro
   const activeWidget = active?.data?.current?.widget;
   const activeDragType = active?.data?.current?.type;
   
-  // Use useMemo to prevent unnecessary recalculations
   return useMemo(() => {
-    // If no active widget or no over data, return empty state
+    // If no active widget, return empty state
     if (!activeWidget) {
-      return { isAffected: false, isValid: false, affectedCells: [], placementPosition: null, cursorPosition: null };
+      return { isAffected: false, isValid: false, affectedCells: [] };
     }
     
     // Get widget dimensions
@@ -39,109 +38,36 @@ export function useAffectedCells({ x, y, grid, cols, rows }: UseCellDroppablePro
     const overX = over?.data?.current?.x ?? null;
     const overY = over?.data?.current?.y ?? null;
     
-    // If we're not over any cell, exit early
     if (overX === null || overY === null) {
-      return { isAffected: false, isValid: false, affectedCells: [], placementPosition: null, cursorPosition: null };
+      return { isAffected: false, isValid: false, affectedCells: [] };
     }
     
-    // Store the cursor position (where user is currently hovering)
-    const cursorPosition = { x: overX, y: overY };
+    // Simple approach: Check if this cell would be part of the widget if placed at cursor
+    // For both new placement and moving widgets
     
-    // Calculate centered placement position - consistent for all widget sizes
-    // This centers the widget on the cursor for more intuitive placement
-    const placementX = Math.max(0, Math.min(overX - Math.floor(width / 2), cols - width));
-    const placementY = Math.max(0, Math.min(overY - Math.floor(height / 2), rows - height));
+    // Is this cell within the widget area if the widget's top-left is at the cursor?
+    const topLeftX = Math.min(overX, cols - width); // Adjust if would go off grid
+    const topLeftY = Math.min(overY, rows - height); // Adjust if would go off grid
     
-    // For moving widgets, use the provided dimensions
-    const activeWidth = activeDragType === 'move' ? active?.data?.current?.width || width : width;
-    const activeHeight = activeDragType === 'move' ? active?.data?.current?.height || height : height;
+    // Check if our current cell (x,y) is within the widget's area
+    const isWithinWidget = 
+      x >= topLeftX && x < topLeftX + width &&
+      y >= topLeftY && y < topLeftY + height;
     
-    // Validate the potential placement
-    const { isValid } = validatePlacement(
-      placementX, 
-      placementY, 
-      activeWidth, 
-      activeHeight,
-      grid,
-      cols,
-      rows
-    );
-    
-    // Always calculate affected cells based on cursor position for consistency
-    // This makes the preview responsive to cursor movement
-    const affectedCells = [];
-    for (let dy = 0; dy < activeHeight; dy++) {
-      for (let dx = 0; dx < activeWidth; dx++) {
-        const cellX = placementX + dx;
-        const cellY = placementY + dy;
-        
-        // Ensure we're within grid boundaries
-        if (cellX >= 0 && cellX < cols && cellY >= 0 && cellY < rows) {
-          affectedCells.push({ x: cellX, y: cellY });
-        }
-      }
-    }
-    
-    // Check if this specific cell is affected
-    const cellIsAffected = affectedCells.some(cell => cell.x === x && cell.y === y);
-    
-    // If the initial placement is valid, use it
-    if (isValid) {
+    // If this cell is affected, check if placement would be valid
+    if (isWithinWidget) {
+      // Validate placement at cursor position (adjusted for grid boundaries)
+      const { isValid } = validatePlacement(
+        topLeftX, topLeftY, width, height, grid, cols, rows
+      );
+      
       return { 
-        isAffected: cellIsAffected, 
-        isValid: true, 
-        affectedCells,
-        placementPosition: { x: placementX, y: placementY },
-        cursorPosition
+        isAffected: true, 
+        isValid: isValid,
+        affectedCells: []  // We don't need to calculate all affected cells here
       };
     }
     
-    // If direct placement is not valid, try to find a valid position nearby
-    const validPosition = findValidPosition(
-      overX, 
-      overY, 
-      activeWidth, 
-      activeHeight,
-      grid,
-      cols,
-      rows
-    );
-    
-    if (validPosition) {
-      // Calculate new affected cells for the valid position
-      const newAffectedCells = [];
-      for (let dy = 0; dy < activeHeight; dy++) {
-        for (let dx = 0; dx < activeWidth; dx++) {
-          const cellX = validPosition.x + dx;
-          const cellY = validPosition.y + dy;
-          
-          // Ensure we're within grid boundaries
-          if (cellX >= 0 && cellX < cols && cellY >= 0 && cellY < rows) {
-            newAffectedCells.push({ x: cellX, y: cellY });
-          }
-        }
-      }
-      
-      // Check if this specific cell is affected by the valid position
-      const newCellIsAffected = newAffectedCells.some(cell => cell.x === x && cell.y === y);
-      
-      return { 
-        isAffected: newCellIsAffected, 
-        isValid: true, 
-        affectedCells: newAffectedCells,
-        placementPosition: validPosition,
-        cursorPosition
-      };
-    }
-    
-    // If no valid position found, still return cursor-centered placement for preview
-    // but mark it as invalid for visual feedback
-    return { 
-      isAffected: cellIsAffected, 
-      isValid: false, 
-      affectedCells,
-      placementPosition: { x: placementX, y: placementY },
-      cursorPosition
-    };
+    return { isAffected: false, isValid: false, affectedCells: [] };
   }, [active, over, activeWidget, activeDragType, x, y, grid, cols, rows]);
 }

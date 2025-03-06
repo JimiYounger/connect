@@ -455,21 +455,23 @@ export default function EditDashboardPage() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="dashboard-grid-container overflow-auto" style={{
-                        width: 'fit-content',
-                        maxWidth: '100%',
-                        padding: '1rem',
-                      }}>
-                        <DashboardGrid
-                          key={`${currentTab}-grid`}
-                          layout={currentTab}
-                          rows={currentTab === 'desktop' ? desktopRows : mobileRows}
-                          cols={currentTab === 'desktop' ? DESKTOP_GRID.cols : MOBILE_GRID.cols}
-                          dashboardId={dashboardId}
-                          draftId={currentDraftId}
-                          userId={session?.user?.id}
-                          onPlacementChange={() => fetchDashboard()}
-                        />
+                      <div className="flex justify-center w-full">
+                        <div className="dashboard-grid-container overflow-auto" style={{
+                          width: 'fit-content',
+                          maxWidth: '100%',
+                          padding: '1rem',
+                        }}>
+                          <DashboardGrid
+                            key={`${currentTab}-grid`}
+                            layout={currentTab}
+                            rows={currentTab === 'desktop' ? desktopRows : mobileRows}
+                            cols={currentTab === 'desktop' ? DESKTOP_GRID.cols : MOBILE_GRID.cols}
+                            dashboardId={dashboardId}
+                            draftId={currentDraftId}
+                            userId={session?.user?.id}
+                            onPlacementChange={() => fetchDashboard()}
+                          />
+                        </div>
                       </div>
                       <Button
                         variant="outline"
