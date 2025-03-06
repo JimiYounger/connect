@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import { useDndMonitor } from '@dnd-kit/core';
 import { Widget } from '@/features/widgets/types';
 import { toast } from '@/hooks/use-toast';
-import { SIZE_RATIO_TO_GRID, WidgetSizeRatio } from '@/config/uiConfig';
+import { SIZE_RATIO_TO_GRID, WidgetSizeRatio, WIDGET_BORDER_RADIUS } from '@/config/uiConfig';
 import { GridCell, validatePlacement, findValidPosition } from '@/utils/gridUtils';
 import { dashboardService } from '@/features/dashboards/services/dashboard-service';
 

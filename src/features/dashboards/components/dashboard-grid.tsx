@@ -259,7 +259,8 @@ export function DashboardGrid({
     dashboardId, 
     draftId, 
     layout, 
-    onPlacementsLoaded: updateGridWithPlacements 
+    onPlacementsLoaded: updateGridWithPlacements,
+    userId: userId || '' 
   });
   
   const { 

@@ -60,7 +60,7 @@ export function useGridState({ rows, cols }: UseGridStateProps) {
         placement.id, 
         width, 
         height, 
-        placement.widget?.configuration
+        placement.configuration
       );
     }
     

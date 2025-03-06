@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { dashboardService } from '../services/dashboard-service';
+import { widgetService } from '@/features/widgets/services/widget-service';
 import { toast } from '@/hooks/use-toast';
 
 interface UseGridPersistenceProps {
@@ -9,13 +10,15 @@ interface UseGridPersistenceProps {
   draftId?: string;
   layout: 'mobile' | 'desktop';
   onPlacementsLoaded: (placements: any[]) => void;
+  userId: string;
 }
 
 export function useGridPersistence({ 
   dashboardId, 
   draftId, 
   layout, 
-  onPlacementsLoaded 
+  onPlacementsLoaded,
+  userId
 }: UseGridPersistenceProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -46,7 +49,16 @@ export function useGridPersistence({
       const placementsWithWidgets = await Promise.all(
         layoutPlacements.map(async (placement: any) => {
           const { data: widget } = await dashboardService.getWidgetById(placement.widget_id);
-          return { ...placement, widget };
+          
+          // Also fetch widget configuration
+          const { data: widgetConfig } = await widgetService.getWidgetConfiguration(placement.widget_id);
+          
+          // Return placement with both widget and its configuration
+          return { 
+            ...placement, 
+            widget, 
+            configuration: widgetConfig?.config || {} 
+          };
         })
       );
       
@@ -99,6 +111,9 @@ export function useGridPersistence({
       // If we have configuration data and the placement was saved successfully,
       // update the placement with the configuration
       if (configuration && data) {
+        // We no longer need to update the placement with configuration
+        // since we're now retrieving configuration directly from the widget_configurations table
+        /*
         // Update the placement to include the configuration
         // Use type assertion to avoid TypeScript error
         const { error: updateError } = await dashboardService.updateDraftPlacement(
@@ -111,8 +126,19 @@ export function useGridPersistence({
         );
         
         if (updateError) {
-          console.error('Error adding configuration to placement:', updateError);
-          // Continue anyway since the basic placement was saved
+          console.error('Error updating placement with configuration:', updateError);
+          // Not a fatal error, continue with the existing placement
+        }
+        */
+        
+        // Save configuration separately via widgetService
+        if (data.widget_id) {
+          try {
+            await widgetService.saveWidgetConfiguration(data.widget_id, configuration, userId);
+          } catch (configError) {
+            console.error('Error saving widget configuration:', configError);
+            // Not a fatal error, continue with the existing placement
+          }
         }
       }
       
@@ -129,7 +155,7 @@ export function useGridPersistence({
     } finally {
       setIsLoading(false);
     }
-  }, [draftId]);
+  }, [draftId, userId]);
   
   // Delete a placement from backend
   const deletePlacement = useCallback(async (placementId: string) => {
