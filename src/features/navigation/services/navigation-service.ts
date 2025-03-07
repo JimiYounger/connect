@@ -222,14 +222,45 @@ export async function getNavigationItem(id: string): Promise<NavigationItemWithC
 export async function createNavigationItem(data: NavigationItemInsert): Promise<NavigationItemRow> {
   const supabase = createClient()
   
-  const { data: newItem, error } = await supabase
-    .from('navigation_items')
-    .insert(data)
-    .select()
-    .single()
+  console.log('Creating navigation item with data:', data)
   
-  if (error) throw error
-  return newItem
+  try {
+    // Just select the fields we know exist in the navigation_items table
+    const { data: newItem, error } = await supabase
+      .from('navigation_items')
+      .insert(data)
+      .select(`
+        id,
+        menu_id,
+        parent_id,
+        title,
+        url,
+        description,
+        dynamic_variables,
+        is_external,
+        open_in_iframe,
+        order_index,
+        is_active,
+        is_public,
+        start_date,
+        end_date,
+        created_at,
+        updated_at,
+        created_by
+      `)
+      .single()
+    
+    if (error) {
+      console.error('Supabase error:', error)
+      throw error
+    }
+
+    console.log('Successfully created navigation item:', newItem)
+    return newItem
+  } catch (error) {
+    console.error('Failed to create navigation item:', error)
+    throw error
+  }
 }
 
 /**

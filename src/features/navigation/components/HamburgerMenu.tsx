@@ -8,9 +8,6 @@ import {
   ExternalLink,
   Menu,
 } from 'lucide-react'
-import { useAuth } from '@/features/auth/context/auth-context'
-import { useProfile } from '@/features/users/hooks/useProfile'
-import { usePermissions } from '@/features/permissions/hooks/usePermissions'
 import { useNavigation } from '@/features/navigation/hooks/useNavigation'
 import type { NavigationItemForDisplay } from '../types'
 import { Button } from '@/components/ui/button'
@@ -33,12 +30,20 @@ interface ExpandedState {
   [key: string]: boolean
 }
 
-export function HamburgerMenu() {
+interface HamburgerMenuProps {
+  currentUser?: {
+    id: string
+    email?: string
+    roleType?: string
+    team?: string
+    area?: string
+    region?: string
+  }
+}
+
+export function HamburgerMenu({ currentUser }: HamburgerMenuProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const { session } = useAuth()
-  const { profile } = useProfile(session)
-  const { userPermissions } = usePermissions(profile)
   const {
     userNavigation,
     isLoadingUserNav,
@@ -55,15 +60,15 @@ export function HamburgerMenu() {
 
   // Process dynamic URLs with user context
   const processUrl = (url: string) => {
-    if (!profile || !profile.id) return url
+    if (!currentUser) return url
 
     const replacements: Record<string, string> = {
-      ':userId': profile.id,
-      ':email': profile.email || '',
-      ':roleType': userPermissions?.roleType || '',
-      ':team': profile.team || '',
-      ':area': profile.area || '',
-      ':region': profile.region || ''
+      ':userId': currentUser.id,
+      ':email': currentUser.email || '',
+      ':roleType': currentUser.roleType || '',
+      ':team': currentUser.team || '',
+      ':area': currentUser.area || '',
+      ':region': currentUser.region || ''
     }
 
     return Object.entries(replacements).reduce(
@@ -151,7 +156,7 @@ export function HamburgerMenu() {
         {hasChildren && (
           <Collapsible open={isExpanded}>
             <CollapsibleContent className="space-y-1 mt-1">
-              {item.children.map((child: NavigationItemForDisplay) => 
+              {item.children?.map((child: NavigationItemForDisplay) => 
                 renderNavigationItem(child, depth + 1)
               )}
             </CollapsibleContent>

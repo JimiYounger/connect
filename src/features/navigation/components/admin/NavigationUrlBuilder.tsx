@@ -1,8 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useAuth } from '@/features/auth/context/auth-context'
-import { useProfile } from '@/features/users/hooks/useProfile'
 import { Variable } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -34,17 +32,18 @@ interface NavigationUrlBuilderProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSelect: (url: string) => void
+  currentUser?: UserProfile | null
 }
 
-type Variable = {
+type UrlVariable = {
   key: string
   label: string
   description: string
   example: string
-  getValue: (user: UserProfile | null) => string
+  getValue: (user: UserProfile | null | undefined) => string
 }
 
-const variables: Variable[] = [
+const variables: UrlVariable[] = [
   {
     key: ':userId',
     label: 'User ID',
@@ -93,13 +92,12 @@ export function NavigationUrlBuilder({
   open,
   onOpenChange,
   onSelect,
+  currentUser
 }: NavigationUrlBuilderProps) {
   const [url, setUrl] = useState('')
   const [variableOpen, setVariableOpen] = useState(false)
   const [usedVariables, setUsedVariables] = useState<Set<string>>(new Set())
   const [previewUrl, setPreviewUrl] = useState('')
-  const { session } = useAuth()
-  const { profile } = useProfile(session)
 
   // Update used variables when URL changes
   useEffect(() => {
@@ -117,12 +115,12 @@ export function NavigationUrlBuilder({
     let preview = url
     variables.forEach((variable) => {
       if (preview.includes(variable.key)) {
-        const value = variable.getValue(profile)
+        const value = variable.getValue(currentUser)
         preview = preview.replace(new RegExp(variable.key, 'g'), value || '[not available]')
       }
     })
     setPreviewUrl(preview)
-  }, [url, profile])
+  }, [url, currentUser])
 
   // Validate URL format
   const isValidUrl = () => {
@@ -134,7 +132,7 @@ export function NavigationUrlBuilder({
     return matches.every(match => variables.some(v => v.key === match))
   }
 
-  const handleInsertVariable = (variable: Variable) => {
+  const handleInsertVariable = (variable: UrlVariable) => {
     const selectionStart = (document.activeElement as HTMLInputElement)?.selectionStart || url.length
     const selectionEnd = (document.activeElement as HTMLInputElement)?.selectionEnd || url.length
     

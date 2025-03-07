@@ -7,10 +7,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { ArrowLeft } from 'lucide-react'
-import { useAuth } from '@/features/auth/context/auth-context'
-import { useProfile } from '@/features/users/hooks/useProfile'
-import { usePermissions } from '@/features/permissions/hooks/usePermissions'
-import { hasPermissionLevel } from '@/features/permissions/constants/roles'
 import { useNavigation } from '@/features/navigation/hooks/useNavigation'
 import { Button } from '@/components/ui/button'
 import {
@@ -44,9 +40,6 @@ type NavigationMenuFormValues = z.infer<typeof navigationMenuSchema>
 
 export default function NewNavigationMenuPage() {
   const router = useRouter()
-  const { session, loading } = useAuth()
-  const { profile } = useProfile(session)
-  const { userPermissions } = usePermissions(profile)
   const { createMenu } = useNavigation()
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -69,52 +62,15 @@ export default function NewNavigationMenuPage() {
         description: 'Navigation menu created successfully.',
       })
       router.push(`/admin/navigation/${newMenu.id}`)
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: 'Error',
         description: 'Failed to create navigation menu.',
         variant: 'destructive',
       })
+    } finally {
       setIsSubmitting(false)
     }
-  }
-
-  // Loading states
-  if (loading.initializing) {
-    return (
-      <div className="page-container">
-        <div className="flex items-center justify-center min-h-[200px]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-            <p className="mt-2">Loading...</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Auth check
-  if (!session) {
-    return (
-      <div className="page-container">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-          <p>Please sign in to access this page</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Permission check
-  if (!userPermissions?.roleType || !hasPermissionLevel('Admin', userPermissions.roleType)) {
-    return (
-      <div className="page-container">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold mb-2">Unauthorized</h2>
-          <p>You don&apos;t have permission to access this page</p>
-        </div>
-      </div>
-    )
   }
 
   return (

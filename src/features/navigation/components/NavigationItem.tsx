@@ -8,8 +8,10 @@ import {
   ExternalLink,
   Link as LinkIcon,
   MonitorPlay,
+  Trash2 as TrashIcon,
 } from 'lucide-react'
 import { useNavigation } from '@/features/navigation/hooks/useNavigation'
+import type { NavigationItemWithChildren } from '../types'
 import {
   Collapsible,
   CollapsibleContent,
@@ -52,12 +54,10 @@ export function NavigationItem({
   const processedUrl = processUrl(item.url)
   const isActive = pathname === processedUrl
   const hasChildren = item.children && item.children.length > 0
-  const isIframe = item.display_type === 'iframe'
+  const isIframe = item.open_in_iframe
 
-  // Handle item click with analytics
-  const handleClick = async (e: React.MouseEvent) => {
-    e.preventDefault()
-
+  // Handle navigation logic
+  const handleNavigation = async () => {
     if (onClick) {
       onClick(item.id)
       return
@@ -68,10 +68,23 @@ export function NavigationItem({
     if (item.is_external) {
       window.open(processedUrl, '_blank', 'noopener,noreferrer')
     } else if (isIframe) {
-      // Handle iframe navigation (you might want to emit an event or use a callback)
       console.log('Open in iframe:', processedUrl)
     } else {
       router.push(processedUrl)
+    }
+  }
+
+  // Handle mouse click
+  const handleClick = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    await handleNavigation()
+  }
+
+  // Handle keyboard interaction
+  const handleKeyDown = async (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      await handleNavigation()
     }
   }
 
@@ -155,12 +168,7 @@ export function NavigationItem({
         role="button"
         tabIndex={0}
         onClick={handleClick}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault()
-            handleClick(e as any)
-          }
-        }}
+        onKeyDown={handleKeyDown}
         className={cn(
           'outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
           isDraggable && 'cursor-move'
@@ -172,7 +180,7 @@ export function NavigationItem({
       {hasChildren && (
         <Collapsible open={isExpanded}>
           <CollapsibleContent className="space-y-1 mt-1">
-            {item.children.map((child) => (
+            {item.children?.map((child: NavigationItemWithChildren) => (
               <NavigationItem
                 key={child.id}
                 item={child}

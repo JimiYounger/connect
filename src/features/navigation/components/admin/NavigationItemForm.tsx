@@ -35,14 +35,14 @@ import {
 } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 import { cn } from '@/lib/utils'
-import { NavigationUrlBuilder } from './NavigationUrlBuilder'
-import { RoleAssignment } from './RoleAssignment'
+import { NavigationUrlBuilder } from '@/features/navigation/components/admin/NavigationUrlBuilder'
+import { RoleAssignment } from '@/features/navigation/components/admin/RoleAssignment'
 
 const navigationItemSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   url: z.string().min(1, 'URL is required'),
   description: z.string().optional(),
-  parent_id: z.string(),
+  parent_id: z.string().transform(val => val === 'none' ? null : val),
   is_public: z.boolean(),
   is_active: z.boolean(),
   is_external: z.boolean(),
@@ -113,17 +113,10 @@ export function NavigationItemForm({
     console.log('Form submission started with data:', data)
     
     try {
-      const formattedData = {
-        ...data,
-        parent_id: data.parent_id === 'none' ? null : data.parent_id
-      }
-      console.log('Formatted data for submission:', formattedData)
-      
-      await onSubmit(formattedData)
+      await onSubmit(data)
       console.log('Form submission successful')
     } catch (error) {
       console.error('Form submission failed:', error)
-      // Re-throw the error to be handled by the form's error boundary
       throw error
     }
   }

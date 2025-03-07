@@ -1,9 +1,13 @@
 'use client'
 
 import { useMemo } from 'react'
+import { useAuth } from '@/features/auth/context/auth-context'
+import { useProfile } from '@/features/users/hooks/useProfile'
 import { usePermissions } from '@/features/permissions/hooks/usePermissions'
-import type { UserProfile } from '@/features/users/types'
-import type { RoleType, NavigationFilters } from '@/features/permissions/types'
+import type { 
+  RoleType, 
+  NavigationFilters
+} from '@/features/permissions/types'
 
 interface UseNavigationFiltersResult {
   filters: NavigationFilters
@@ -15,7 +19,9 @@ interface UseNavigationFiltersResult {
   canViewRegion: (region: string) => Promise<boolean>
 }
 
-export function useNavigationFilters(profile: UserProfile | null): UseNavigationFiltersResult {
+export function useNavigationFilters(): UseNavigationFiltersResult {
+  const { session } = useAuth()
+  const { profile } = useProfile(session)
   const { userPermissions, can, isLoading, error } = usePermissions(profile)
 
   const filters = useMemo<NavigationFilters>(() => {
@@ -46,24 +52,37 @@ export function useNavigationFilters(profile: UserProfile | null): UseNavigation
 
   // Permission check methods
   const canViewRole = async (role: RoleType): Promise<boolean> => {
-    return can('view_navigation', { role })
+    // Check if user's role type is sufficient to view the target role
+    if (!userPermissions) return false
+    const roleHierarchy: Record<RoleType, number> = {
+      'Admin': 5,
+      'Executive': 4,
+      'Manager': 3,
+      'Closer': 2,
+      'Setter': 1
+    }
+    const userRoleLevel = roleHierarchy[userPermissions.roleType] || 0
+    const targetRoleLevel = roleHierarchy[role] || 0
+    
+    // Users can only view roles at their level or below
+    return userRoleLevel >= targetRoleLevel && await can('view_role_navigation')
   }
 
   const canViewTeam = async (team: string): Promise<boolean> => {
-    return can('view_navigation', { team })
+    return can('view_team_navigation', { team })
   }
 
   const canViewArea = async (area: string): Promise<boolean> => {
-    return can('view_navigation', { area })
+    return can('view_area_navigation', { area })
   }
 
   const canViewRegion = async (region: string): Promise<boolean> => {
-    return can('view_navigation', { region })
+    return can('view_region_navigation', { region })
   }
 
   return {
     filters,
-    isLoading,
+    isLoading: isLoading || !profile,
     error,
     canViewRole,
     canViewTeam,

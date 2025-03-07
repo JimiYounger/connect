@@ -1,8 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useAuth } from '@/features/auth/context/auth-context'
-import { useProfile } from '@/features/users/hooks/useProfile'
 import { useNavigationFilters } from '../../hooks/useNavigationFilters'
 import type { RoleType } from '@/features/permissions/types'
 import { Button } from '@/components/ui/button'
@@ -21,9 +19,7 @@ export function RoleAssignment({
   onChange,
   className,
 }: RoleAssignmentProps) {
-  const { session } = useAuth()
-  const { profile } = useProfile(session)
-  const { filters, isLoading } = useNavigationFilters(profile)
+  const { filters, isLoading } = useNavigationFilters()
   const [availableRoles, setAvailableRoles] = useState<RoleType[]>([])
 
   // Filter available roles based on permissions
@@ -44,78 +40,23 @@ export function RoleAssignment({
     )
   }
 
-  const renderRoleFilter = (role: RoleType) => (
-    <div key={role} className="flex items-center justify-between py-2">
-      <Label htmlFor={`role-${role}`} className="flex items-center space-x-2">
-        <span>{role}</span>
-      </Label>
-      <Switch
-        id={`role-${role}`}
-        checked={safeValue.includes(role)}
-        onCheckedChange={() => {
-          if (safeValue.includes(role)) {
-            onChange(safeValue.filter(v => v !== role))
-          } else {
-            onChange([...safeValue, role])
-          }
-        }}
-      />
-    </div>
-  )
+  const handleToggle = (toggleValue: string) => {
+    onChange(
+      safeValue.includes(toggleValue)
+        ? safeValue.filter((v: string) => v !== toggleValue)
+        : [...safeValue, toggleValue]
+    )
+  }
 
-  const renderTeamFilter = (team: string) => (
-    <div key={team} className="flex items-center justify-between py-2">
-      <Label htmlFor={`team-${team}`} className="flex items-center space-x-2">
-        <span>{team}</span>
+  const renderFilterItem = (itemValue: string, label: string) => (
+    <div key={itemValue} className="flex items-center justify-between py-2">
+      <Label htmlFor={`filter-${itemValue}`} className="flex items-center space-x-2">
+        <span>{label}</span>
       </Label>
       <Switch
-        id={`team-${team}`}
-        checked={safeValue.includes(team)}
-        onCheckedChange={() => {
-          if (safeValue.includes(team)) {
-            onChange(safeValue.filter(v => v !== team))
-          } else {
-            onChange([...safeValue, team])
-          }
-        }}
-      />
-    </div>
-  )
-
-  const renderAreaFilter = (area: string) => (
-    <div key={area} className="flex items-center justify-between py-2">
-      <Label htmlFor={`area-${area}`} className="flex items-center space-x-2">
-        <span>{area}</span>
-      </Label>
-      <Switch
-        id={`area-${area}`}
-        checked={safeValue.includes(area)}
-        onCheckedChange={() => {
-          if (safeValue.includes(area)) {
-            onChange(safeValue.filter(v => v !== area))
-          } else {
-            onChange([...safeValue, area])
-          }
-        }}
-      />
-    </div>
-  )
-
-  const renderRegionFilter = (region: string) => (
-    <div key={region} className="flex items-center justify-between py-2">
-      <Label htmlFor={`region-${region}`} className="flex items-center space-x-2">
-        <span>{region}</span>
-      </Label>
-      <Switch
-        id={`region-${region}`}
-        checked={safeValue.includes(region)}
-        onCheckedChange={() => {
-          if (safeValue.includes(region)) {
-            onChange(safeValue.filter(v => v !== region))
-          } else {
-            onChange([...safeValue, region])
-          }
-        }}
+        id={`filter-${itemValue}`}
+        checked={safeValue.includes(itemValue)}
+        onCheckedChange={() => handleToggle(itemValue)}
       />
     </div>
   )
@@ -126,7 +67,7 @@ export function RoleAssignment({
         <div>
           <h3 className="font-semibold mb-2">Role Types</h3>
           <div className="space-y-2">
-            {availableRoles.map(renderRoleFilter)}
+            {availableRoles.map(role => renderFilterItem(role, role))}
           </div>
         </div>
 
@@ -134,7 +75,7 @@ export function RoleAssignment({
           <div>
             <h3 className="font-semibold mb-2">Teams</h3>
             <div className="space-y-2">
-              {filters.teams.map(renderTeamFilter)}
+              {filters.teams.map(team => renderFilterItem(team, team))}
             </div>
           </div>
         )}
@@ -143,7 +84,7 @@ export function RoleAssignment({
           <div>
             <h3 className="font-semibold mb-2">Areas</h3>
             <div className="space-y-2">
-              {filters.areas.map(renderAreaFilter)}
+              {filters.areas.map(area => renderFilterItem(area, area))}
             </div>
           </div>
         )}
@@ -152,7 +93,7 @@ export function RoleAssignment({
           <div>
             <h3 className="font-semibold mb-2">Regions</h3>
             <div className="space-y-2">
-              {filters.regions.map(renderRegionFilter)}
+              {filters.regions.map(region => renderFilterItem(region, region))}
             </div>
           </div>
         )}
@@ -160,21 +101,19 @@ export function RoleAssignment({
         <div className="flex justify-end space-x-2">
           <Button
             variant="outline"
-            onClick={() => {
-              // Clear all selections
-              safeValue.forEach(role => onChange(safeValue.filter(v => v !== role)))
-            }}
+            onClick={() => onChange([])}
           >
             Clear All
           </Button>
           <Button
             onClick={() => {
-              // Select all available roles
-              availableRoles.forEach(role => {
-                if (!safeValue.includes(role)) {
-                  onChange([...safeValue, role])
-                }
-              })
+              const allValues = [
+                ...availableRoles,
+                ...filters.teams,
+                ...filters.areas,
+                ...filters.regions
+              ]
+              onChange(allValues)
             }}
           >
             Select All

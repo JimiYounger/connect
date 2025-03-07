@@ -18,10 +18,6 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
-import { useAuth } from '@/features/auth/context/auth-context'
-import { useProfile } from '@/features/users/hooks/useProfile'
-import { usePermissions } from '@/features/permissions/hooks/usePermissions'
-import { hasPermissionLevel } from '@/features/permissions/constants/roles'
 import { useNavigation } from '@/features/navigation/hooks/useNavigation'
 import { Button } from '@/components/ui/button'
 import {
@@ -47,9 +43,6 @@ import { NavigationItem } from '@/features/navigation/components/NavigationItem'
 
 export default function EditNavigationMenuPage() {
   const params = useParams()
-  const { session, loading } = useAuth()
-  const { profile } = useProfile(session)
-  const { userPermissions } = usePermissions(profile)
   const { toast } = useToast()
   const menuId = params.id as string
 
@@ -86,7 +79,6 @@ export default function EditNavigationMenuPage() {
 
       const newItems = arrayMove([...items], oldIndex, newIndex)
       
-      // Update order_index for affected items
       try {
         await Promise.all(
           newItems.map((item, index) =>
@@ -111,8 +103,8 @@ export default function EditNavigationMenuPage() {
     }
   }
 
-  // Loading states
-  if (loading.initializing || isLoadingMenu || isLoadingItems) {
+  // Loading state for menu data
+  if (isLoadingMenu || isLoadingItems) {
     return (
       <div className="page-container">
         <div className="flex items-center justify-center min-h-[200px]">
@@ -120,30 +112,6 @@ export default function EditNavigationMenuPage() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
             <p className="mt-2">Loading...</p>
           </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Auth check
-  if (!session) {
-    return (
-      <div className="page-container">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-          <p>Please sign in to access this page</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Permission check
-  if (!userPermissions?.roleType || !hasPermissionLevel('Admin', userPermissions.roleType)) {
-    return (
-      <div className="page-container">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold mb-2">Unauthorized</h2>
-          <p>You don&apos;t have permission to access this page</p>
         </div>
       </div>
     )
@@ -165,10 +133,8 @@ export default function EditNavigationMenuPage() {
   }
 
   const handleSubmit = async (data: any) => {
-    console.log('Page handleSubmit called with data:', data)
     try {
       if (selectedItem) {
-        console.log('Updating existing item:', selectedItem)
         await updateNavigationItem({
           id: selectedItem,
           data: {
@@ -178,11 +144,6 @@ export default function EditNavigationMenuPage() {
           }
         })
       } else {
-        console.log('Creating new item with data:', {
-          ...data,
-          menu_id: menuId,
-          order_index: items?.length || 0,
-        })
         await createNavigationItem({
           ...data,
           menu_id: menuId,
@@ -200,14 +161,6 @@ export default function EditNavigationMenuPage() {
       setIsAddingItem(false)
       setSelectedItem(null)
     } catch (error) {
-      console.error('Error in handleSubmit:', error)
-      console.error('Error details:', {
-        error,
-        data,
-        selectedItem,
-        menuId,
-        itemsLength: items?.length
-      })
       toast({
         title: 'Error',
         description: `Failed to ${selectedItem ? 'update' : 'create'} navigation item.`,

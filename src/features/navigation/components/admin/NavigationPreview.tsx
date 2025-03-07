@@ -3,8 +3,6 @@
 import { useState, useEffect } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useAuth } from '@/features/auth/context/auth-context'
-import { useProfile } from '@/features/users/hooks/useProfile'
 import { useNavigationFilters } from '../../hooks/useNavigationFilters'
 import type { RoleType } from '@/features/permissions/types'
 import type { NavigationItemWithChildren } from '../../types'
@@ -23,9 +21,7 @@ export function NavigationPreview({
   className,
 }: NavigationPreviewProps) {
   const [expandedItems, setExpandedItems] = useState<string[]>([])
-  const { session } = useAuth()
-  const { profile } = useProfile(session)
-  const { filters } = useNavigationFilters(profile)
+  const { filters } = useNavigationFilters()
   const [availableRoles, setAvailableRoles] = useState<RoleType[]>([])
 
   // Filter available roles based on permissions

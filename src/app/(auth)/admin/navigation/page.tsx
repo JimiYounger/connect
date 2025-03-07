@@ -3,10 +3,6 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Plus, MoreVertical } from 'lucide-react'
-import { useAuth } from '@/features/auth/context/auth-context'
-import { useProfile } from '@/features/users/hooks/useProfile'
-import { usePermissions } from '@/features/permissions/hooks/usePermissions'
-import { hasPermissionLevel } from '@/features/permissions/constants/roles'
 import { useNavigation } from '@/features/navigation/hooks/useNavigation'
 import { Button } from '@/components/ui/button'
 import {
@@ -83,9 +79,6 @@ function MenuRow({
 }
 
 export default function NavigationManagementPage() {
-  const { session, loading } = useAuth()
-  const { profile } = useProfile(session)
-  const { userPermissions } = usePermissions(profile)
   const { toast } = useToast()
   const {
     menus,
@@ -96,7 +89,6 @@ export default function NavigationManagementPage() {
 
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
 
-  // Handle menu deletion
   const handleDeleteMenu = async (menuId: string) => {
     try {
       setIsDeleting(menuId)
@@ -116,8 +108,8 @@ export default function NavigationManagementPage() {
     }
   }
 
-  // Loading states
-  if (loading.initializing || isLoadingMenus) {
+  // Loading state for menus data
+  if (isLoadingMenus) {
     return (
       <div className="page-container">
         <div className="flex items-center justify-center min-h-[200px]">
@@ -125,30 +117,6 @@ export default function NavigationManagementPage() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
             <p className="mt-2">Loading...</p>
           </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Auth check
-  if (!session) {
-    return (
-      <div className="page-container">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-          <p>Please sign in to access this page</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Permission check
-  if (!userPermissions?.roleType || !hasPermissionLevel('Admin', userPermissions.roleType)) {
-    return (
-      <div className="page-container">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold mb-2">Unauthorized</h2>
-          <p>You don&apos;t have permission to access this page</p>
         </div>
       </div>
     )
