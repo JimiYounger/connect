@@ -33,4 +33,26 @@ export type PermissionAction =
   | 'view_team'
   | 'view_area'
   | 'view_region'
-  | 'view_system_info' 
+  | 'view_system_info'
+  | 'view_navigation'
+  | 'manage_navigation'
+  | 'view_role_navigation'
+  | 'view_team_navigation'
+  | 'view_area_navigation'
+  | 'view_region_navigation'
+
+// Permission context type
+export interface PermissionContext {
+  team?: string
+  area?: string
+  region?: string
+  role?: RoleType
+}
+
+// Navigation filter types
+export interface NavigationFilters {
+  roles: RoleType[]
+  teams: string[]
+  areas: string[]
+  regions: string[]
+} 

@@ -157,15 +157,13 @@ export const WidgetLibrary: React.FC<WidgetLibraryProps> = ({
   categories: propCategories = [],
   className,
 }) => {
-  // State for search and pagination
+  // State for search and filters
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedRatio, setSelectedRatio] = useState<string>('all');
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 12;
   
-  // Fetch widgets
-  const { widgets, isLoading, error } = useWidgets({
+  // Fetch widgets with infinite scroll
+  const { widgets, isLoading, error, hasMore, loadMore } = useWidgets({
     userId,
     isPublished: true,
   });
@@ -208,17 +206,38 @@ export const WidgetLibrary: React.FC<WidgetLibraryProps> = ({
       return matchesSearch && matchesCategory && matchesRatio;
     });
   }, [widgets, searchQuery, selectedCategory, selectedRatio]);
-  
-  // Paginate widgets
-  const paginatedWidgets = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return filteredWidgets.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredWidgets, currentPage, itemsPerPage]);
-  
-  // Reset to first page when filters change
+
+  // Add a ref to access the scroll container
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Handle scroll for infinite loading
   useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, selectedCategory, selectedRatio]);
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      if (
+        container.scrollLeft + container.clientWidth >= container.scrollWidth - 20 && // 20px threshold
+        !isLoading &&
+        hasMore
+      ) {
+        loadMore();
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [isLoading, hasMore, loadMore]);
+  
+  // Handle wheel events to enable horizontal scrolling with the mouse wheel
+  const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    
+    if (scrollContainerRef.current) {
+      // Scroll horizontally by the vertical scroll amount (with some multiplier for better feel)
+      scrollContainerRef.current.scrollLeft += event.deltaY * 0.5;
+    }
+  };
   
   // Group widgets by category
   const widgetsByCategory = useMemo(() => {
@@ -233,7 +252,7 @@ export const WidgetLibrary: React.FC<WidgetLibraryProps> = ({
     grouped['uncategorized'] = [];
     
     // Group widgets
-    paginatedWidgets.forEach(widget => {
+    filteredWidgets.forEach(widget => {
       if (widget.category_id && grouped[widget.category_id]) {
         grouped[widget.category_id].push(widget);
       } else {
@@ -242,23 +261,7 @@ export const WidgetLibrary: React.FC<WidgetLibraryProps> = ({
     });
     
     return grouped;
-  }, [paginatedWidgets, categories]);
-  
-  // Calculate total pages
-  const totalPages = Math.ceil(filteredWidgets.length / itemsPerPage);
-  
-  // Add a ref to access the scroll container
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  
-  // Handle wheel events to enable horizontal scrolling with the mouse wheel
-  const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    
-    if (scrollContainerRef.current) {
-      // Scroll horizontally by the vertical scroll amount (with some multiplier for better feel)
-      scrollContainerRef.current.scrollLeft += event.deltaY * 0.5;
-    }
-  };
+  }, [filteredWidgets, categories]);
   
   return (
     <div className={cn('widget-library flex flex-col h-full font-sans', className)}>
@@ -314,7 +317,7 @@ export const WidgetLibrary: React.FC<WidgetLibraryProps> = ({
         ref={scrollContainerRef}
       >
         <div className="overflow-x-auto overflow-y-hidden h-full" style={{ width: "100%" }}>
-          {isLoading ? (
+          {isLoading && widgets.length === 0 ? (
             <div className="flex items-center justify-center h-40">
               <div className="animate-pulse flex space-x-2">
                 <div className="h-2 w-2 bg-gray-300 rounded-full"></div>
@@ -333,13 +336,22 @@ export const WidgetLibrary: React.FC<WidgetLibraryProps> = ({
           ) : selectedCategory === 'all' ? (
             // iOS-style grid layout for all widgets
             <div className="ios-widget-grid">
-              {paginatedWidgets.map((widget) => (
+              {filteredWidgets.map((widget) => (
                 <DraggableWidgetItem
                   key={widget.id}
                   widget={widget}
                   onSelect={onWidgetSelect}
                 />
               ))}
+              {isLoading && (
+                <div className="col-span-full flex justify-center p-4">
+                  <div className="animate-pulse flex space-x-2">
+                    <div className="h-2 w-2 bg-gray-300 rounded-full"></div>
+                    <div className="h-2 w-2 bg-gray-300 rounded-full"></div>
+                    <div className="h-2 w-2 bg-gray-300 rounded-full"></div>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             // Category-based layout
@@ -364,47 +376,19 @@ export const WidgetLibrary: React.FC<WidgetLibraryProps> = ({
                   </div>
                 );
               })}
+              {isLoading && (
+                <div className="flex justify-center p-4">
+                  <div className="animate-pulse flex space-x-2">
+                    <div className="h-2 w-2 bg-gray-300 rounded-full"></div>
+                    <div className="h-2 w-2 bg-gray-300 rounded-full"></div>
+                    <div className="h-2 w-2 bg-gray-300 rounded-full"></div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
       </div>
-      
-      {totalPages > 1 && (
-        <div className="widget-library-footer p-4 border-t flex justify-center">
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </PaginationPrevious>
-              </PaginationItem>
-              
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <PaginationItem key={page}>
-                  <PaginationLink
-                    isActive={page === currentPage}
-                    onClick={() => setCurrentPage(page)}
-                  >
-                    {page}
-                  </PaginationLink>
-                </PaginationItem>
-              ))}
-              
-              <PaginationItem>
-                <PaginationNext
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </PaginationNext>
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
-      )}
     </div>
   );
 };

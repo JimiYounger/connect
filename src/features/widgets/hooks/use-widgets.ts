@@ -7,8 +7,6 @@ import type { Widget, WidgetType } from '../types';
 interface UseWidgetsOptions {
   userId: string;
   types?: WidgetType[];
-  limit?: number;
-  offset?: number;
   isPublished?: boolean;
   enabled?: boolean;
 }
@@ -18,8 +16,8 @@ interface UseWidgetsResult {
   isLoading: boolean;
   error: Error | null;
   refetch: () => Promise<void>;
-  hasMore: boolean;
   loadMore: () => Promise<void>;
+  hasMore: boolean;
 }
 
 /**
@@ -28,8 +26,6 @@ interface UseWidgetsResult {
 export function useWidgets({
   userId,
   types,
-  limit = 10,
-  offset = 0,
   isPublished,
   enabled = true
 }: UseWidgetsOptions): UseWidgetsResult {
@@ -37,7 +33,8 @@ export function useWidgets({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
   const [hasMore, setHasMore] = useState<boolean>(true);
-  const [currentOffset, setCurrentOffset] = useState<number>(offset);
+  const [currentOffset, setCurrentOffset] = useState<number>(0);
+  const PAGE_SIZE = 50; // Fetch more widgets at a time for smoother experience
   
   const fetchWidgets = useCallback(async (offsetValue: number = currentOffset, append: boolean = false) => {
     if (!userId || !enabled) return;
@@ -50,7 +47,7 @@ export function useWidgets({
         userId,
         {
           types,
-          limit,
+          limit: PAGE_SIZE,
           offset: offsetValue,
           isPublished
         }
@@ -61,7 +58,7 @@ export function useWidgets({
       // Update state based on results
       if (data) {
         setWidgets(prevWidgets => append ? [...prevWidgets, ...data] : data);
-        setHasMore(data.length === limit);
+        setHasMore(data.length === PAGE_SIZE);
       } else {
         setWidgets(prevWidgets => append ? prevWidgets : []);
         setHasMore(false);
@@ -72,28 +69,29 @@ export function useWidgets({
     } finally {
       setIsLoading(false);
     }
-  }, [userId, types, limit, currentOffset, isPublished, enabled]);
+  }, [userId, types, currentOffset, isPublished, enabled]);
   
   // Refetch function for manual refresh
   const refetch = useCallback(async () => {
-    await fetchWidgets(offset, false);
-  }, [fetchWidgets, offset]);
+    setCurrentOffset(0);
+    await fetchWidgets(0, false);
+  }, [fetchWidgets]);
   
-  // Load more function for pagination
+  // Load more function for infinite scroll
   const loadMore = useCallback(async () => {
     if (isLoading || !hasMore) return;
     
-    const newOffset = currentOffset + limit;
+    const newOffset = currentOffset + PAGE_SIZE;
     setCurrentOffset(newOffset);
     await fetchWidgets(newOffset, true);
-  }, [isLoading, hasMore, currentOffset, limit, fetchWidgets]);
+  }, [isLoading, hasMore, currentOffset, fetchWidgets]);
   
   // Initial fetch
   useEffect(() => {
     if (enabled) {
-      fetchWidgets(offset, false);
+      fetchWidgets(0, false);
     }
-  }, [enabled, userId, types, limit, offset, isPublished, fetchWidgets]);
+  }, [enabled, userId, types, isPublished, fetchWidgets]);
   
   return { widgets, isLoading, error, refetch, hasMore, loadMore };
 } 

@@ -10,16 +10,20 @@
     display: grid;
     grid-template-columns: repeat(4, 74px);
     grid-auto-rows: 74px;
-    gap: 10px;
+    gap: 16px;
     padding: 0;
-    justify-content: center;
+    justify-content: start;
     background-color: transparent;
+    width: max-content;
   }
   
   /* Widget container styles */
   .widget-container {
     position: relative;
     background-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   
   /* Widget size classes for grid layout */
@@ -34,15 +38,27 @@
   .widget-size-4-3 { grid-column: span 4; grid-row: span 3; }
   .widget-size-3-4 { grid-column: span 3; grid-row: span 4; }
   .widget-size-4-4 { grid-column: span 4; grid-row: span 4; }
+  .widget-size-4-1 { grid-column: span 4; grid-row: span 1; }
   
   /* Widget card and renderer styles */
   .widget-card {
     position: relative;
-    background-color: transparent !important; 
+    width: 100%;
+    height: 100%;
+    background-color: transparent !important;
+    border-radius: inherit;
+    overflow: hidden;
   }
   
   .widget-renderer {
+    width: 100%;
+    height: 100%;
     background-color: transparent !important;
+    border-radius: inherit;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   
   .widget-renderer > div {
@@ -324,4 +340,15 @@
     aspect-ratio: 1 / 1 !important;
     width: 100% !important;
     height: 100% !important;
+  }
+
+  /* Ensure non-circular widgets maintain their aspect ratios */
+  .widget-container:not([style*="border-radius: 50%"]) {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* Special handling for circular widgets */
+  .widget-container[style*="border-radius: 50%"] {
+    aspect-ratio: 1 / 1;
   }

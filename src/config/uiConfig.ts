@@ -9,7 +9,7 @@ export const GRID_CELL_SIZE = GRID_BASE_UNIT;
 export type WidgetSizeRatio = 
   | '1:1' | '2:1' | '1:2' | '2:2' 
   | '3:2' | '2:3' | '4:3' | '3:4' 
-  | '4:4' | '2:4' | '4:2';
+  | '4:4' | '2:4' | '4:2' | '4:1';
 
 // Size ratio to grid dimensions mapping
 export const SIZE_RATIO_TO_GRID: Record<WidgetSizeRatio, { width: number; height: number }> = {
@@ -24,4 +24,5 @@ export const SIZE_RATIO_TO_GRID: Record<WidgetSizeRatio, { width: number; height
   '4:4': { width: 4, height: 4 },
   '2:4': { width: 2, height: 4 },
   '4:2': { width: 4, height: 2 },
+  '4:1': { width: 4, height: 1 },
 }; 

@@ -424,6 +424,227 @@ export type Database = {
         }
         Relationships: []
       }
+      navigation_analytics: {
+        Row: {
+          created_at: string | null
+          id: string
+          interaction_type: string
+          metadata: Json | null
+          navigation_item_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          interaction_type: string
+          metadata?: Json | null
+          navigation_item_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          interaction_type?: string
+          metadata?: Json | null
+          navigation_item_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "navigation_analytics_navigation_item_id_fkey"
+            columns: ["navigation_item_id"]
+            isOneToOne: false
+            referencedRelation: "navigation_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "navigation_analytics_navigation_item_id_fkey"
+            columns: ["navigation_item_id"]
+            isOneToOne: false
+            referencedRelation: "navigation_items_active"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "navigation_analytics_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      navigation_item_roles: {
+        Row: {
+          area: string | null
+          created_at: string | null
+          id: string
+          navigation_item_id: string | null
+          region: string | null
+          role_type: string
+          team: string | null
+        }
+        Insert: {
+          area?: string | null
+          created_at?: string | null
+          id?: string
+          navigation_item_id?: string | null
+          region?: string | null
+          role_type: string
+          team?: string | null
+        }
+        Update: {
+          area?: string | null
+          created_at?: string | null
+          id?: string
+          navigation_item_id?: string | null
+          region?: string | null
+          role_type?: string
+          team?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "navigation_item_roles_navigation_item_id_fkey"
+            columns: ["navigation_item_id"]
+            isOneToOne: false
+            referencedRelation: "navigation_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "navigation_item_roles_navigation_item_id_fkey"
+            columns: ["navigation_item_id"]
+            isOneToOne: false
+            referencedRelation: "navigation_items_active"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      navigation_items: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          dynamic_variables: Json | null
+          end_date: string | null
+          id: string
+          is_active: boolean | null
+          is_external: boolean | null
+          is_public: boolean | null
+          menu_id: string | null
+          open_in_iframe: boolean | null
+          order_index: number
+          parent_id: string | null
+          start_date: string | null
+          title: string
+          updated_at: string | null
+          url: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          dynamic_variables?: Json | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_external?: boolean | null
+          is_public?: boolean | null
+          menu_id?: string | null
+          open_in_iframe?: boolean | null
+          order_index: number
+          parent_id?: string | null
+          start_date?: string | null
+          title: string
+          updated_at?: string | null
+          url: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          dynamic_variables?: Json | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_external?: boolean | null
+          is_public?: boolean | null
+          menu_id?: string | null
+          open_in_iframe?: boolean | null
+          order_index?: number
+          parent_id?: string | null
+          start_date?: string | null
+          title?: string
+          updated_at?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "navigation_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "navigation_items_menu_id_fkey"
+            columns: ["menu_id"]
+            isOneToOne: false
+            referencedRelation: "navigation_menus"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "navigation_items_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "navigation_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "navigation_items_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "navigation_items_active"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      navigation_menus: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "navigation_menus_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       thumbnails: {
         Row: {
           created_at: string | null
@@ -845,8 +1066,83 @@ export type Database = {
           },
         ]
       }
+      navigation_items_active: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          dynamic_variables: Json | null
+          end_date: string | null
+          id: string | null
+          is_active: boolean | null
+          is_currently_active: boolean | null
+          is_external: boolean | null
+          is_public: boolean | null
+          menu_id: string | null
+          open_in_iframe: boolean | null
+          order_index: number | null
+          parent_id: string | null
+          role_ids: string[] | null
+          start_date: string | null
+          title: string | null
+          updated_at: string | null
+          url: string | null
+          visible_to_roles: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "navigation_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "navigation_items_menu_id_fkey"
+            columns: ["menu_id"]
+            isOneToOne: false
+            referencedRelation: "navigation_menus"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "navigation_items_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "navigation_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "navigation_items_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "navigation_items_active"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      get_navigation_for_user: {
+        Args: {
+          p_user_id: string
+          p_role_type?: string
+          p_team?: string
+          p_area?: string
+          p_region?: string
+        }
+        Returns: {
+          id: string
+          menu_id: string
+          parent_id: string
+          title: string
+          url: string
+          description: string
+          is_external: boolean
+          open_in_iframe: boolean
+          order_index: number
+          level: number
+        }[]
+      }
       is_banner_currently_active: {
         Args: {
           p_is_active: boolean
@@ -854,6 +1150,23 @@ export type Database = {
           p_end_date: string
         }
         Returns: boolean
+      }
+      is_navigation_item_currently_active: {
+        Args: {
+          p_is_active: boolean
+          p_start_date: string
+          p_end_date: string
+        }
+        Returns: boolean
+      }
+      log_navigation_interaction: {
+        Args: {
+          p_navigation_item_id: string
+          p_user_id: string
+          p_interaction_type: string
+          p_metadata?: Json
+        }
+        Returns: string
       }
       set_widget_configuration: {
         Args: {
