@@ -1,3 +1,5 @@
+// my-app/src/features/navigation/services/navigation-service.ts
+
 import { createClient } from '@/lib/supabase'
 import type {
   NavigationMenuRow,
@@ -14,26 +16,24 @@ import type {
 /**
  * Get all navigation menus with item counts
  */
-export async function getNavigationMenus(): Promise<NavigationMenuRow[]> {
-  const supabase = createClient()
-  
-  // Get menus and their item counts in a single query
-  const { data, error } = await supabase
-    .from('navigation_menus')
-    .select(`
-      *,
-      items:navigation_items(count)
-    `)
-    .order('name')
-  
-  if (error) throw error
+// In your getNavigationMenus function in navigation-service.ts
 
-  // Transform the data to include items_count
-  return data.map(menu => ({
-    ...menu,
-    items_count: menu.items?.[0]?.count ?? 0
-  }))
-}
+export async function getNavigationMenus(): Promise<NavigationMenuRow[]> {
+    try {
+      // Use API endpoint instead of direct Supabase query
+      const response = await fetch('/api/navigation/menus')
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch navigation menus: ${response.statusText}`)
+      }
+      
+      const data = await response.json()
+      return data
+    } catch (error) {
+      console.error('Error fetching navigation menus:', error)
+      throw error
+    }
+  }
 
 /**
  * Get a specific navigation menu by ID, including its items
@@ -351,6 +351,20 @@ export async function getUserNavigation(
   if (error) throw error
   return buildNavigationTree(data)
 }
+
+/**
+ * Delete all roles for a navigation item
+ */
+export async function deleteRolesByItemId(itemId: string): Promise<void> {
+    const supabase = createClient();
+    
+    const { error } = await supabase
+      .from('navigation_item_roles')
+      .delete()
+      .eq('navigation_item_id', itemId);
+    
+    if (error) throw error;
+  }
 
 /**
  * Helper function to build a nested navigation tree from flat data

@@ -1,267 +1,132 @@
+// my-app/src/features/navigation/components/admin/NavigationUrlBuilder.tsx
+
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Variable } from 'lucide-react'
+import { useState } from 'react'
+import { useAuth } from '@/features/auth/context/auth-context'
+import { useProfile } from '@/features/users/hooks/useProfile'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
+import { Label } from '@/components/ui/label'
+import { Card, CardContent } from '@/components/ui/card'
 import type { UserProfile } from '@/features/users/types'
 
 interface NavigationUrlBuilderProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onSelect: (url: string) => void
+  onSelect: (placeholder: string) => void
   currentUser?: UserProfile | null
+  isExternal?: boolean
 }
 
-type UrlVariable = {
-  key: string
-  label: string
-  description: string
-  example: string
-  getValue: (user: UserProfile | null | undefined) => string
-}
+// Define the user profile fields that can be inserted
+const USER_FIELDS = [
+  { id: 'email', label: 'Email', placeholder: '{{user.email}}' },
+  { id: 'airtable_record_id', label: 'Airtable ID', placeholder: '{{user.airtable_record_id}}' },
+  { id: 'salesforce_id', label: 'Salesforce ID', placeholder: '{{user.salesforce_id}}' },
+  { id: 'phone', label: 'Phone', placeholder: '{{user.phone}}' },
+  { id: 'first_name', label: 'First Name', placeholder: '{{user.first_name}}' },
+  { id: 'last_name', label: 'Last Name', placeholder: '{{user.last_name}}' },
+  { id: 'team', label: 'Team', placeholder: '{{user.team}}' },
+  { id: 'area', label: 'Area', placeholder: '{{user.area}}' },
+  { id: 'region', label: 'Region', placeholder: '{{user.region}}' },
+  { id: 'role', label: 'Role', placeholder: '{{user.role}}' },
+  { id: 'role_type', label: 'Role Type', placeholder: '{{user.role_type}}' },
+  { id: 'user_key', label: 'User Key', placeholder: '{{user.user_key}}' },
+  { id: 'id', label: 'User ID', placeholder: '{{user.id}}' },
+];
 
-const variables: UrlVariable[] = [
-  {
-    key: ':userId',
-    label: 'User ID',
-    description: 'The current user\'s ID',
-    example: '123e4567-e89b-12d3-a456-426614174000',
-    getValue: (user) => user?.id || '',
-  },
-  {
-    key: ':email',
-    label: 'Email',
-    description: 'The current user\'s email',
-    example: 'john.doe@example.com',
-    getValue: (user) => user?.email || '',
-  },
-  {
-    key: ':roleType',
-    label: 'Role Type',
-    description: 'The current user\'s role type',
-    example: 'Admin',
-    getValue: (user) => user?.role_type || '',
-  },
-  {
-    key: ':team',
-    label: 'Team',
-    description: 'The current user\'s team',
-    example: 'Sales',
-    getValue: (user) => user?.team || '',
-  },
-  {
-    key: ':area',
-    label: 'Area',
-    description: 'The current user\'s area',
-    example: 'North',
-    getValue: (user) => user?.area || '',
-  },
-  {
-    key: ':region',
-    label: 'Region',
-    description: 'The current user\'s region',
-    example: 'West',
-    getValue: (user) => user?.region || '',
-  },
-]
+// Create a type-safe way to access profile fields
+const getProfileValue = (profile: any, fieldId: string): string => {
+  if (!profile) return '';
+  
+  switch (fieldId) {
+    case 'email': return profile.email || '';
+    case 'airtable_record_id': return profile.airtable_record_id || '';
+    case 'salesforce_id': return profile.salesforce_id || '';
+    case 'phone': return profile.phone || '';
+    case 'first_name': return profile.first_name || '';
+    case 'last_name': return profile.last_name || '';
+    case 'team': return profile.team || '';
+    case 'area': return profile.area || '';
+    case 'region': return profile.region || '';
+    case 'role': return profile.role || '';
+    case 'role_type': return profile.role_type || '';
+    case 'user_key': return profile.user_key || '';
+    case 'id': return profile.id || '';
+    default: return '';
+  }
+};
 
 export function NavigationUrlBuilder({
-  open,
-  onOpenChange,
   onSelect,
-  currentUser
+  currentUser,
+  isExternal = false
 }: NavigationUrlBuilderProps) {
-  const [url, setUrl] = useState('')
-  const [variableOpen, setVariableOpen] = useState(false)
-  const [usedVariables, setUsedVariables] = useState<Set<string>>(new Set())
-  const [previewUrl, setPreviewUrl] = useState('')
+  const [activeTab, setActiveTab] = useState('fields')
+  
+  // Get current user data for preview
+  const { session } = useAuth()
+  const { profile } = useProfile(session)
+  
+  // Use passed currentUser or fetched profile
+  const userData = currentUser || profile
 
-  // Update used variables when URL changes
-  useEffect(() => {
-    const used = new Set<string>()
-    variables.forEach((variable) => {
-      if (url.includes(variable.key)) {
-        used.add(variable.key)
-      }
-    })
-    setUsedVariables(used)
-  }, [url])
-
-  // Update preview URL when variables or URL changes
-  useEffect(() => {
-    let preview = url
-    variables.forEach((variable) => {
-      if (preview.includes(variable.key)) {
-        const value = variable.getValue(currentUser)
-        preview = preview.replace(new RegExp(variable.key, 'g'), value || '[not available]')
-      }
-    })
-    setPreviewUrl(preview)
-  }, [url, currentUser])
-
-  // Validate URL format
-  const isValidUrl = () => {
-    // Must start with /
-    if (!url.startsWith('/')) return false
-
-    // Check for unmatched variables
-    const matches = url.match(/:[a-zA-Z]+/g) || []
-    return matches.every(match => variables.some(v => v.key === match))
-  }
-
-  const handleInsertVariable = (variable: UrlVariable) => {
-    const selectionStart = (document.activeElement as HTMLInputElement)?.selectionStart || url.length
-    const selectionEnd = (document.activeElement as HTMLInputElement)?.selectionEnd || url.length
-    
-    const newUrl = url.substring(0, selectionStart) + 
-                  variable.key + 
-                  url.substring(selectionEnd)
-    
-    setUrl(newUrl)
-    setVariableOpen(false)
-  }
-
-  const handleSubmit = () => {
-    if (isValidUrl()) {
-      onSelect(url)
-    }
+  // Insert field
+  const insertField = (placeholder: string) => {
+    onSelect(placeholder)
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle>Build Navigation URL</DialogTitle>
-          <DialogDescription>
-            Create a URL with optional dynamic variables that will be replaced with user data
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="grid gap-4">
-          <div className="flex items-center gap-2">
-            <div className="grid flex-1 gap-2">
-              <Input
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="/path/to/page"
-                className={cn(
-                  'font-mono',
-                  !isValidUrl() && url && 'border-red-500'
-                )}
-              />
-              {!isValidUrl() && url && (
-                <p className="text-sm text-red-500">
-                  URL must start with / and use valid variables
-                </p>
-              )}
-            </div>
-            <Popover open={variableOpen} onOpenChange={setVariableOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="shrink-0"
-                  size="icon"
-                >
-                  <Variable className="h-4 w-4" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="p-0" align="end">
-                <Command>
-                  <CommandInput placeholder="Search variables..." />
-                  <CommandList>
-                    <CommandEmpty>No variables found.</CommandEmpty>
-                    <CommandGroup>
-                      {variables.map((variable) => (
-                        <CommandItem
-                          key={variable.key}
-                          onSelect={() => handleInsertVariable(variable)}
-                        >
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-sm">
-                                {variable.key}
-                              </span>
-                              <span className="text-muted-foreground">
-                                {variable.label}
-                              </span>
-                            </div>
-                            <span className="text-xs text-muted-foreground">
-                              {variable.description}
-                            </span>
-                          </div>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+    <div className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="fields">Insert User Fields</TabsTrigger>
+          <TabsTrigger value="preview">Field Preview</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="fields" className="border rounded-md p-4 mt-2">
+          <div className="grid grid-cols-3 gap-2">
+            {USER_FIELDS.map((field) => (
+              <Button
+                key={field.id}
+                variant="outline"
+                size="sm"
+                type="button"
+                onClick={() => insertField(field.placeholder)}
+                className="justify-start"
+              >
+                {field.label}
+              </Button>
+            ))}
           </div>
-
-          {usedVariables.size > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {Array.from(usedVariables).map((key) => {
-                const variable = variables.find(v => v.key === key)
-                if (!variable) return null
-                return (
-                  <Badge
-                    key={key}
-                    variant="secondary"
-                    className="font-mono"
-                  >
-                    {key}
-                  </Badge>
-                )
-              })}
-            </div>
-          )}
-
-          <div className="rounded-md bg-muted p-4">
-            <div className="text-sm font-medium mb-2">Preview</div>
-            <div className="font-mono text-sm break-all">
-              {previewUrl || 'No preview available'}
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={!isValidUrl()}
-            >
-              Use URL
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </TabsContent>
+        
+        <TabsContent value="preview" className="mt-2">
+          <Card>
+            <CardContent className="pt-4">
+              <Label className="text-sm text-muted-foreground mb-2 block">
+                Available fields with {userData ? `${userData.first_name}'s` : 'user'} data:
+              </Label>
+              <div className="grid grid-cols-2 gap-2">
+                {USER_FIELDS.map((field) => (
+                  <div key={field.id} className="flex justify-between items-center p-2 bg-muted rounded-md">
+                    <span className="text-sm font-medium">{field.label}:</span>
+                    <code className="text-xs bg-background px-2 py-1 rounded">
+                      {userData ? getProfileValue(userData, field.id) : 'N/A'}
+                    </code>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
   )
-} 
+}

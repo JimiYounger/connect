@@ -1,5 +1,20 @@
 import type { Database } from '@/types/supabase'
 
+/**
+ * Valid role types for navigation item access control
+ */
+export type RoleType = 'Admin' | 'Executive' | 'Manager' | 'Closer' | 'Setter';
+
+/**
+ * Structured interface for categorized role assignments
+ */
+export interface NavigationRoleAssignments {
+  roleTypes: RoleType[];
+  teams: string[];
+  areas: string[];
+  regions: string[];
+}
+
 type NavigationMenuBase = Database['public']['Tables']['navigation_menus']['Row']
 type NavigationItemBase = Database['public']['Tables']['navigation_items']['Row']
 type NavigationItemRoleBase = Database['public']['Tables']['navigation_item_roles']['Row']
@@ -55,7 +70,7 @@ export interface NavigationItemUpdate extends Partial<NavigationItemRow> {}
 export interface NavigationItemRoleRow extends NavigationItemRoleBase {
   id: string
   navigation_item_id: string | null
-  role_type: string
+  role_type: RoleType | 'Any'
   team: string | null
   area: string | null
   region: string | null
@@ -63,7 +78,10 @@ export interface NavigationItemRoleRow extends NavigationItemRoleBase {
 }
 
 export interface NavigationItemRoleInsert extends Partial<Omit<NavigationItemRoleRow, 'role_type'>> {
-  role_type: string
+  role_type: RoleType | 'Any';  // 'Any' for team/area/region assignments
+  team?: string | null;
+  area?: string | null;
+  region?: string | null;
 }
 
 export interface NavigationItemRoleUpdate extends Partial<NavigationItemRoleRow> {}
@@ -110,6 +128,24 @@ export interface NavigationItemForDisplay {
     updatedAt?: string
     createdBy?: string
   }
+}
+
+/**
+ * Form values for creating or updating navigation items
+ */
+export interface NavigationItemFormValues {
+  title: string;
+  url: string;
+  description?: string;
+  parent_id: string | null;
+  is_public: boolean;
+  is_active: boolean;
+  is_external: boolean;
+  open_in_iframe?: boolean;
+  start_date: Date | null;
+  end_date: Date | null;
+  order_index: number;
+  roleAssignments: NavigationRoleAssignments;
 }
 
 export type NavigationAnalytics = Database['public']['Tables']['navigation_analytics']['Row'] 

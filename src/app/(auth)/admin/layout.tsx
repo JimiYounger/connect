@@ -5,7 +5,6 @@ import { useAuth } from '@/features/auth/context/auth-context'
 import { useProfile } from '@/features/users/hooks/useProfile'
 import { usePermissions } from '@/features/permissions/hooks/usePermissions'
 import { Loader2 } from 'lucide-react'
-import { Card } from '@/components/ui/card'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 
 interface AdminLayoutProps {
@@ -82,10 +81,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   // Render admin content if all checks pass
   return (
-    <div className="container py-6">
-      <Card className="p-6">
-        {children}
-      </Card>
+    <div className="min-h-screen">
+      {children}
     </div>
   )
-} 
+}

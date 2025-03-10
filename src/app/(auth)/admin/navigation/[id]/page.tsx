@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Calendar, Globe, Lock } from 'lucide-react'
+import { ArrowLeft, Plus, ChevronRight, GripVertical } from 'lucide-react'
 import {
   DndContext,
   closestCenter,
@@ -11,13 +11,16 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  DragEndEvent,
 } from '@dnd-kit/core'
 import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
+  useSortable,
 } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { useNavigation } from '@/features/navigation/hooks/useNavigation'
 import { Button } from '@/components/ui/button'
 import {
@@ -37,9 +40,82 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
 import { NavigationItemForm } from '@/features/navigation/components/admin/NavigationItemForm'
-import { RoleAssignment } from '@/features/navigation/components/admin/RoleAssignment'
-import { NavigationPreview } from '@/features/navigation/components/admin/NavigationPreview'
-import { NavigationItem } from '@/features/navigation/components/NavigationItem'
+import { deleteRolesByItemId } from '@/features/navigation/services/navigation-service'
+
+interface NavigationItem {
+  id: string;
+  title: string;
+  order_index: number;
+  [key: string]: any;
+}
+
+interface SortableItemProps {
+  item: NavigationItem;
+  onClick: () => void;
+  onDelete: () => void;
+}
+
+// Custom SortableItem component
+const SortableItem = ({ item, onClick, onDelete }: SortableItemProps) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: item.id });
+  
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : 1,
+    opacity: isDragging ? 0.8 : 1,
+  };
+  
+  return (
+    <div 
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center justify-between p-6 bg-zinc-900 text-white rounded-[14px] cursor-pointer hover:bg-zinc-800 transition-colors"
+    >
+      <div className="flex items-center gap-3">
+        <div 
+          className="touch-none cursor-grab active:cursor-grabbing text-zinc-500 hover:text-white"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="h-5 w-5" />
+        </div>
+        <div 
+          className="font-medium text-lg"
+          onClick={onClick}
+        >
+          {item.title}
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="h-8 w-8 text-white"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+        </Button>
+        <div 
+          className="h-8 w-8 bg-white rounded-full flex items-center justify-center"
+          onClick={onClick}
+        >
+          <ChevronRight className="h-5 w-5 text-black" />
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function EditNavigationMenuPage() {
   const params = useParams()
@@ -52,14 +128,28 @@ export default function EditNavigationMenuPage() {
     updateItem: updateNavigationItem,
     createItem: createNavigationItem,
     deleteItem: deleteNavigationItem,
+    assignRole,
   } = useNavigation()
 
   const { data: menu, isLoading: isLoadingMenu } = useNavigationMenu(menuId)
-  const { data: items = [], isLoading: isLoadingItems } = useNavigationItems(menuId)
+  const { 
+    data: serverItems = [], 
+    isLoading: isLoadingItems,
+    refetch
+  } = useNavigationItems(menuId)
+  
+  // Local state for items
+  const [items, setItems] = useState<NavigationItem[]>([]);
+  
+  // Keep items in sync with server data
+  useEffect(() => {
+    if (serverItems?.length > 0) {
+      setItems(serverItems);
+    }
+  }, [serverItems]);
 
   const [selectedItem, setSelectedItem] = useState<string | null>(null)
   const [isAddingItem, setIsAddingItem] = useState(false)
-  const [selectedRoles, setSelectedRoles] = useState<string[]>([])
 
   // DnD setup
   const sensors = useSensors(
@@ -69,17 +159,22 @@ export default function EditNavigationMenuPage() {
     })
   )
 
-  // Handle DnD reordering
-  const handleDragEnd = async (event: any) => {
+  // Handle DnD reordering with optimistic update
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
 
-    if (active.id !== over.id) {
+    if (over && active.id !== over.id) {
       const oldIndex = items.findIndex((item) => item.id === active.id)
       const newIndex = items.findIndex((item) => item.id === over.id)
 
+      // Create new array with the reordered items
       const newItems = arrayMove([...items], oldIndex, newIndex)
       
+      // Update local state immediately
+      setItems(newItems);
+      
       try {
+        // Send updates to the server
         await Promise.all(
           newItems.map((item, index) =>
             updateNavigationItem({
@@ -89,11 +184,17 @@ export default function EditNavigationMenuPage() {
           )
         )
 
+        // Refresh data from server after successful update
+        refetch();
+        
         toast({
           title: 'Success',
           description: 'Item order updated successfully.',
         })
       } catch (_error) {
+        // On error, revert to original items by refetching
+        refetch();
+        
         toast({
           title: 'Error',
           description: 'Failed to update item order.',
@@ -106,11 +207,11 @@ export default function EditNavigationMenuPage() {
   // Loading state for menu data
   if (isLoadingMenu || isLoadingItems) {
     return (
-      <div className="page-container">
-        <div className="flex items-center justify-center min-h-[200px]">
+      <div className="max-w-5xl mx-auto py-8 px-4 bg-black">
+        <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-            <p className="mt-2">Loading...</p>
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-white mx-auto"></div>
+            <p className="mt-4 text-lg text-white">Loading navigation menu...</p>
           </div>
         </div>
       </div>
@@ -120,11 +221,11 @@ export default function EditNavigationMenuPage() {
   // Menu not found
   if (!menu) {
     return (
-      <div className="page-container">
-        <div className="text-center text-red-600">
-          <h2 className="text-xl font-semibold mb-2">Error</h2>
-          <p>Navigation menu not found</p>
-          <Button asChild className="mt-4">
+      <div className="max-w-5xl mx-auto py-8 px-4 bg-black">
+        <div className="max-w-md mx-auto bg-zinc-900 rounded-[14px] shadow-md p-8 text-center">
+          <h2 className="text-2xl font-semibold mb-4 text-red-400">Menu Not Found</h2>
+          <p className="mb-6 text-zinc-400">The navigation menu you&apos;re looking for doesn&apos;t exist or has been removed.</p>
+          <Button asChild size="lg" className="bg-white text-black hover:bg-zinc-200">
             <Link href="/admin/navigation">Back to Navigation</Link>
           </Button>
         </div>
@@ -132,188 +233,170 @@ export default function EditNavigationMenuPage() {
     )
   }
 
+  // Handle submit for creating/updating items
   const handleSubmit = async (data: any) => {
     try {
+      // Extract roles from form data
+      const { roles = [], ...itemData } = data;
+      
+      let navItemId: string;
+      
       if (selectedItem) {
+        // Update existing item
         await updateNavigationItem({
           id: selectedItem,
           data: {
-            ...data,
-            start_date: data.start_date?.toISOString() || null,
-            end_date: data.end_date?.toISOString() || null
+            ...itemData,
+            start_date: itemData.start_date?.toISOString() || null,
+            end_date: itemData.end_date?.toISOString() || null
           }
-        })
+        });
+        navItemId = selectedItem;
+        
+        // Clean up existing roles
+        await deleteRolesByItemId(selectedItem);
       } else {
-        await createNavigationItem({
-          ...data,
+        // Create new item
+        const newItem = await createNavigationItem({
+          ...itemData,
           menu_id: menuId,
           order_index: items?.length || 0,
-          start_date: data.start_date?.toISOString() || null,
-          end_date: data.end_date?.toISOString() || null
-        })
+          start_date: itemData.start_date?.toISOString() || null,
+          end_date: itemData.end_date?.toISOString() || null
+        });
+        
+        navItemId = newItem.id;
       }
-
+      
+      // Handle roles if the item is not public and roles are provided
+      if (!itemData.is_public && roles.length > 0) {
+        // Create role assignments
+        await Promise.all(roles.map(async (role: string) => {
+          const roleData: any = { role_type: role };
+          
+          return assignRole({
+            itemId: navItemId,
+            roleData
+          });
+        }));
+      }
+  
+      // Refresh data
+      refetch();
+      
       toast({
         title: 'Success',
         description: `Navigation item ${selectedItem ? 'updated' : 'created'} successfully.`,
-      })
-
-      setIsAddingItem(false)
-      setSelectedItem(null)
+      });
+  
+      setIsAddingItem(false);
+      setSelectedItem(null);
     } catch (error) {
+      console.error('Error:', error);
       toast({
         title: 'Error',
         description: `Failed to ${selectedItem ? 'update' : 'create'} navigation item.`,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Handle delete with optimistic update
+  const handleDeleteItem = async (itemId: string) => {
+    // Create a filtered list without the item being deleted
+    const filteredItems = items.filter(item => item.id !== itemId)
+    
+    // Update local state immediately
+    setItems(filteredItems);
+    
+    try {
+      // Delete from server
+      await deleteNavigationItem(itemId)
+      
+      // Refresh data
+      refetch();
+      
+      toast({
+        title: 'Success',
+        description: 'Item deleted successfully.',
+      })
+    } catch (_error) {
+      // On error, revert to original items
+      refetch();
+      
+      toast({
+        title: 'Error',
+        description: 'Failed to delete item.',
         variant: 'destructive',
       })
     }
   }
 
   return (
-    <div className="page-container">
-      <div className="page-header">
-        <div className="flex items-center space-x-4">
-          <Button variant="outline" size="icon" asChild>
+    <div className="max-w-5xl mx-auto py-8 px-4 bg-black text-white min-h-screen">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-12">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild className="shrink-0 text-white">
             <Link href="/admin/navigation">
-              <ArrowLeft className="h-4 w-4" />
+              <ArrowLeft className="h-5 w-5" />
             </Link>
           </Button>
           <div>
-            <h1 className="page-title">{menu.name}</h1>
-            <p className="page-description">{menu.description || 'No description'}</p>
+            <h1 className="text-3xl font-bold text-white">{menu.name}</h1>
+            <p className="text-zinc-400 mt-1">{menu.description || 'No description'}</p>
           </div>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Badge variant={menu.is_active ? 'default' : 'secondary'}>
+          <Badge variant={menu.is_active ? 'default' : 'secondary'} className="ml-2">
             {menu.is_active ? 'Active' : 'Inactive'}
           </Badge>
-          <Button onClick={() => setIsAddingItem(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Item
-          </Button>
         </div>
+        <Button onClick={() => setIsAddingItem(true)} size="lg" className="shrink-0 bg-white text-black hover:bg-zinc-200">
+          <Plus className="mr-2 h-5 w-5" />
+          Add Navigation Item
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Navigation Items</CardTitle>
-              <CardDescription>
-                Drag and drop to reorder items. Click an item to edit its details.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext
-                  items={items || []}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="space-y-2">
-                    {items?.map((item) => (
-                      <NavigationItem
-                        key={item.id}
-                        item={item}
-                        onClick={() => setSelectedItem(item.id)}
-                        onDelete={() => deleteNavigationItem(item.id)}
-                        isDraggable
-                      />
-                    ))}
-                    {!items?.length && (
-                      <div className="text-center py-8 text-muted-foreground">
-                        No items in this menu
-                      </div>
-                    )}
+      {/* Main Content */}
+      <Card className="shadow-md bg-black text-white border-0 rounded-[14px]">
+        <CardHeader>
+          <CardTitle className="text-white">Navigation Items</CardTitle>
+          <CardDescription className="text-zinc-400">
+            Drag and drop to reorder items. Click an item to edit its details.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="bg-black">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={items || []}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="space-y-4">
+                {items?.map((item) => (
+                  <SortableItem
+                    key={item.id}
+                    item={item}
+                    onClick={() => setSelectedItem(item.id)}
+                    onDelete={() => handleDeleteItem(item.id)}
+                  />
+                ))}
+                {!items?.length && (
+                  <div className="flex flex-col items-center justify-center py-16 bg-zinc-900 text-white rounded-[14px] border border-zinc-700">
+                    <p className="text-zinc-400 mb-4">No items in this menu</p>
+                    <Button variant="outline" onClick={() => setIsAddingItem(true)} className="bg-transparent border-white text-white hover:bg-zinc-800">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Your First Item
+                    </Button>
                   </div>
-                </SortableContext>
-              </DndContext>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Preview</CardTitle>
-              <CardDescription>
-                See how the navigation appears to different roles
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <RoleAssignment
-                value={selectedRoles}
-                onChange={setSelectedRoles}
-              />
-              <div className="mt-4 border rounded-lg p-4">
-                <NavigationPreview
-                  items={items || []}
-                  selectedRoles={selectedRoles}
-                  onRoleToggle={(role) => {
-                    setSelectedRoles(prev => 
-                      prev.includes(role) 
-                        ? prev.filter(r => r !== role)
-                        : [...prev, role]
-                    )
-                  }}
-                />
+                )}
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Menu Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Status</span>
-                <Badge variant={menu.is_active ? 'default' : 'secondary'}>
-                  {menu.is_active ? 'Active' : 'Inactive'}
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Items</span>
-                <span className="text-sm">{items?.length || 0}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Visibility</span>
-                <div className="flex items-center">
-                  {(menu as any)?.is_public ? (
-                    <>
-                      <Globe className="h-4 w-4 mr-1" />
-                      <span className="text-sm">Public</span>
-                    </>
-                  ) : (
-                    <>
-                      <Lock className="h-4 w-4 mr-1" />
-                      <span className="text-sm">Private</span>
-                    </>
-                  )}
-                </div>
-              </div>
-              {((menu as any)?.start_date || (menu as any)?.end_date) && (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Schedule</span>
-                  <div className="flex items-center">
-                    <Calendar className="h-4 w-4 mr-1" />
-                    <span className="text-sm">
-                      {(menu as any)?.start_date && (menu as any)?.end_date
-                        ? `${new Date((menu as any).start_date).toLocaleDateString()} - ${new Date((menu as any).end_date).toLocaleDateString()}`
-                        : (menu as any)?.start_date
-                        ? `From ${new Date((menu as any).start_date).toLocaleDateString()}`
-                        : `Until ${new Date((menu as any).end_date).toLocaleDateString()}`}
-                    </span>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+            </SortableContext>
+          </DndContext>
+        </CardContent>
+      </Card>
 
       {/* Add/Edit Item Dialog */}
       <Dialog open={isAddingItem || !!selectedItem} onOpenChange={(open) => {
@@ -322,7 +405,7 @@ export default function EditNavigationMenuPage() {
           setSelectedItem(null)
         }
       }}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {isAddingItem ? 'Add Navigation Item' : 'Edit Navigation Item'}
@@ -343,4 +426,4 @@ export default function EditNavigationMenuPage() {
       </Dialog>
     </div>
   )
-} 
+}

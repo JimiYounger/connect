@@ -1,3 +1,5 @@
+// my-app/src/features/navigation/components/admin/NavigationPreview.tsx
+
 'use client'
 
 import { useState, useEffect } from 'react'

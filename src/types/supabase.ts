@@ -1143,6 +1143,10 @@ export type Database = {
           level: number
         }[]
       }
+      get_organization_structure: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       is_banner_currently_active: {
         Args: {
           p_is_active: boolean

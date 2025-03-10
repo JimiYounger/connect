@@ -1,3 +1,5 @@
+// my-app/src/features/navigation/components/admin/NavigationItemForm.tsx
+
 'use client'
 
 import { useState } from 'react'
@@ -77,7 +79,7 @@ export function NavigationItemForm({
     description: '',
     is_public: true,
     is_active: true,
-    is_external: false,
+    is_external: true,
     parent_id: 'none',
     roles: [],
     order_index: 0,
@@ -167,7 +169,7 @@ export function NavigationItemForm({
             <FormItem>
               <FormLabel>URL</FormLabel>
               <FormControl>
-                <div className="flex space-x-2">
+                <div className="space-y-4">
                   <Input
                     {...field}
                     placeholder={isExternal ? 'https://' : '/path/to/page'}
@@ -175,18 +177,28 @@ export function NavigationItemForm({
                       console.log('URL changed:', e.target.value)
                       field.onChange(e)
                     }}
+                    id="url-input"
                   />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      console.log('URL builder opened')
-                      setIsUrlBuilderOpen(true)
+                  <NavigationUrlBuilder
+                    onSelect={(placeholder: string) => {
+                      console.log('Field selected:', placeholder)
+                      const input = document.getElementById('url-input') as HTMLInputElement;
+                      const cursorPos = input?.selectionStart || 0;
+                      const currentValue = field.value;
+                      const newValue = currentValue.slice(0, cursorPos) + placeholder + currentValue.slice(cursorPos);
+                      field.onChange(newValue);
+                      
+                      // Restore cursor position after the inserted placeholder
+                      setTimeout(() => {
+                        if (input) {
+                          const newPos = cursorPos + placeholder.length;
+                          input.focus();
+                          input.setSelectionRange(newPos, newPos);
+                        }
+                      }, 0);
                     }}
-                    disabled={isExternal}
-                  >
-                    Build URL
-                  </Button>
+                    isExternal={isExternal}
+                  />
                 </div>
               </FormControl>
               <FormDescription>
@@ -466,16 +478,6 @@ export function NavigationItemForm({
           </Button>
         </div>
       </form>
-
-      <NavigationUrlBuilder
-        open={isUrlBuilderOpen}
-        onOpenChange={setIsUrlBuilderOpen}
-        onSelect={(url: string) => {
-          console.log('URL selected from builder:', url)
-          form.setValue('url', url)
-          setIsUrlBuilderOpen(false)
-        }}
-      />
     </Form>
   )
-} 
+}
