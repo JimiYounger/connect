@@ -127,7 +127,7 @@ export function Appearance() {
       <div className="bg-muted p-4 rounded-md">
         <h4 className="text-sm font-medium mb-2">Standard Widget Styling</h4>
         <p className="text-sm text-muted-foreground">
-          All widgets use a standard border radius of 50px and padding of 30px to maintain a consistent appearance.
+          All widgets use a standard border radius of 34px and padding of 30px to maintain a consistent appearance.
         </p>
       </div>
     </div>

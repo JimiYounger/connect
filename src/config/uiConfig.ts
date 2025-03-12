@@ -2,7 +2,7 @@
 
 export const GRID_BASE_UNIT = 74;
 export const GRID_GAP = 16;
-export const WIDGET_BORDER_RADIUS = '50px';
+export const WIDGET_BORDER_RADIUS = '34px';
 export const GRID_CELL_SIZE = GRID_BASE_UNIT;
 
 // Define the size ratios as literal strings

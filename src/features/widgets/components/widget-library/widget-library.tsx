@@ -25,7 +25,7 @@ const GRID_BASE_UNIT = 74;        // Base unit size in pixels
 const GRID_GAP = 16;              // Gap between widgets
 
 // Add this constant at the top with other constants
-const WIDGET_BORDER_RADIUS = '50px';
+const WIDGET_BORDER_RADIUS = '34px';
 
 // Calculate dimensions based on grid units
 const getWidgetDimensions = (widthUnits: number, heightUnits: number) => {

@@ -151,7 +151,7 @@ export default function EditWidgetPage() {
         backgroundColor: '#C6FC36',
         titleColor: '#000000',
         textColor: '#000000',
-        borderRadius: '50px',
+        borderRadius: '34px',
         padding: '30px',
         customCSS: ''
       }
@@ -166,7 +166,7 @@ export default function EditWidgetPage() {
     backgroundColor: '#C6FC36',
     titleColor: '#000000',
     textColor: '#000000',
-    borderRadius: '50px',
+    borderRadius: '34px',
     padding: '30px',
     customCSS: ''
   }), []);
@@ -279,7 +279,7 @@ export default function EditWidgetPage() {
                   backgroundColor: '#C6FC36',
                   titleColor: '#000000',
                   textColor: '#000000',
-                  borderRadius: '50px',
+                  borderRadius: '34px',
                   padding: '30px',
                   customCSS: ''
                 }
@@ -655,7 +655,7 @@ export default function EditWidgetPage() {
                       style={{
                         borderRadius: widgetShape === WidgetShape.CIRCLE 
                           ? '50%' 
-                          : '50px',
+                          : '34px',
                         padding: '30px',
                         backgroundColor: watch('thumbnail_url') ? 'transparent' : (watch('styles.backgroundColor') || '#ffffff'),
                         backgroundImage: watch('thumbnail_url') ? `url(${watch('thumbnail_url')})` : 'none',
