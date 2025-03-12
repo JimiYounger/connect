@@ -17,6 +17,11 @@ const WidgetLoadingFallback = () => (
   </div>
 );
 
+// Helper function to check if a widget has a wide ratio (4:1)
+const isWideRatioWidget = (width: number, height: number): boolean => {
+  return width === 344 && height === 74; // Match the grid size, not 100px height
+};
+
 interface WidgetRendererProps {
   widget: Widget;
   configuration?: any;
@@ -60,6 +65,9 @@ export const WidgetRenderer: React.FC<WidgetRendererProps> = ({
   const [isLoading, setLoading] = useState(initialIsLoading);
   const [error, setError] = useState<Error | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  
+  // Check if this is a wide ratio widget (4:1)
+  const isWideRatio = isWideRatioWidget(width, height);
 
   useEffect(() => {
     const initializeRenderer = async () => {
@@ -132,20 +140,23 @@ export const WidgetRenderer: React.FC<WidgetRendererProps> = ({
   return (
     <WidgetContext.Provider value={{ widget, configuration, isLoading, setLoading }}>
       <div 
-        className={`widget-renderer ${className}`}
+        className={`widget-renderer ${className} ${isWideRatio ? 'wide-ratio-widget' : ''}`}
         style={{
           position: 'relative',
           width: width ? `${width}px` : '100%',
           height: height ? `${height}px` : '100%',
-          minHeight: borderRadius === '50%' ? undefined : '100px',
+          minHeight: borderRadius === '50%' ? undefined : '74px', // Set to match grid height
           borderRadius,
           overflow: 'hidden',
           backgroundColor: style?.backgroundColor || 'white',
           boxShadow: style?.boxShadow || '0 2px 8px rgba(0, 0, 0, 0.05)',
           ...(borderRadius === '50%' && { aspectRatio: '1/1' }),
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
+          ...(isWideRatio && { 
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: '74px', // Force the height to 74px
+          }),
           ...style,
         }}
       >
@@ -154,7 +165,20 @@ export const WidgetRenderer: React.FC<WidgetRendererProps> = ({
             <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
           </div>
         )}
-        <div className="w-full h-full flex items-center justify-center">
+        <div 
+          className={`w-full h-full flex items-center justify-center ${isWideRatio ? 'wide-ratio-content' : ''}`}
+          style={{
+            // For 4:1 ratio widgets, ensure content is properly sized
+            ...(isWideRatio && {
+              maxHeight: '74px', // Match grid height
+              objectFit: 'contain',
+              objectPosition: 'center',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center'
+            })
+          }}
+        >
           {renderWidget()}
         </div>
       </div>

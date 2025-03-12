@@ -6,6 +6,7 @@ import { Dashboard } from './Dashboard/Dashboard'
 import { Navigation } from './Navigation/Navigation'
 import Link from 'next/link'
 import Image from 'next/image'
+import { GRID_GAP } from '@/config/uiConfig'
 
 export function HomePage() {
   return (
@@ -31,14 +32,16 @@ export function HomePage() {
           </Link>
         </div>
         
-        <div className="container mx-auto px-4 space-y-8">
+        <div className="container mx-auto px-4">
           {/* Add padding to the top to push content below the navigation */}
           <div style={{ paddingTop: '100px' }}>
             <Carousel autoplayInterval={7000} />
           </div>
           
-          {/* Dashboard section */}
-          <Dashboard />
+          {/* Dashboard section with significantly reduced spacing (1/6 of GRID_GAP) */}
+          <div style={{ marginTop: `${GRID_GAP / 6}px` }}>
+            <Dashboard />
+          </div>
         </div>
       </main>
     </div>
