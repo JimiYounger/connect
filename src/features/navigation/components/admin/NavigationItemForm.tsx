@@ -2,7 +2,6 @@
 
 'use client'
 
-import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -57,7 +56,12 @@ const navigationItemSchema = z.object({
     'End date must be in the future'
   ),
   order_index: z.number().int().min(0),
-  roles: z.array(z.string())
+  roleAssignments: z.object({
+    roleTypes: z.array(z.enum(['Admin', 'Executive', 'Manager', 'Closer', 'Setter'] as const)),
+    teams: z.array(z.string()),
+    areas: z.array(z.string()),
+    regions: z.array(z.string())
+  })
 })
 
 type NavigationItemFormValues = z.infer<typeof navigationItemSchema>
@@ -81,13 +85,17 @@ export function NavigationItemForm({
     is_active: true,
     is_external: true,
     parent_id: 'none',
-    roles: [],
+    roleAssignments: {
+      roleTypes: [],
+      teams: [],
+      areas: [],
+      regions: []
+    },
     order_index: 0,
     start_date: null,
     end_date: null,
   },
 }: NavigationItemFormProps) {
-  const [isUrlBuilderOpen, setIsUrlBuilderOpen] = useState(false)
   const { useNavigationItems } = useNavigation()
   const { data: items } = useNavigationItems(menuId)
 
@@ -333,7 +341,7 @@ export function NavigationItemForm({
         {!isPublic && (
           <FormField
             control={form.control}
-            name="roles"
+            name="roleAssignments"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Role Access</FormLabel>

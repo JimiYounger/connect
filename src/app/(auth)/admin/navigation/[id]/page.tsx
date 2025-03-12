@@ -1,3 +1,5 @@
+// my-app/src/app/(auth)/admin/navigation/[id]/page.tsx
+
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -40,7 +42,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
 import { NavigationItemForm } from '@/features/navigation/components/admin/NavigationItemForm'
-import { deleteRolesByItemId } from '@/features/navigation/services/navigation-service'
+import { deleteRolesByItemId, } from '@/features/navigation/services/navigation-service'
 
 interface NavigationItem {
   id: string;
@@ -236,8 +238,8 @@ export default function EditNavigationMenuPage() {
   // Handle submit for creating/updating items
   const handleSubmit = async (data: any) => {
     try {
-      // Extract roles from form data
-      const { roles = [], ...itemData } = data;
+      // Extract roleAssignments from form data
+      const { roleAssignments = { roleTypes: [], teams: [], areas: [], regions: [] }, ...itemData } = data;
       
       let navItemId: string;
       
@@ -252,8 +254,6 @@ export default function EditNavigationMenuPage() {
           }
         });
         navItemId = selectedItem;
-        
-        // Clean up existing roles
         await deleteRolesByItemId(selectedItem);
       } else {
         // Create new item
@@ -268,19 +268,78 @@ export default function EditNavigationMenuPage() {
         navItemId = newItem.id;
       }
       
-      // Handle roles if the item is not public and roles are provided
-      if (!itemData.is_public && roles.length > 0) {
-        // Create role assignments
-        await Promise.all(roles.map(async (role: string) => {
-          const roleData: any = { role_type: role };
+      // Handle roles if the item is not public
+      if (!itemData.is_public) {
+        const roleTypes = roleAssignments.roleTypes.length > 0 
+          ? roleAssignments.roleTypes 
+          : ['Any']; // Default if no roles specified
+        
+        // If no locations specified, just assign the roles
+        if (roleAssignments.teams.length === 0 && 
+            roleAssignments.areas.length === 0 && 
+            roleAssignments.regions.length === 0) {
           
-          return assignRole({
-            itemId: navItemId,
-            roleData
-          });
-        }));
+          for (const roleType of roleTypes) {
+            await assignRole({
+              itemId: navItemId,
+              roleData: {
+                role_type: roleType,
+                team: null,
+                area: null,
+                region: null
+              }
+            });
+          }
+        } else {
+          // Create all combinations of roles and locations
+          
+          // For teams
+          for (const team of roleAssignments.teams) {
+            for (const roleType of roleTypes) {
+              await assignRole({
+                itemId: navItemId,
+                roleData: {
+                  role_type: roleType,
+                  team: team,
+                  area: null,
+                  region: null
+                }
+              });
+            }
+          }
+          
+          // For areas
+          for (const area of roleAssignments.areas) {
+            for (const roleType of roleTypes) {
+              await assignRole({
+                itemId: navItemId,
+                roleData: {
+                  role_type: roleType,
+                  team: null,
+                  area: area,
+                  region: null
+                }
+              });
+            }
+          }
+          
+          // For regions
+          for (const region of roleAssignments.regions) {
+            for (const roleType of roleTypes) {
+              await assignRole({
+                itemId: navItemId,
+                roleData: {
+                  role_type: roleType,
+                  team: null,
+                  area: null,
+                  region: region
+                }
+              });
+            }
+          }
+        }
       }
-  
+
       // Refresh data
       refetch();
       
@@ -288,7 +347,7 @@ export default function EditNavigationMenuPage() {
         title: 'Success',
         description: `Navigation item ${selectedItem ? 'updated' : 'created'} successfully.`,
       });
-  
+
       setIsAddingItem(false);
       setSelectedItem(null);
     } catch (error) {
@@ -420,6 +479,7 @@ export default function EditNavigationMenuPage() {
           <NavigationItemForm
             menuId={menuId}
             itemId={selectedItem}
+            defaultValues={items.find(item => item.id === selectedItem)}
             onSubmit={handleSubmit}
           />
         </DialogContent>

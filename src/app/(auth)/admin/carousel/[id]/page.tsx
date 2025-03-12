@@ -148,6 +148,8 @@ export default function EditBannerPage() {
     )
   }
 
+  const roleTypes = banner.roles?.map(r => r.role_type) || []
+  
   const formData: Partial<BannerFormData> & { id: string } = {
     id: banner.id,
     title: banner.title || '',
@@ -161,7 +163,12 @@ export default function EditBannerPage() {
     fileId: banner.file_id || undefined,
     startDate: banner.start_date ? new Date(banner.start_date) : undefined,
     endDate: banner.end_date ? new Date(banner.end_date) : undefined,
-    roles: banner.roles?.map(r => r.role_type) || [],
+    roleAssignments: {
+      roleTypes: roleTypes,
+      teams: [],
+      areas: [],
+      regions: []
+    },
     orderIndex: banner.order_index ?? undefined,
   }
 

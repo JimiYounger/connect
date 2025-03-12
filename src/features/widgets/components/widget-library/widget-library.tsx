@@ -7,10 +7,8 @@ import { WidgetRenderer } from '../widget-renderer';
 import { Widget, WidgetCategory, WidgetSizeRatio, WidgetConfigData } from '../../types';
 import { useDraggable } from '@dnd-kit/core';
 import { Input } from '@/components/ui/input';
-import { Pagination } from '@/components/ui/pagination';
-import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { PaginationContent, PaginationItem, PaginationLink, PaginationPrevious, PaginationNext } from '@/components/ui/pagination';
 import { motion } from 'framer-motion';
 import '@/features/widgets/styles/widget-library.css';
 
@@ -54,9 +52,9 @@ const SIZE_RATIO_MAP: Record<WidgetSizeRatio, { width: number; height: number }>
 // Widget item that can be dragged
 const DraggableWidgetItem: React.FC<{
   widget: Widget;
-  onSelect?: (widget: Widget) => void;
+  _onSelect?: (widget: Widget) => void;
   className?: string;
-}> = ({ widget, onSelect, className }) => {
+}> = ({ widget, _onSelect, className }) => {
   const { configuration } = useWidgetConfiguration({
     widgetId: widget.id,
     type: widget.widget_type,
@@ -340,7 +338,7 @@ export const WidgetLibrary: React.FC<WidgetLibraryProps> = ({
                 <DraggableWidgetItem
                   key={widget.id}
                   widget={widget}
-                  onSelect={onWidgetSelect}
+                  _onSelect={onWidgetSelect}
                 />
               ))}
               {isLoading && (
@@ -369,7 +367,7 @@ export const WidgetLibrary: React.FC<WidgetLibraryProps> = ({
                         <DraggableWidgetItem
                           key={widget.id}
                           widget={widget}
-                          onSelect={onWidgetSelect}
+                          _onSelect={onWidgetSelect}
                         />
                       ))}
                     </div>

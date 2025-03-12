@@ -6,8 +6,6 @@ import { useState } from 'react'
 import { useAuth } from '@/features/auth/context/auth-context'
 import { useProfile } from '@/features/users/hooks/useProfile'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { cn } from '@/lib/utils'
 import {
   Tabs,
   TabsContent,
@@ -79,6 +77,7 @@ export function NavigationUrlBuilder({
 
   // Insert field
   const insertField = (placeholder: string) => {
+    // We don't want to URL encode the placeholders themselves
     onSelect(placeholder)
   }
 
@@ -91,19 +90,26 @@ export function NavigationUrlBuilder({
         </TabsList>
         
         <TabsContent value="fields" className="border rounded-md p-4 mt-2">
-          <div className="grid grid-cols-3 gap-2">
-            {USER_FIELDS.map((field) => (
-              <Button
-                key={field.id}
-                variant="outline"
-                size="sm"
-                type="button"
-                onClick={() => insertField(field.placeholder)}
-                className="justify-start"
-              >
-                {field.label}
-              </Button>
-            ))}
+          <div className="space-y-4">
+            {isExternal && (
+              <div className="text-sm text-muted-foreground pb-2 border-b">
+                Note: Fields will be URL-encoded for external URLs
+              </div>
+            )}
+            <div className="grid grid-cols-3 gap-2">
+              {USER_FIELDS.map((field) => (
+                <Button
+                  key={field.id}
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  onClick={() => insertField(field.placeholder)}
+                  className="justify-start"
+                >
+                  {field.label}
+                </Button>
+              ))}
+            </div>
           </div>
         </TabsContent>
         

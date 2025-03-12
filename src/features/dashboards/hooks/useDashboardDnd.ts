@@ -271,8 +271,7 @@ export function useDashboardDnd({
     cols,
     rows,
     startLoading,
-    endLoading,
-    dashboardService
+    endLoading
   ]);
 
   // Handle removing a widget from the grid

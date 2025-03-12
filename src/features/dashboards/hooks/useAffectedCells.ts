@@ -5,7 +5,6 @@ import { useDndContext } from '@dnd-kit/core';
 import { SIZE_RATIO_TO_GRID, WidgetSizeRatio } from '@/config/uiConfig';
 import { 
   GridCell, 
-  findValidPosition, 
   validatePlacement, 
 } from '@/utils/gridUtils';
 
@@ -21,7 +20,7 @@ interface UseCellDroppableProps {
 export function useAffectedCells({ x, y, grid, cols, rows }: UseCellDroppableProps) {
   const { active, over } = useDndContext();
   const activeWidget = active?.data?.current?.widget;
-  const activeDragType = active?.data?.current?.type;
+  const _activeDragType = active?.data?.current?.type;
   
   return useMemo(() => {
     // If no active widget, return empty state
@@ -69,5 +68,5 @@ export function useAffectedCells({ x, y, grid, cols, rows }: UseCellDroppablePro
     }
     
     return { isAffected: false, isValid: false, affectedCells: [] };
-  }, [active, over, activeWidget, activeDragType, x, y, grid, cols, rows]);
+  }, [over, activeWidget, x, y, grid, cols, rows]);
 }

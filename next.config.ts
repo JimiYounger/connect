@@ -8,6 +8,16 @@ const nextConfig: NextConfig = {
         hostname: 'ucarecdn.com',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'i.vimeocdn.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'vumbnail.com',
+        pathname: '/**',
+      },
     ],
   },
 };

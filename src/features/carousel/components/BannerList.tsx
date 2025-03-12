@@ -6,9 +6,11 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table"
 import { Switch } from "@/components/ui/switch"
-import { Edit2, Trash2, GripVertical } from "lucide-react"
+import { Edit2, Trash2, GripVertical, Users, MapPin, Globe } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
+import { Badge } from "@/components/ui/badge"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   DndContext,
   DragEndEvent,
@@ -28,6 +30,130 @@ import { CSS } from '@dnd-kit/utilities'
 import type { Tables } from '@/types/supabase'
 
 type Banner = Tables<'carousel_banners_detailed'>
+
+// Helper component for displaying role assignments
+function RoleAssignmentBadges({ banner }: { banner: Banner }) {
+  // Parse the role_details JSON if it exists
+  const roleDetails = banner.role_details ? 
+    (typeof banner.role_details === 'string' ? 
+      JSON.parse(banner.role_details) : 
+      banner.role_details) : 
+    null;
+
+  if (!roleDetails) {
+    return <span className="text-muted-foreground text-sm">All users</span>;
+  }
+
+  // Extract unique values
+  const roleTypes = new Set<string>();
+  const teams = new Set<string>();
+  const areas = new Set<string>();
+  const regions = new Set<string>();
+
+  // Process role details
+  Object.values(roleDetails).forEach((detail: any) => {
+    if (detail.role_type && detail.role_type !== 'Any') {
+      roleTypes.add(detail.role_type);
+    }
+    if (detail.team) teams.add(detail.team);
+    if (detail.area) areas.add(detail.area);
+    if (detail.region) regions.add(detail.region);
+  });
+
+  // If no specific assignments, show "All users"
+  if (roleTypes.size === 0 && teams.size === 0 && areas.size === 0 && regions.size === 0) {
+    return <span className="text-muted-foreground text-sm">All users</span>;
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      {roleTypes.size > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {Array.from(roleTypes).map(role => (
+            <Badge key={`role-${role}`} variant="outline" className="bg-primary/10 text-xs">
+              {role}
+            </Badge>
+          ))}
+        </div>
+      )}
+      
+      {teams.size > 0 && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Users className="h-3 w-3" />
+                <span>{teams.size} team{teams.size > 1 ? 's' : ''}</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="flex flex-col gap-1">
+                <span className="font-semibold text-xs">Teams:</span>
+                <div className="flex flex-wrap gap-1 max-w-[200px]">
+                  {Array.from(teams).map(team => (
+                    <Badge key={`team-${team}`} variant="outline" className="bg-blue-50 text-xs">
+                      {team}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
+      
+      {areas.size > 0 && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <MapPin className="h-3 w-3" />
+                <span>{areas.size} area{areas.size > 1 ? 's' : ''}</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="flex flex-col gap-1">
+                <span className="font-semibold text-xs">Areas:</span>
+                <div className="flex flex-wrap gap-1 max-w-[200px]">
+                  {Array.from(areas).map(area => (
+                    <Badge key={`area-${area}`} variant="outline" className="bg-green-50 text-xs">
+                      {area}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
+      
+      {regions.size > 0 && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Globe className="h-3 w-3" />
+                <span>{regions.size} region{regions.size > 1 ? 's' : ''}</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="flex flex-col gap-1">
+                <span className="font-semibold text-xs">Regions:</span>
+                <div className="flex flex-wrap gap-1 max-w-[200px]">
+                  {Array.from(regions).map(region => (
+                    <Badge key={`region-${region}`} variant="outline" className="bg-purple-50 text-xs">
+                      {region}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
+    </div>
+  );
+}
 
 interface SortableRowProps {
   id: string
@@ -58,6 +184,7 @@ function SortableRow({ id, banner, onToggleActive, onDelete, router }: SortableR
           variant="ghost" 
           size="sm"
           className="cursor-move"
+          type="button"
           {...attributes}
           {...listeners}
         >
@@ -76,9 +203,7 @@ function SortableRow({ id, banner, onToggleActive, onDelete, router }: SortableR
         {banner.click_behavior === 'video' ? 'Video' : 'URL'}
       </TableCell>
       <TableCell>
-        {banner.visible_to_roles 
-          ? banner.visible_to_roles
-          : 'All'}
+        <RoleAssignmentBadges banner={banner} />
       </TableCell>
       <TableCell>
         <Switch
@@ -91,6 +216,7 @@ function SortableRow({ id, banner, onToggleActive, onDelete, router }: SortableR
           <Button
             variant="ghost"
             size="sm"
+            type="button"
             onClick={() => banner.id && router.push(`/admin/carousel/${banner.id}`)}
           >
             <Edit2 className="h-4 w-4" />
@@ -98,6 +224,7 @@ function SortableRow({ id, banner, onToggleActive, onDelete, router }: SortableR
           <Button
             variant="ghost"
             size="sm"
+            type="button"
             onClick={() => banner.id && onDelete(banner.id)}
           >
             <Trash2 className="h-4 w-4" />

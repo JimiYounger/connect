@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils"
 import type { Tables } from '@/types/supabase'
 import Image from "next/image"
 import { BannerDateIndicator } from './BannerDateIndicator'
+import { BannerRoleIndicator } from './BannerRoleIndicator'
 
 type Banner = Tables<'carousel_banners_detailed'>
 
@@ -119,6 +120,8 @@ export function CarouselDisplay({ banners }: CarouselDisplayProps) {
                       <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Play className="w-16 h-16 text-white" />
                       </div>
+                      {/* Add role indicator */}
+                      <BannerRoleIndicator banner={banner} />
                       {/* Add date indicator */}
                       <BannerDateIndicator banner={banner} />
                     </div>
@@ -155,6 +158,8 @@ export function CarouselDisplay({ banners }: CarouselDisplayProps) {
                     className="w-full aspect-video object-cover"
                     priority={index === 0}
                   />
+                  {/* Add role indicator */}
+                  <BannerRoleIndicator banner={banner} />
                   {/* Add date indicator */}
                   <BannerDateIndicator banner={banner} />
                 </div>

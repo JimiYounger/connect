@@ -10,7 +10,9 @@ import type {
   NavigationItemUpdate,
   NavigationItemRoleInsert,
   NavigationItemWithChildren,
-  NavigationMenuWithItems
+  NavigationMenuWithItems,
+  NavigationRoleAssignments,
+  RoleType
 } from '../types'
 
 /**
@@ -207,13 +209,34 @@ export async function getNavigationItem(id: string): Promise<NavigationItemWithC
     .from('navigation_items')
     .select(`
       *,
-      roles:navigation_item_roles(*)
+      roles:navigation_item_roles!inner(
+        id,
+        navigation_item_id,
+        role_type,
+        team,
+        area,
+        region,
+        created_at
+      )
     `)
     .eq('id', id)
     .single()
   
   if (error) throw error
-  return data ? { ...data, children: [] } : null
+  
+  if (!data) return null
+  
+  // Cast the roles to ensure proper typing
+  const typedData: NavigationItemWithChildren = {
+    ...data,
+    children: [],
+    roles: data.roles.map(role => ({
+      ...role,
+      role_type: role.role_type as RoleType | 'Any'
+    }))
+  }
+  
+  return typedData
 }
 
 /**
@@ -392,4 +415,71 @@ function buildNavigationTree(items: any[]): NavigationItemWithChildren[] {
   })
 
   return roots
+}
+
+/**
+ * Create multiple role assignments for a navigation item
+ */
+export async function assignRolesToItem(
+  itemId: string, 
+  assignments: NavigationRoleAssignments
+): Promise<void> {
+  const supabase = createClient();
+  const roleAssignments: NavigationItemRoleInsert[] = [];
+  
+  // Process role types
+  assignments.roleTypes.forEach(roleType => {
+    roleAssignments.push({
+      navigation_item_id: itemId,
+      role_type: roleType,
+      team: null,
+      area: null,
+      region: null
+    });
+  });
+  
+  // Process teams
+  assignments.teams.forEach(team => {
+    roleAssignments.push({
+      navigation_item_id: itemId,
+      role_type: 'Any', // Default role type for non-role assignments
+      team,
+      area: null,
+      region: null
+    });
+  });
+  
+  // Process areas
+  assignments.areas.forEach(area => {
+    roleAssignments.push({
+      navigation_item_id: itemId,
+      role_type: 'Any',
+      team: null,
+      area,
+      region: null
+    });
+  });
+  
+  // Process regions
+  assignments.regions.forEach(region => {
+    roleAssignments.push({
+      navigation_item_id: itemId,
+      role_type: 'Any',
+      team: null,
+      area: null,
+      region
+    });
+  });
+  
+  // Delete existing assignments first
+  await deleteRolesByItemId(itemId);
+  
+  // Insert new assignments if we have any
+  if (roleAssignments.length > 0) {
+    const { error } = await supabase
+      .from('navigation_item_roles')
+      .insert(roleAssignments);
+    
+    if (error) throw error;
+  }
 } 

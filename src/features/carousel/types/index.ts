@@ -7,6 +7,13 @@ export type CarouselBannerDetailed = Tables<"carousel_banners_detailed">
 
 export type ClickBehavior = "video" | "url"
 
+export interface RoleAssignments {
+  roleTypes: string[];
+  teams: string[];
+  areas: string[];
+  regions: string[];
+}
+
 export type BannerFormData = {
   title: string
   description?: string
@@ -20,7 +27,7 @@ export type BannerFormData = {
   vimeoVideoTitle?: string
   startDate?: Date | null
   endDate?: Date | null
-  roles: string[]
+  roleAssignments: RoleAssignments
 }
 
 export type VimeoVideo = {

@@ -19,7 +19,7 @@ export interface GridCell {
   configuration?: any;
 }
 
-interface Position {
+interface _Position {
   x: number;
   y: number;
   distance: number;

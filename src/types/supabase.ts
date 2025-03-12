@@ -64,22 +64,31 @@ export type Database = {
       }
       carousel_banner_roles: {
         Row: {
+          area: string | null
           banner_id: string | null
           created_at: string | null
           id: string
+          region: string | null
           role_type: string
+          team: string | null
         }
         Insert: {
+          area?: string | null
           banner_id?: string | null
           created_at?: string | null
           id?: string
+          region?: string | null
           role_type: string
+          team?: string | null
         }
         Update: {
+          area?: string | null
           banner_id?: string | null
           created_at?: string | null
           id?: string
+          region?: string | null
           role_type?: string
+          team?: string | null
         }
         Relationships: [
           {
@@ -1048,6 +1057,8 @@ export type Database = {
           order_index: number | null
           original_filename: string | null
           role_count: number | null
+          role_details: Json | null
+          role_ids: string[] | null
           start_date: string | null
           title: string | null
           updated_at: string | null
@@ -1082,6 +1093,7 @@ export type Database = {
           open_in_iframe: boolean | null
           order_index: number | null
           parent_id: string | null
+          role_details: Json | null
           role_ids: string[] | null
           start_date: string | null
           title: string | null
@@ -1147,6 +1159,86 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      get_user_carousel_banners: {
+        Args: {
+          user_role_type: string
+          user_team: string
+          user_area: string
+          user_region: string
+        }
+        Returns: {
+          banner_url: string | null
+          click_behavior: string | null
+          created_at: string | null
+          description: string | null
+          end_date: string | null
+          file_id: string | null
+          id: string | null
+          is_active: boolean | null
+          is_currently_active: boolean | null
+          open_in_iframe: boolean | null
+          order_index: number | null
+          original_filename: string | null
+          role_count: number | null
+          role_details: Json | null
+          role_ids: string[] | null
+          start_date: string | null
+          title: string | null
+          updated_at: string | null
+          url: string | null
+          vimeo_video_id: string | null
+          vimeo_video_title: string | null
+          visible_to_roles: string | null
+        }[]
+      }
+      get_user_dashboard: {
+        Args: {
+          user_role_type: string
+        }
+        Returns: {
+          id: string
+          name: string
+          description: string
+          role_type: string
+          version_id: string
+          version_number: number
+          version_name: string
+          widgets: Json
+        }[]
+      }
+      get_user_navigation_items: {
+        Args: {
+          user_role_type: string
+          user_team: string
+          user_area: string
+          user_region: string
+        }
+        Returns: {
+          id: string
+          menu_id: string
+          parent_id: string
+          title: string
+          url: string
+          description: string
+          dynamic_variables: Json
+          is_external: boolean
+          open_in_iframe: boolean
+          order_index: number
+          is_active: boolean
+          is_public: boolean
+          start_date: string
+          end_date: string
+          created_at: string
+          updated_at: string
+          created_by: string
+          is_currently_active: boolean
+          visible_to_roles: string
+          role_ids: string[]
+          role_details: Json
+          depth: number
+          path: string[]
+        }[]
+      }
       is_banner_currently_active: {
         Args: {
           p_is_active: boolean
@@ -1171,6 +1263,16 @@ export type Database = {
           p_metadata?: Json
         }
         Returns: string
+      }
+      matches_user_criteria: {
+        Args: {
+          role_details: Json
+          user_role_type: string
+          user_team: string
+          user_area: string
+          user_region: string
+        }
+        Returns: boolean
       }
       set_widget_configuration: {
         Args: {

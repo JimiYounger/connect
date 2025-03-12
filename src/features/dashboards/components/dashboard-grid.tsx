@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Widget } from '@/features/widgets/types';
 import { WidgetRenderer } from '@/features/widgets/components/widget-renderer';
 import { cn } from '@/lib/utils';
-import { useDroppable, useDraggable, useDndMonitor, DragEndEvent, DragMoveEvent } from '@dnd-kit/core';
+import { useDroppable, useDraggable, useDndMonitor, DragMoveEvent } from '@dnd-kit/core';
 import { Trash2 } from 'lucide-react';
 import { initializeWidgets } from '@/features/widgets/init-widgets';
 // Import from utility files

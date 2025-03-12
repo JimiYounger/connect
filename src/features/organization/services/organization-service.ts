@@ -1,7 +1,6 @@
 // src/features/organization/services/organization-service.ts
 'use client'
 
-import { createClient } from '@/lib/supabase';
 import type { OrganizationStructure } from '../types';
 
 // src/features/organization/services/organization-service.ts

@@ -1,3 +1,5 @@
+// my-app/src/app/(auth)/admin/navigation/new/page.tsx
+
 'use client'
 
 import { useState } from 'react'
