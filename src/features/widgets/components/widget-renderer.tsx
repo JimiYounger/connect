@@ -137,11 +137,15 @@ export const WidgetRenderer: React.FC<WidgetRendererProps> = ({
           position: 'relative',
           width: width ? `${width}px` : '100%',
           height: height ? `${height}px` : '100%',
-          minHeight: '100px',
+          minHeight: borderRadius === '50%' ? undefined : '100px',
           borderRadius,
           overflow: 'hidden',
           backgroundColor: style?.backgroundColor || 'white',
           boxShadow: style?.boxShadow || '0 2px 8px rgba(0, 0, 0, 0.05)',
+          ...(borderRadius === '50%' && { aspectRatio: '1/1' }),
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
           ...style,
         }}
       >
@@ -150,7 +154,9 @@ export const WidgetRenderer: React.FC<WidgetRendererProps> = ({
             <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
           </div>
         )}
-        {renderWidget()}
+        <div className="w-full h-full flex items-center justify-center">
+          {renderWidget()}
+        </div>
       </div>
     </WidgetContext.Provider>
   );

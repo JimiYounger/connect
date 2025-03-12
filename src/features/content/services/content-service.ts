@@ -158,9 +158,19 @@ class ContentService {
 
   private validateWidgetSizeRatio(ratio: unknown): WidgetSizeRatio | null {
     if (typeof ratio !== 'string') return null
-    return VALID_WIDGET_RATIOS.includes(ratio as WidgetSizeRatio)
-      ? ratio as WidgetSizeRatio
-      : null
+    
+    // Check if the ratio is in our predefined list
+    if (VALID_WIDGET_RATIOS.includes(ratio as WidgetSizeRatio)) {
+      return ratio as WidgetSizeRatio;
+    }
+    
+    // Handle the case for '4:1' ratio specifically
+    if (ratio === '4:1') {
+      console.warn('Using non-standard widget ratio: 4:1');
+      return ratio as WidgetSizeRatio;
+    }
+    
+    return null;
   }
 }
 

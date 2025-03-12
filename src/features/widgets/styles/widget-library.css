@@ -352,3 +352,24 @@
   .widget-container[style*="border-radius: 50%"] {
     aspect-ratio: 1 / 1;
   }
+
+  /* Ensure circle widgets maintain perfect aspect ratio */
+.widget-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Force square dimensions for circular widgets */
+.widget-card[style*="border-radius: 50%"],
+.placed-widget[style*="border-radius: 50%"] {
+  aspect-ratio: 1 / 1 !important;
+  overflow: hidden;
+}
+
+/* Make sure the renderer respects circular shapes */
+.widget-renderer[style*="border-radius: 50%"] {
+  aspect-ratio: 1 / 1 !important;
+  border-radius: 50% !important;
+  overflow: hidden;
+}
