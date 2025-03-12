@@ -1,3 +1,5 @@
+// my-app/src/components/uploadcare-uploader.tsx
+
 'use client'
 
 import React from 'react'

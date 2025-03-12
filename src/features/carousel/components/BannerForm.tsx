@@ -38,6 +38,9 @@ import { Loader2, X, Play } from "lucide-react"
 import Image from "next/image"
 import type { Database } from "@/types/supabase"
 
+// Define the type for role assignments
+type CarouselBannerRole = Database['public']['Tables']['carousel_banner_roles']['Insert'];
+
 interface BannerFormProps {
   initialData?: Partial<BannerFormDataWithId>
   onSuccess?: () => void
@@ -82,37 +85,82 @@ export function BannerForm({ initialData, onSuccess, mode = 'create' }: BannerFo
       openInIframe: false,
       vimeoVideoId: '',
       vimeoVideoTitle: '',
-      roles: [],
+      roleAssignments: {
+        roleTypes: [],
+        teams: [],
+        areas: [],
+        regions: []
+      },
       ...initialData,
     },
   })
 
-  // Load existing banner data if editing
+  // Fetch existing banner data if editing
   useEffect(() => {
     if (initialData?.id) {
       const banner = banners.find(b => b.id === initialData.id)
       if (banner) {
-        form.reset({
-          title: banner.title || "",
-          description: banner.description || "",
-          fileId: banner.file_id || "",
-          isActive: banner.is_active || false,
-          clickBehavior: banner.click_behavior as "video" | "url",
-          url: banner.url || "",
-          openInIframe: banner.open_in_iframe || false,
-          vimeoVideoId: banner.vimeo_video_id || "",
-          vimeoVideoTitle: banner.vimeo_video_title || "",
-          startDate: banner.start_date ? new Date(banner.start_date) : null,
-          endDate: banner.end_date ? new Date(banner.end_date) : null,
-          roles: [], // TODO: Load roles from banner_roles table
-        })
+        // Fetch roles for this banner
+        supabase
+          .from('carousel_banner_roles')
+          .select('role_type, team, area, region')
+          .eq('banner_id', initialData.id)
+          .then(({ data: rolesData, error: rolesError }) => {
+            if (!rolesError && rolesData) {
+              // Group roles by type
+              const roleTypes = new Set<string>()
+              const teams = new Set<string>()
+              const areas = new Set<string>()
+              const regions = new Set<string>()
+              
+              rolesData.forEach(role => {
+                // If role_type is not 'Any', it's a role type assignment
+                if (role.role_type && role.role_type !== 'Any') {
+                  roleTypes.add(role.role_type)
+                }
+                
+                // Add team, area, region if they exist
+                if (role.team) teams.add(role.team)
+                if (role.area) areas.add(role.area)
+                if (role.region) regions.add(role.region)
+              })
+              
+              form.reset({
+                title: banner.title || "",
+                description: banner.description || "",
+                fileId: banner.file_id || "",
+                isActive: banner.is_active || false,
+                clickBehavior: banner.click_behavior as "video" | "url",
+                url: banner.url || "",
+                openInIframe: banner.open_in_iframe || false,
+                vimeoVideoId: banner.vimeo_video_id || "",
+                vimeoVideoTitle: banner.vimeo_video_title || "",
+                startDate: banner.start_date ? new Date(banner.start_date) : null,
+                endDate: banner.end_date ? new Date(banner.end_date) : null,
+                roleAssignments: {
+                  roleTypes: Array.from(roleTypes),
+                  teams: Array.from(teams),
+                  areas: Array.from(areas),
+                  regions: Array.from(regions)
+                },
+              })
+            }
+          })
       }
     }
-  }, [initialData?.id, banners, form])
+  }, [initialData?.id, banners, form, supabase])
 
   async function onSubmit(data: BannerFormData & { id?: string }) {
     setIsLoading(true)
     try {
+      // Ensure roleAssignments exists with default empty arrays
+      const safeRoleAssignments = {
+        roleTypes: data.roleAssignments?.roleTypes || [],
+        teams: data.roleAssignments?.teams || [],
+        areas: data.roleAssignments?.areas || [],
+        regions: data.roleAssignments?.regions || []
+      }
+
       if (mode === 'edit' && initialData?.id) {
         // Update existing banner
         const { error: updateError } = await supabase
@@ -135,23 +183,47 @@ export function BannerForm({ initialData, onSuccess, mode = 'create' }: BannerFo
 
         if (updateError) throw updateError
 
-        // Update roles
-        if (data.roles.length > 0) {
-          await supabase
+        // Fetch existing role assignments to compare with new ones
+        const { data: existingRoles, error: fetchError } = await supabase
+          .from('carousel_banner_roles')
+          .select('id, role_type, team, area, region')
+          .eq('banner_id', initialData.id)
+
+        if (fetchError) throw fetchError
+
+        // Create role assignments array for the new configuration
+        const newRoleAssignments = createRoleAssignments(initialData.id, safeRoleAssignments)
+        
+        // If there are no new assignments and no existing ones, we're done
+        if (newRoleAssignments.length === 0 && existingRoles.length === 0) {
+          // No changes needed
+        } 
+        // If there are no new assignments but there are existing ones, delete all existing
+        else if (newRoleAssignments.length === 0 && existingRoles.length > 0) {
+          const { error: deleteError } = await supabase
             .from('carousel_banner_roles')
             .delete()
             .eq('banner_id', initialData.id)
-
-          const roleInserts = data.roles.map((role: string) => ({
-            banner_id: initialData.id,
-            role_type: role
-          }))
-
-          const { error: rolesError } = await supabase
+            
+          if (deleteError) throw deleteError
+        }
+        // If there are new assignments, handle the update efficiently
+        else {
+          // For simplicity and to avoid complex diffing, delete all and insert new
+          // This is a reasonable approach since the number of records is typically small
+          const { error: deleteError } = await supabase
             .from('carousel_banner_roles')
-            .insert(roleInserts)
-
-          if (rolesError) throw rolesError
+            .delete()
+            .eq('banner_id', initialData.id)
+            
+          if (deleteError) throw deleteError
+          
+          // Insert new role assignments
+          const { error: insertError } = await supabase
+            .from('carousel_banner_roles')
+            .insert(newRoleAssignments as CarouselBannerRole[])
+            
+          if (insertError) throw insertError
         }
 
         toast({
@@ -211,16 +283,14 @@ export function BannerForm({ initialData, onSuccess, mode = 'create' }: BannerFo
 
         if (insertError) throw new Error(insertError.message)
 
-        // If we have roles, insert them
-        if (data.roles.length > 0 && newBanner) {
-          const roleInserts = data.roles.map((role: string) => ({
-            banner_id: newBanner.id,
-            role_type: role
-          }))
-
+        // Create role assignments array
+        const roleAssignments = createRoleAssignments(newBanner.id, safeRoleAssignments)
+        
+        // Insert new role assignments if we have any
+        if (roleAssignments.length > 0) {
           const { error: rolesError } = await supabase
             .from('carousel_banner_roles')
-            .insert(roleInserts)
+            .insert(roleAssignments as CarouselBannerRole[])
 
           if (rolesError) throw new Error(rolesError.message)
         }
@@ -568,18 +638,20 @@ export function BannerForm({ initialData, onSuccess, mode = 'create' }: BannerFo
 
           <FormField
             control={form.control}
-            name="roles"
+            name="roleAssignments"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Visible to Roles</FormLabel>
                 <FormControl>
                   <RoleSelector
-                    value={field.value}
+                    value={field.value || { roleTypes: [], teams: [], areas: [], regions: [] }}
                     onChange={field.onChange}
                   />
                 </FormControl>
                 <FormDescription>
                   Select which roles can see this banner. If none selected, banner will be visible to all.
+                  <br />
+                  <strong>Note:</strong> When selecting both roles and teams/areas/regions, the banner will be visible to those roles in those teams/areas/regions.
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -613,4 +685,82 @@ export function BannerForm({ initialData, onSuccess, mode = 'create' }: BannerFo
       </Form>
     </Card>
   )
-} 
+}
+
+// Create role assignments for the database
+const createRoleAssignments = (
+  bannerId: string,
+  roleAssignments: {
+    roleTypes: string[];
+    teams: string[];
+    areas: string[];
+    regions: string[];
+  }
+): CarouselBannerRole[] => {
+  const result: CarouselBannerRole[] = [];
+  const { roleTypes, teams, areas, regions } = roleAssignments;
+  
+  // If no specific filters are selected, make it visible to everyone
+  if (roleTypes.length === 0 && teams.length === 0 && areas.length === 0 && regions.length === 0) {
+    return [];
+  }
+  
+  // If only role types are selected (no teams/areas/regions)
+  // Then create entries for each role type with no team/area/region
+  if (teams.length === 0 && areas.length === 0 && regions.length === 0 && roleTypes.length > 0) {
+    for (const roleType of roleTypes) {
+      result.push({
+        banner_id: bannerId,
+        role_type: roleType,
+        team: null,
+        area: null,
+        region: null
+      });
+    }
+    return result;
+  }
+  
+  // If we have teams/areas/regions but no role types, use 'Any' as the role type
+  const effectiveRoleTypes = roleTypes.length > 0 ? roleTypes : ['Any'];
+  
+  // For each team, create entries for each role type
+  for (const team of teams) {
+    for (const roleType of effectiveRoleTypes) {
+      result.push({
+        banner_id: bannerId,
+        role_type: roleType,
+        team,
+        area: null,
+        region: null
+      });
+    }
+  }
+  
+  // For each area, create entries for each role type
+  for (const area of areas) {
+    for (const roleType of effectiveRoleTypes) {
+      result.push({
+        banner_id: bannerId,
+        role_type: roleType,
+        team: null,
+        area,
+        region: null
+      });
+    }
+  }
+  
+  // For each region, create entries for each role type
+  for (const region of regions) {
+    for (const roleType of effectiveRoleTypes) {
+      result.push({
+        banner_id: bannerId,
+        role_type: roleType,
+        team: null,
+        area: null,
+        region
+      });
+    }
+  }
+  
+  return result;
+}; 

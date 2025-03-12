@@ -1,5 +1,9 @@
 import '@testing-library/jest-dom'
 
+// Mock environment variables for Supabase
+process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test-supabase-url.com'
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key'
+
 // Mock Next.js router
 jest.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -11,12 +15,38 @@ jest.mock('next/navigation', () => ({
 }))
 
 // Mock Supabase
-jest.mock('@supabase/supabase-js', () => ({
+jest.mock('@/lib/supabase', () => ({
   createClient: jest.fn(() => ({
     auth: {
       getSession: jest.fn(),
       onAuthStateChange: jest.fn(),
     },
+    from: jest.fn(() => ({
+      select: jest.fn(() => ({
+        eq: jest.fn(() => ({
+          order: jest.fn(() => ({
+            single: jest.fn(),
+            limit: jest.fn(() => ({
+              single: jest.fn()
+            })),
+          }))
+        }))
+      })),
+      insert: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    })),
+  })),
+  createServerClient: jest.fn(() => ({
+    auth: {
+      getSession: jest.fn(),
+    },
+    from: jest.fn(() => ({
+      select: jest.fn(),
+      insert: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    })),
   })),
 }))
 
@@ -40,4 +70,8 @@ global.Headers = class {
 } as any
 
 // Global setup
-global.fetch = jest.fn() 
+global.fetch = jest.fn()
+
+// Add this to your jest.setup.ts file
+jest.mock('react-grid-layout/css/styles.css', () => ({}));
+jest.mock('react-resizable/css/styles.css', () => ({})); 

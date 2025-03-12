@@ -22,15 +22,37 @@ interface CarouselPreviewProps {
 export function CarouselPreview({ banners, isLoading, error }: CarouselPreviewProps) {
   const [activeRole, setActiveRole] = useState<string | null>(null)
   
+  // Helper function to check if a banner is visible to a specific role
+  const isBannerVisibleToRole = (banner: Banner, role: string): boolean => {
+    // If no role_details, banner is visible to all
+    if (!banner.role_details) return true;
+    
+    // Parse role_details if it's a string
+    const roleDetails = typeof banner.role_details === 'string' 
+      ? JSON.parse(banner.role_details) 
+      : banner.role_details;
+    
+    // If no role assignments, banner is visible to all
+    if (!roleDetails || Object.keys(roleDetails).length === 0) return true;
+    
+    // Check if any role assignment matches the selected role
+    return Object.values(roleDetails).some((detail: any) => {
+      // If role_type is 'Any', it's visible to all roles
+      if (detail.role_type === 'Any') return true;
+      
+      // Check if the role_type matches the selected role
+      return detail.role_type?.toLowerCase() === role.toLowerCase();
+    });
+  };
 
   const filteredBanners = banners
     // Only filter by is_active, not by date constraints
     .filter(banner => banner.is_active)
     // Filter by role if a role is selected
     .filter(banner => {
-      if (!activeRole || activeRole === 'All') return true
-      return !banner.visible_to_roles || banner.visible_to_roles.includes(activeRole.toLowerCase())
-    })
+      if (!activeRole || activeRole === 'All') return true;
+      return isBannerVisibleToRole(banner, activeRole);
+    });
 
   if (isLoading) {
     return (
@@ -78,7 +100,7 @@ export function CarouselPreview({ banners, isLoading, error }: CarouselPreviewPr
 
         {filteredBanners.length === 0 ? (
           <div className="text-center text-gray-500 py-8">
-            No active banners to display
+            No active banners to display{activeRole ? ` for ${activeRole}s` : ''}
           </div>
         ) : (
           <CarouselDisplay 

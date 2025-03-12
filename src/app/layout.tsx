@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
+import { Inter } from 'next/font/google'
+import { Providers } from '@/providers/providers'
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,6 +15,8 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
+
+const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: "Connect by Purelight",
@@ -41,7 +45,7 @@ export const metadata: Metadata = {
   }
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -102,12 +106,14 @@ export default async function RootLayout({
         }} />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col ${inter.className}`}
       >
-        <main className="flex-1 w-full min-h-screen bg-white text-black">
-          {children}
-        </main>
-        <Toaster />
+        <Providers>
+          <main className="flex-1 w-full min-h-screen bg-white text-black">
+            {children}
+          </main>
+          <Toaster />
+        </Providers>
       </body>
     </html>
   );

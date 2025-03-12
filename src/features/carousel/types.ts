@@ -6,6 +6,13 @@ import type { Tables } from "@/types/supabase"
 export type CarouselBanner = Tables<"carousel_banners">
 export type CarouselBannerDetailed = Tables<"carousel_banners_detailed">
 
+export interface RoleAssignments {
+  roleTypes: string[];
+  teams: string[];
+  areas: string[];
+  regions: string[];
+}
+
 export const bannerFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().nullable().optional(),
@@ -29,7 +36,17 @@ export const bannerFormSchema = z.object({
   fileId: z.string().min(1, "Banner image is required"),
   startDate: z.date().nullable().optional(),
   endDate: z.date().nullable().optional(),
-  roles: z.array(z.string()).default([]),
+  roleAssignments: z.object({
+    roleTypes: z.array(z.string()).default([]),
+    teams: z.array(z.string()).default([]),
+    areas: z.array(z.string()).default([]),
+    regions: z.array(z.string()).default([]),
+  }).default({
+    roleTypes: [],
+    teams: [],
+    areas: [],
+    regions: []
+  }),
   orderIndex: z.number().optional(),
 })
 

@@ -1,0 +1,354 @@
+/* my-app/src/features/widgets/styles/widget-library.css */
+
+/* General widget library styles */
+.widget-library {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  
+  /* Grid layout */
+  .ios-widget-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 74px);
+    grid-auto-rows: 74px;
+    gap: 16px;
+    padding: 0;
+    justify-content: start;
+    background-color: transparent;
+    width: max-content;
+  }
+  
+  /* Widget container styles */
+  .widget-container {
+    position: relative;
+    background-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* Widget size classes for grid layout */
+  .widget-size-1-1 { grid-column: span 1; grid-row: span 1; }
+  .widget-size-2-1 { grid-column: span 2; grid-row: span 1; }
+  .widget-size-1-2 { grid-column: span 1; grid-row: span 2; }
+  .widget-size-2-2 { grid-column: span 2; grid-row: span 2; }
+  .widget-size-3-2 { grid-column: span 3; grid-row: span 2; }
+  .widget-size-2-3 { grid-column: span 2; grid-row: span 3; }
+  .widget-size-4-2 { grid-column: span 4; grid-row: span 2; }
+  .widget-size-2-4 { grid-column: span 2; grid-row: span 4; }
+  .widget-size-4-3 { grid-column: span 4; grid-row: span 3; }
+  .widget-size-3-4 { grid-column: span 3; grid-row: span 4; }
+  .widget-size-4-4 { grid-column: span 4; grid-row: span 4; }
+  .widget-size-4-1 { grid-column: span 4; grid-row: span 1; }
+  
+  /* Widget card and renderer styles */
+  .widget-card {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-color: transparent !important;
+    border-radius: inherit;
+    overflow: hidden;
+  }
+  
+  .widget-renderer {
+    width: 100%;
+    height: 100%;
+    background-color: transparent !important;
+    border-radius: inherit;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .widget-renderer > div {
+    border-radius: inherit;
+    overflow: hidden;
+  }
+  
+  /* Drag and drop styles */
+  .ios-drag-overlay {
+    transform: scale(1.05);
+    opacity: 0.9;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    pointer-events: none;
+    background-color: white;
+    overflow: hidden;
+  }
+  
+  /* Form controls styling */
+  .ios-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 16px;
+    padding-right: 28px;
+  }
+  
+  .search-input-wrapper:focus-within {
+    box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.3);
+  }
+
+  /* Add these styles to improve horizontal scrolling */
+
+  /* Horizontal scrolling container */
+  .widget-library-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  /* Adjust the widget library for horizontal layout */
+  .widget-library {
+    width: max-content;
+    min-width: 100%;
+  }
+
+  /* Make the iOS widget grid scroll horizontally */
+  .ios-widget-grid {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 10px;
+    padding: 10px 0;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Ensure widget containers maintain their dimensions in horizontal layout */
+  .widget-container {
+    flex-shrink: 0;
+  }
+
+  /* Custom scrollbar styling */
+  .ios-widget-grid::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .ios-widget-grid::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+  }
+
+  .ios-widget-grid::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+  }
+
+  .ios-widget-grid::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+  }
+
+  /* Add these styles to maintain grid cell proportions */
+
+  /* Dashboard grid container */
+  .dashboard-grid-container {
+    --cell-size: 74px;
+  }
+
+  /* Dashboard grid cell - maintain square aspect ratio */
+  .dashboard-grid-cell {
+    position: relative;
+    width: 100%;
+    padding-bottom: 100%; /* This creates a square aspect ratio */
+  }
+
+  /* Dashboard grid cell content */
+  .dashboard-grid-cell-content {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: 1px dashed #ccc;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Ensure widget containers maintain their dimensions */
+  .widget-container {
+    flex-shrink: 0;
+  }
+
+  /* Ensure the grid cells match the widget library sizes */
+  .dashboard-grid-container {
+    --cell-size: 74px; /* Match the GRID_BASE_UNIT from widget library */
+    grid-template-columns: repeat(auto-fill, var(--cell-size));
+    grid-auto-rows: var(--cell-size);
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .dashboard-grid-container {
+      --cell-size: 60px; /* Slightly smaller on mobile but still square */
+    }
+  }
+
+  /* Add a style for the grid container wrapper */
+  .grid-container-wrapper {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  /* Add these styles for the dashboard grid */
+  .dashboard-grid {
+    --cell-gap: 16px;
+  }
+
+  .widget-card {
+    background-color: white;
+    border-radius: inherit;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .widget-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Style for placed widgets */
+  .placed-widget {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+    border-radius: 12px;
+    background-color: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .placed-widget:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Ensure widget renderers maintain styling */
+  .widget-renderer {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border-radius: inherit;
+  }
+
+  .widget-renderer > div {
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+  }
+
+  /* Add these styles for better widget rendering */
+  .widget-preview {
+    background-color: white !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .placed-widget {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  }
+
+  .widget-card {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-color: white;
+    border-radius: inherit;
+    overflow: hidden;
+    transition: all 0.2s ease-in-out;
+  }
+
+  .widget-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Ensure proper dimensions for grid cells */
+  .dashboard-grid-container {
+    --cell-size: 74px;
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .dashboard-grid-cell {
+    min-width: var(--cell-size);
+    min-height: var(--cell-size);
+  }
+
+  /* Add these styles for circular widgets */
+  .widget-card[style*="border-radius: 50%"],
+  .widget-preview[style*="border-radius: 50%"],
+  .placed-widget[style*="border-radius: 50%"] {
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+  }
+
+  .widget-renderer[style*="border-radius: 50%"] {
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Circular widget styles */
+  .widget-preview[style*="border-radius: 50%"] {
+    aspect-ratio: 1 / 1 !important;
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .widget-preview[style*="border-radius: 50%"] > div {
+    aspect-ratio: 1 / 1;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Force circular shape on preview */
+  .widget-preview[style*="border-radius: 50%"]::before {
+    content: '';
+    display: block;
+    padding-top: 100%;
+  }
+
+  /* Ensure the preview container maintains aspect ratio */
+  div[style*="aspect-ratio: 1 / 1"] {
+    min-width: 0;
+    min-height: 0;
+  }
+
+  /* Drag overlay styles for circular widgets */
+  .ios-drag-overlay[style*="border-radius: 50%"] {
+    aspect-ratio: 1 / 1 !important;
+    overflow: hidden !important;
+  }
+
+  .ios-drag-overlay[style*="border-radius: 50%"] > div {
+    aspect-ratio: 1 / 1 !important;
+  }
+
+  .ios-drag-overlay[style*="border-radius: 50%"] .widget-renderer {
+    aspect-ratio: 1 / 1 !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* Ensure non-circular widgets maintain their aspect ratios */
+  .widget-container:not([style*="border-radius: 50%"]) {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* Special handling for circular widgets */
+  .widget-container[style*="border-radius: 50%"] {
+    aspect-ratio: 1 / 1;
+  }
