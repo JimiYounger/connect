@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useUserBanners } from '@/features/content/hooks/useUserContent'
 import { CarouselItem } from './CarouselItem'
+import { useMediaQuery } from '@/hooks/use-media-query'
 
 interface CarouselProps {
   autoplayInterval?: number // in milliseconds
@@ -15,6 +16,7 @@ export function Carousel({ autoplayInterval = 5000 }: CarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0)
   const [showControls, setShowControls] = useState(false)
   const autoScrollIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined)
+  const isMobile = useMediaQuery('(max-width: 768px)')
   
   // Filter out inactive banners
   const activeBanners = banners.filter(banner => banner.is_currently_active)
@@ -71,12 +73,12 @@ export function Carousel({ autoplayInterval = 5000 }: CarouselProps) {
   
   return (
     <div 
-      className="relative w-full group" 
+      className={`relative w-full group ${isMobile ? '-mx-4 sm:mx-0' : ''}`}
       onMouseEnter={() => setShowControls(true)} 
       onMouseLeave={() => setShowControls(false)}
     >
       {/* Carousel items */}
-      <div className="relative overflow-hidden rounded-lg">
+      <div className={`relative overflow-hidden ${!isMobile && 'rounded-lg'}`}>
         {activeBanners.map((banner, index) => (
           <CarouselItem 
             key={banner.id} 

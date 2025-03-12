@@ -7,6 +7,7 @@ import { Play } from 'lucide-react'
 import { Dialog, DialogContent, DialogClose, DialogTrigger } from '@/components/ui/dialog'
 import { X } from 'lucide-react'
 import type { CarouselBanner } from '@/features/content/types'
+import { useMediaQuery } from '@/hooks/use-media-query'
 
 interface CarouselItemProps {
   banner: CarouselBanner
@@ -16,6 +17,7 @@ interface CarouselItemProps {
 
 export function CarouselItem({ banner, isActive, hideOverlay = false }: CarouselItemProps) {
   const [loaded, setLoaded] = useState(false)
+  const isMobile = useMediaQuery('(max-width: 768px)')
   
   useEffect(() => {
     // Reset loaded state when banner changes
@@ -40,7 +42,7 @@ export function CarouselItem({ banner, isActive, hideOverlay = false }: Carousel
         <Dialog>
           <DialogTrigger asChild>
             <div 
-              className="relative w-full h-[300px] md:h-[400px] overflow-hidden rounded-lg cursor-pointer group"
+              className={`relative w-full h-[300px] md:h-[400px] overflow-hidden ${!isMobile && 'rounded-lg'} cursor-pointer group`}
               style={{ opacity: loaded ? 1 : 0, transition: 'opacity 0.5s ease-in-out' }}
             >
               {banner.banner_url && (
@@ -92,7 +94,7 @@ export function CarouselItem({ banner, isActive, hideOverlay = false }: Carousel
   // Regular banner content (link or no action)
   const content = (
     <div 
-      className="relative w-full h-[300px] md:h-[400px] overflow-hidden rounded-lg"
+      className={`relative w-full h-[300px] md:h-[400px] overflow-hidden ${!isMobile && 'rounded-lg'}`}
       style={{ opacity: loaded ? 1 : 0, transition: 'opacity 0.5s ease-in-out' }}
       onClick={handleBannerClick}
     >
