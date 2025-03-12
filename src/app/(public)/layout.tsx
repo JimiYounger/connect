@@ -19,7 +19,7 @@ export default async function PublicLayout({
   }
 
   if (session?.user) {
-    redirect('/dashboard')
+    redirect('/home')
   }
 
   return (

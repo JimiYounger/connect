@@ -26,9 +26,9 @@ export default function AuthProcessingPage() {
         const { data: { session } } = await supabase.auth.getSession()
         
         if (session) {
-          // We have a valid session, redirect to dashboard
+          // We have a valid session, redirect to home
           localStorage.removeItem('auth_loading')
-          router.push('/dashboard')
+          router.push('/home')
           return
         }
         
