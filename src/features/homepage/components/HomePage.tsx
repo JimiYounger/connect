@@ -6,11 +6,8 @@ import { Dashboard } from './Dashboard/Dashboard'
 import { Navigation } from './Navigation/Navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useMediaQuery } from '@/hooks/use-media-query'
 
 export function HomePage() {
-  const isMobile = useMediaQuery('(max-width: 768px)')
-
   return (
     <div className="flex flex-col min-h-screen bg-black text-white">
       <main className="flex-1 relative">
@@ -34,16 +31,14 @@ export function HomePage() {
           </Link>
         </div>
         
-        <div className={`container mx-auto ${!isMobile ? 'px-4' : ''} space-y-8`}>
+        <div className="container mx-auto px-4 space-y-8">
           {/* Add padding to the top to push content below the navigation */}
           <div style={{ paddingTop: '100px' }}>
             <Carousel autoplayInterval={7000} />
           </div>
           
           {/* Dashboard section */}
-          <div className={isMobile ? 'px-4' : ''}>
-            <Dashboard />
-          </div>
+          <Dashboard />
         </div>
       </main>
     </div>
