@@ -124,10 +124,6 @@ export function BasicInformation({ categories }: BasicInformationProps) {
                     <Label htmlFor="shape-square">Square</Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value={WidgetShape.RECTANGLE} id="shape-rectangle" />
-                    <Label htmlFor="shape-rectangle">Rectangle</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
                     <RadioGroupItem value={WidgetShape.CIRCLE} id="shape-circle" />
                     <Label htmlFor="shape-circle">Circle</Label>
                   </div>

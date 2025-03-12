@@ -1,3 +1,5 @@
+// my-app/src/app/(auth)/admin/widgets/new/steps/widget-configuration.tsx
+
 import { useEffect } from 'react';
 import { useFormContext } from 'react-hook-form';
 import {
@@ -21,19 +23,50 @@ import { Switch } from '@/components/ui/switch';
 import { Label as _Label } from '@/components/ui/label';
 import { Slider as _Slider } from '@/components/ui/slider';
 import { WidgetType } from '@/features/widgets/types';
+import { DynamicUrlBuilder } from '@/features/widgets/components/admin/form-fields/dynamic-url-builder';
 
 interface WidgetConfigurationProps {
   type: WidgetType;
 }
 
+const SafeInput = ({ value, ...props }: { value: any } & React.ComponentProps<typeof Input>) => (
+  <Input value={value || ''} {...props} />
+);
+
+const SafeTextarea = ({ value, ...props }: { value: any } & React.ComponentProps<typeof Textarea>) => (
+  <Textarea value={value || ''} {...props} />
+);
+
+const SafeSwitch = ({ checked, ...props }: { checked: any } & React.ComponentProps<typeof Switch>) => (
+  <Switch checked={!!checked} {...props} />
+);
+
 export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
-  const { control, watch, setValue: _setValue } = useFormContext();
+  const { control, watch, setValue } = useFormContext();
   const _config = watch('config') || {};
   
   // Initialize config based on widget type
   useEffect(() => {
-    // Default config initialization
-  }, [type]);
+    // Set default values for all config fields when type changes
+    setValue('config.title', _config.title || '');
+    setValue('config.subtitle', _config.subtitle || '');
+    
+    // Type-specific defaults
+    if (type === WidgetType.REDIRECT) {
+      setValue('config.redirectUrl', _config.redirectUrl || '');
+      setValue('config.description', _config.description || '');
+      setValue('config.settings.openInNewTab', true);
+      setValue('config.settings.trackClicks', true);
+    } else if (type === WidgetType.DATA_VISUALIZATION) {
+      setValue('config.dataSource', _config.dataSource || '');
+      setValue('config.chartType', _config.chartType || '');
+      setValue('config.refreshInterval', _config.refreshInterval || 0);
+      setValue('config.settings.showLegend', _config.settings?.showLegend || false);
+      setValue('config.settings.responsive', _config.settings?.responsive || true);
+    }
+    // Add defaults for other widget types...
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [type, setValue]);
   
   // Render type-specific configuration fields
   const renderTypeSpecificFields = () => {
@@ -46,15 +79,18 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
               name="config.redirectUrl"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Redirect URL</FormLabel>
+                  <FormLabel>Dynamic Redirect URL</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="https://example.com" 
-                      {...field} 
+                    <DynamicUrlBuilder
+                      value={field.value || ''}
+                      onChange={(value: string) => {
+                        field.onChange(value);
+                        setValue('config.redirectUrl', value);
+                      }}
                     />
                   </FormControl>
                   <FormDescription>
-                    The URL to redirect to when the widget is clicked
+                    The URL where users will be redirected. You can insert dynamic user fields that will be replaced with each user&apos;s data.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -68,10 +104,10 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
                 <FormItem>
                   <FormLabel>Link Description</FormLabel>
                   <FormControl>
-                    <Textarea 
+                    <SafeTextarea 
                       placeholder="Describe where this link will take users" 
                       className="min-h-[80px]"
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormDescription>
@@ -82,50 +118,10 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
               )}
             />
             
-            <div className="space-y-4 mt-4">
-              <h3 className="text-lg font-medium">Link Settings</h3>
-              
-              <FormField
-                control={control}
-                name="config.settings.openInNewTab"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Open in New Tab</FormLabel>
-                      <FormDescription>
-                        Open link in a new browser tab
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={control}
-                name="config.settings.trackClicks"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Track Clicks</FormLabel>
-                      <FormDescription>
-                        Track when users click this link
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+            <div className="mt-4 p-3 bg-gray-50 rounded-md">
+              <p className="text-sm text-muted-foreground">
+                Links will automatically open in a new tab and track clicks for analytics.
+              </p>
             </div>
           </>
         );
@@ -140,9 +136,9 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
                 <FormItem>
                   <FormLabel>Data Source</FormLabel>
                   <FormControl>
-                    <Input 
+                    <SafeInput 
                       placeholder="API endpoint or data source identifier" 
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormDescription>
@@ -191,12 +187,13 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
                 <FormItem>
                   <FormLabel>Refresh Interval (seconds)</FormLabel>
                   <FormControl>
-                    <Input 
+                    <SafeInput 
                       type="number" 
                       min="0"
                       placeholder="0 (disabled)" 
-                      {...field} 
-                      onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                      {...field}
+                      value={field.value ?? 0}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => field.onChange(parseInt(e.target.value) || 0)}
                     />
                   </FormControl>
                   <FormDescription>
@@ -222,8 +219,8 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
                       </FormDescription>
                     </div>
                     <FormControl>
-                      <Switch
-                        checked={field.value}
+                      <SafeSwitch
+                        checked={!!field.value}
                         onCheckedChange={field.onChange}
                       />
                     </FormControl>
@@ -243,8 +240,8 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
                       </FormDescription>
                     </div>
                     <FormControl>
-                      <Switch
-                        checked={field.value}
+                      <SafeSwitch
+                        checked={!!field.value}
                         onCheckedChange={field.onChange}
                       />
                     </FormControl>
@@ -265,9 +262,9 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
                 <FormItem>
                   <FormLabel>Embed URL</FormLabel>
                   <FormControl>
-                    <Input 
+                    <SafeInput 
                       placeholder="https://example.com/embed" 
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormDescription>
@@ -290,8 +287,8 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
                     </FormDescription>
                   </div>
                   <FormControl>
-                    <Switch
-                      checked={field.value}
+                    <SafeSwitch
+                      checked={!!field.value}
                       onCheckedChange={field.onChange}
                     />
                   </FormControl>
@@ -311,8 +308,8 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
                     </FormDescription>
                   </div>
                   <FormControl>
-                    <Switch
-                      checked={field.value}
+                    <SafeSwitch
+                      checked={!!field.value}
                       onCheckedChange={field.onChange}
                     />
                   </FormControl>
@@ -332,10 +329,10 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
                 <FormItem>
                   <FormLabel>Content</FormLabel>
                   <FormControl>
-                    <Textarea 
+                    <SafeTextarea 
                       placeholder="Enter content to display in the widget" 
                       className="min-h-[200px]"
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormDescription>
@@ -358,8 +355,8 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
                     </FormDescription>
                   </div>
                   <FormControl>
-                    <Switch
-                      checked={field.value}
+                    <SafeSwitch
+                      checked={!!field.value}
                       onCheckedChange={field.onChange}
                     />
                   </FormControl>
@@ -410,12 +407,12 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
                 <FormItem>
                   <FormLabel>Tool Settings (JSON)</FormLabel>
                   <FormControl>
-                    <Textarea 
+                    <SafeTextarea 
                       placeholder="{}" 
                       className="font-mono text-sm min-h-[150px]"
                       {...field}
-                      value={typeof field.value === 'object' ? JSON.stringify(field.value, null, 2) : field.value}
-                      onChange={(e) => {
+                      value={typeof field.value === 'object' ? JSON.stringify(field.value, null, 2) : (field.value || '{}')}
+                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
                         try {
                           const parsed = JSON.parse(e.target.value);
                           field.onChange(parsed);
@@ -453,9 +450,9 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
           <FormItem>
             <FormLabel>Display Title</FormLabel>
             <FormControl>
-              <Input 
+              <SafeInput 
                 placeholder="Widget title (shown to users)" 
-                {...field} 
+                {...field}
               />
             </FormControl>
             <FormDescription>
@@ -476,7 +473,8 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
               <FormControl>
                 <Input 
                   placeholder="Optional subtitle" 
-                  {...field} 
+                  {...field}
+                  value={field.value || ''}
                 />
               </FormControl>
               <FormDescription>

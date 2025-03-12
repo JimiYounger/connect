@@ -17,10 +17,12 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^4.0.0",
+    "@internationalized/date": "^3.7.0",
     "@radix-ui/react-accordion": "^1.2.3",
     "@radix-ui/react-alert-dialog": "^1.1.6",
     "@radix-ui/react-avatar": "^1.1.3",
     "@radix-ui/react-checkbox": "^1.1.4",
+    "@radix-ui/react-collapsible": "^1.1.3",
     "@radix-ui/react-dialog": "^1.1.6",
     "@radix-ui/react-dropdown-menu": "^2.1.6",
     "@radix-ui/react-hover-card": "^1.1.6",
@@ -36,9 +38,11 @@
     "@radix-ui/react-switch": "^1.1.3",
     "@radix-ui/react-tabs": "^1.1.3",
     "@radix-ui/react-toast": "^1.2.6",
+    "@radix-ui/react-tooltip": "^1.1.8",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.48.1",
-    "@tanstack/react-query": "^5.66.0",
+    "@tanstack/react-query": "^5.67.2",
+    "@tanstack/react-query-devtools": "^5.67.2",
     "@tanstack/react-table": "^8.21.2",
     "@types/react-grid-layout": "^1.3.5",
     "@uploadcare/react-uploader": "^1.5.0",
@@ -60,6 +64,7 @@
     "react-dom": "^19.0.0",
     "react-grid-layout": "^1.5.0",
     "react-hook-form": "^7.54.2",
+    "react-resizable-panels": "^2.1.7",
     "recharts": "^2.15.1",
     "swr": "^2.3.2",
     "tailwind-merge": "^3.0.2",
@@ -92,5 +97,44 @@
     "tailwindcss": "^3.4.1",
     "ts-node": "^10.9.2",
     "typescript": "^5"
+  },
+  "jest": {
+    "setupFiles": [
+      "<rootDir>/jest.env.js"
+    ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/jest.setup.ts"
+    ],
+    "testEnvironment": "jest-environment-jsdom",
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/src/$1",
+      "\\.(css|less|scss|sass)$": "<rootDir>/__mocks__/styleMock.js",
+      "^react-grid-layout(/.+)?$": "<rootDir>/__mocks__/react-grid-layout.js",
+      "^react-resizable(/.+)?$": "<rootDir>/__mocks__/react-resizable.js"
+    },
+    "testMatch": [
+      "**/__tests__/**/*.test.[jt]s?(x)"
+    ],
+    "moduleDirectories": [
+      "node_modules",
+      "<rootDir>/"
+    ],
+    "transform": {
+      "^.+\\.(t|j)sx?$": [
+        "@swc/jest",
+        {
+          "jsc": {
+            "transform": {
+              "react": {
+                "runtime": "automatic"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "transformIgnorePatterns": [
+      "node_modules/(?!(lucide-react|@lucide|react-grid-layout|react-resizable)/)"
+    ]
   }
 }

@@ -1,3 +1,5 @@
+
+// my-app/src/types/files.ts
 export interface FileInfo {
   cdnUrl: string
   uuid: string

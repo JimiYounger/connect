@@ -1,3 +1,5 @@
+// my-app/src/app/(auth)/admin/widgets/new/page.tsx
+
 'use client'
 
 import { useState, useEffect } from 'react';
@@ -27,8 +29,8 @@ import { useAuth } from '@/features/auth/context/auth-context';
 import { useProfile } from '@/features/users/hooks/useProfile';
 import { usePermissions } from '@/features/permissions/hooks/usePermissions';
 import { hasPermissionLevel } from '@/features/permissions/constants/roles';
-import { WidgetType, WidgetShape } from '@/features/widgets/types';
-import { WidgetRenderer } from '@/features/widgets/components/widget-renderer';
+import { WidgetType, WidgetShape, WidgetDisplayType } from '@/features/widgets/types';
+import { WidgetRenderer as _WidgetRenderer } from '@/features/widgets/components/widget-renderer';
 import Link from 'next/link';
 
 // Step components
@@ -54,11 +56,10 @@ const basicInfoSchema = z.object({
   description: z.string().optional(),
   category_id: z.string().optional(),
   size_ratio: z.enum([
-    '1:1', '2:1', '1:2', '3:2', '2:3', '4:3', '3:4'
+    '1:1', '2:1', '1:2', '3:2', '2:3', '4:3', '3:4', '2:2', '4:4', '2:4', '4:2'
   ] as const),
   shape: z.enum([
     WidgetShape.SQUARE, 
-    WidgetShape.RECTANGLE, 
     WidgetShape.CIRCLE
   ]),
   thumbnail_url: z.string().optional(),
@@ -134,8 +135,7 @@ const _appearanceSchema = z.object({
     textColor: z.string().optional(),
     borderRadius: z.string().optional(),
     padding: z.string().optional(),
-    showTitle: z.boolean().default(true),
-    showDescription: z.boolean().default(true),
+    customCSS: z.string().optional(),
   }),
 });
 
@@ -145,9 +145,27 @@ const combinedSchema = z.object({
   ...basicInfoSchema.shape,
   config: z.record(z.any()),
   styles: z.record(z.any()),
+  file_id: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof combinedSchema>;
+
+// Utility function to calculate dimensions based on size ratio
+const calculateDimensions = (ratio: string, maxSize: number = 300): { width: number, height: number } => {
+  const [widthRatio, heightRatio] = ratio.split(':').map(Number);
+  
+  if (widthRatio >= heightRatio) {
+    // Width is the limiting factor
+    const width = maxSize;
+    const height = (heightRatio / widthRatio) * maxSize;
+    return { width, height };
+  } else {
+    // Height is the limiting factor
+    const height = maxSize;
+    const width = (widthRatio / heightRatio) * maxSize;
+    return { width, height };
+  }
+};
 
 export default function NewWidgetPage() {
   const router = useRouter();
@@ -168,31 +186,36 @@ export default function NewWidgetPage() {
       widget_type: WidgetType.REDIRECT,
       name: '',
       description: '',
-      size_ratio: '1:1',
+      size_ratio: '2:2',
       shape: WidgetShape.SQUARE,
-      is_public: false,
+      is_public: true,
       config: {},
       styles: {
-        backgroundColor: '#ffffff',
+        backgroundColor: '#C6FC36',
         titleColor: '#000000',
-        textColor: '#333333',
-        borderRadius: '8px',
-        padding: '16px',
-        showTitle: true,
-        showDescription: true,
+        textColor: '#000000',
+        borderRadius: '50px',
+        padding: '30px',
+        customCSS: ''
       },
+      file_id: undefined,
     },
     mode: 'onChange',
   });
   
-  const { watch, handleSubmit, setValue: _setValue, getValues: _getValues, trigger, formState } = methods;
+  const { watch, handleSubmit, setValue: _setValue, getValues: _getValues, trigger: _trigger, setError, formState } = methods;
   const { errors: _errors } = formState;
   
   // Watch for widget type changes to update schema
   const widgetType = watch('widget_type');
+  const sizeRatio = watch('size_ratio');
+  const widgetShape = watch('shape');
+  
+  // Calculate dimensions based on the selected size ratio
+  const dimensions = calculateDimensions(sizeRatio);
   
   // Preview widget
-  const previewWidget = {
+  const _previewWidget = {
     id: 'preview',
     name: watch('name') || 'Widget Preview',
     description: watch('description') || 'This is a preview of your widget',
@@ -206,7 +229,7 @@ export default function NewWidgetPage() {
   };
   
   // Preview config
-  const previewConfig = {
+  const _previewConfig = {
     ...watch('config'),
     title: watch('name') || 'Widget Preview',
     description: watch('description') || 'This is a preview of your widget',
@@ -234,37 +257,40 @@ export default function NewWidgetPage() {
     fetchCategories();
   }, [toast]);
   
+  // Add an effect to ensure circle shapes only use square ratios
+  useEffect(() => {
+    // If the shape is a circle, ensure we're using a square ratio (1:1, 2:2, or 4:4)
+    const currentShape = watch('shape');
+    const currentSizeRatio = watch('size_ratio');
+    
+    if (currentShape === WidgetShape.CIRCLE) {
+      if (currentSizeRatio !== '1:1' && currentSizeRatio !== '2:2' && currentSizeRatio !== '4:4') {
+        methods.setValue('size_ratio', '2:2');
+        toast({
+          title: "Auto-adjusted ratio",
+          description: "Circle shape requires a square ratio (1:1, 2:2, or 4:4)",
+        });
+      }
+    }
+  }, [watch, methods, toast]);
+  
   // Handle step change
-  const handleStepChange = async (step: string) => {
-    // Validate current step before proceeding
-    let isValid = false;
-    
-    switch (currentStep) {
-      case 'type':
-        isValid = await trigger(['widget_type']);
-        break;
-      case 'info':
-        isValid = await trigger(['name', 'description', 'category_id', 'size_ratio', 'shape']);
-        break;
-      case 'config':
-        // Config validation depends on the widget type
-        isValid = await trigger('config');
-        break;
-      case 'appearance':
-        isValid = await trigger('styles');
-        break;
-      default:
-        isValid = true;
+  const handleStepChange = (step: string) => {
+    // Prevent form submission when changing steps
+    // Validate the current step before allowing navigation
+    if (step === 'info' && currentStep === 'type') {
+      // Validate the type selection
+      const typeResult = typeSchema.safeParse(_getValues());
+      if (!typeResult.success) {
+        setError('widget_type', { 
+          type: 'manual', 
+          message: 'Please select a widget type' 
+        });
+        return;
+      }
     }
     
-    if (!isValid && step !== currentStep) {
-      toast({
-        title: "Validation Error",
-        description: "Please fix the errors before proceeding",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Other validation logic for other steps...
     
     setCurrentStep(step);
   };
@@ -276,6 +302,14 @@ export default function NewWidgetPage() {
     setIsCreating(true);
     
     try {
+      // Log the form data to help with debugging
+      console.log('Creating widget with data:', {
+        name: data.name,
+        shape: data.shape,
+        size_ratio: data.size_ratio,
+        userId: session.user.id,
+      });
+      
       // Create widget
       const { data: widget, error } = await widgetService.createWidget({
         name: data.name,
@@ -284,7 +318,12 @@ export default function NewWidgetPage() {
         created_by: session.user.id,
         category_id: data.category_id === 'uncategorized' ? undefined : data.category_id,
         thumbnail_url: data.thumbnail_url,
-        is_public: data.is_public,
+        display_type: WidgetDisplayType.IFRAME,
+        is_public: true,
+        is_published: true,
+        shape: data.shape,
+        size_ratio: data.size_ratio,
+        file_id: data.file_id,
       });
       
       if (error) throw error;
@@ -293,14 +332,21 @@ export default function NewWidgetPage() {
         throw new Error('Failed to create widget');
       }
       
+      // Inside onSubmit function, before creating the widget configuration
+      console.log('Original config data:', data.config);
+      console.log('Widget name being used:', data.name);
+
       // Create widget configuration
       const configData = {
         ...data.config,
-        title: data.name,
-        description: data.description,
+        // Only use widget name as title if no display title was provided
+        title: data.config.title || data.name,
+        description: data.description || data.config.description,
         styles: data.styles,
       };
-      
+
+      console.log('Final config data being saved:', configData);
+
       const { error: configError } = await widgetService.saveWidgetConfiguration(
         widget.id,
         { config: configData },
@@ -308,6 +354,11 @@ export default function NewWidgetPage() {
       );
       
       if (configError) throw configError;
+      
+      console.log('Form values before submission:', {
+        ...data,
+        file_id: data.file_id // Log the file_id specifically
+      });
       
       toast({
         title: "Widget Created",
@@ -388,11 +439,25 @@ export default function NewWidgetPage() {
           <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
             <div className="md:col-span-3">
               <Tabs value={currentStep} onValueChange={handleStepChange}>
-                <TabsList className="grid grid-cols-4 mb-4">
-                  <TabsTrigger value="type">1. Type</TabsTrigger>
-                  <TabsTrigger value="info">2. Information</TabsTrigger>
-                  <TabsTrigger value="config">3. Configuration</TabsTrigger>
-                  <TabsTrigger value="appearance">4. Appearance</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-4">
+                  {[
+                    { value: 'type', label: '1. Type' },
+                    { value: 'info', label: '2. Information' },
+                    { value: 'config', label: '3. Configuration' },
+                    { value: 'appearance', label: '4. Appearance' }
+                  ].map((step) => (
+                    <TabsTrigger
+                      key={step.value}
+                      value={step.value}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleStepChange(step.value);
+                      }}
+                      disabled={isCreating}
+                    >
+                      {step.label}
+                    </TabsTrigger>
+                  ))}
                 </TabsList>
                 
                 <Card>
@@ -473,7 +538,8 @@ export default function NewWidgetPage() {
                     {currentStep !== 'appearance' ? (
                       <Button
                         type="button"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.preventDefault();
                           const steps = ['type', 'info', 'config', 'appearance'];
                           const currentIndex = steps.indexOf(currentStep);
                           if (currentIndex < steps.length - 1) {
@@ -507,22 +573,59 @@ export default function NewWidgetPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="border-t pt-4">
-                  <div className="border rounded-md p-4 bg-gray-50">
-                    <div 
-                      className="bg-white rounded-md shadow-sm aspect-square max-w-xs mx-auto"
-                      style={{
-                        borderRadius: watch('styles.borderRadius') || '8px',
-                        padding: watch('styles.padding') || '16px',
-                        backgroundColor: watch('styles.backgroundColor') || '#ffffff'
-                      }}
-                    >
-                      <WidgetRenderer
-                        widget={previewWidget as any}
-                        configuration={previewConfig}
-                        width={300}
-                        height={300}
-                      />
-                    </div>
+                  <div
+                    className="mx-auto flex flex-col overflow-hidden"
+                    style={{
+                      borderRadius: watch('shape') === WidgetShape.CIRCLE 
+                        ? '50%' 
+                        : '50px',
+                      padding: '30px',
+                      backgroundColor: watch('thumbnail_url') ? 'transparent' : (watch('styles.backgroundColor') || '#ffffff'),
+                      backgroundImage: watch('thumbnail_url') ? `url(${watch('thumbnail_url')})` : 'none',
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      width: `${dimensions.width}px`,
+                      height: `${dimensions.height}px`,
+                      maxWidth: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: watch('shape') === WidgetShape.CIRCLE ? 'center' : 'flex-end',
+                      alignItems: watch('shape') === WidgetShape.CIRCLE ? 'center' : 'flex-start',
+                      textAlign: watch('shape') === WidgetShape.CIRCLE ? 'center' : 'left',
+                    }}
+                  >
+                    {!watch('thumbnail_url') && (
+                      <div 
+                        className={`flex flex-col w-full ${watch('shape') === WidgetShape.CIRCLE ? 'items-center pb-0' : 'items-start pb-4'}`}
+                        style={{
+                          margin: watch('shape') === WidgetShape.CIRCLE ? '0' : undefined,
+                        }}
+                      >
+                        <h3 
+                          className="font-semibold text-2xl md:text-3xl" 
+                          style={{ 
+                            color: watch('styles.titleColor') || '#000000',
+                            margin: watch('shape') === WidgetShape.CIRCLE ? '0 0 4px 0' : undefined,
+                          }}
+                        >
+                          {watch('config.title') || watch('name') || 'Widget Title'}
+                        </h3>
+                        {watch('config.subtitle') && (
+                          <p 
+                            className="text-lg" 
+                            style={{ 
+                              color: watch('styles.textColor') || '#333333',
+                              margin: watch('shape') === WidgetShape.CIRCLE ? '0' : '4px 0 0 0',
+                            }}
+                          >
+                            {watch('config.subtitle')}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-2 text-center text-sm text-gray-500">
+                    {sizeRatio} - {widgetShape}
                   </div>
                 </CardContent>
               </Card>

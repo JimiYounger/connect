@@ -1,9 +1,10 @@
 // my-app/src/features/widgets/components/widget-renderer.tsx
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, Suspense, useEffect } from 'react';
 import { getWidgetComponent } from '../registry';
 import { withWidgetBase, DefaultWidget } from './base-widget';
 import { BaseWidgetProps, Widget, WidgetConfigData } from '../types';
+import { initializeWidgetRegistry } from '../registry/index';
 
 // Loading fallback for lazy-loaded widgets
 const WidgetLoadingFallback = () => (
@@ -18,7 +19,7 @@ const WidgetLoadingFallback = () => (
 
 interface WidgetRendererProps {
   widget: Widget;
-  configuration?: WidgetConfigData;
+  configuration?: any;
   width: number;
   height: number;
   position?: { x: number; y: number };
@@ -26,6 +27,7 @@ interface WidgetRendererProps {
   isLoading?: boolean;
   className?: string;
   style?: React.CSSProperties;
+  borderRadius?: string | number;
 }
 
 // Context for sharing widget state with child components
@@ -53,12 +55,32 @@ export const WidgetRenderer: React.FC<WidgetRendererProps> = ({
   isLoading: initialIsLoading = false,
   className = '',
   style = {},
+  borderRadius = 0,
 }) => {
   const [isLoading, setLoading] = useState(initialIsLoading);
   const [error, setError] = useState<Error | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  useEffect(() => {
+    const initializeRenderer = async () => {
+      try {
+        await initializeWidgetRegistry();
+        setIsInitialized(true);
+      } catch (error) {
+        console.error('Failed to initialize widget renderer:', error);
+        setError(error as Error);
+      }
+    };
+
+    initializeRenderer();
+  }, []);
 
   // Get the component type from the registry based on widget type
   const renderWidget = () => {
+    if (!isInitialized) {
+      return <WidgetLoadingFallback />;
+    }
+
     try {
       // If there's an error, render the error state
       if (error) {
@@ -113,11 +135,21 @@ export const WidgetRenderer: React.FC<WidgetRendererProps> = ({
         className={`widget-renderer ${className}`}
         style={{
           position: 'relative',
-          width: `${width}px`,
-          height: `${height}px`,
+          width: width ? `${width}px` : '100%',
+          height: height ? `${height}px` : '100%',
+          minHeight: '100px',
+          borderRadius,
+          overflow: 'hidden',
+          backgroundColor: style?.backgroundColor || 'white',
+          boxShadow: style?.boxShadow || '0 2px 8px rgba(0, 0, 0, 0.05)',
           ...style,
         }}
       >
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-10">
+            <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
+          </div>
+        )}
         {renderWidget()}
       </div>
     </WidgetContext.Provider>
@@ -129,6 +161,27 @@ export const EnhancedWidgetRenderer = withWidgetBase(WidgetRenderer, {
   trackAnalytics: true,
   responsiveResize: true,
 });
+
+/**
+ * Utility function to process dynamic URLs with user data
+ * This can be imported and used by widget components that need it
+ */
+export const processDynamicUrl = (url: string, userData: any) => {
+  if (!url || !userData) return url;
+  
+  let processedUrl = url;
+  
+  // Define regex to match {{user.field}} patterns
+  const placeholderRegex = /\{\{user\.([a-zA-Z_]+)\}\}/g;
+  
+  // Replace all placeholders with actual user data
+  processedUrl = processedUrl.replace(placeholderRegex, (match, field) => {
+    const value = userData[field];
+    return value ? encodeURIComponent(value) : '';
+  });
+  
+  return processedUrl;
+};
 
 // Simple usage example
 export default WidgetRenderer; 

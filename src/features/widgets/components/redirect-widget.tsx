@@ -2,45 +2,108 @@
 
 import React from 'react';
 import { RedirectWidgetProps } from '../types';
+import { processDynamicUrl } from './widget-renderer';
+import { useAuth } from '@/features/auth/context/auth-context';
+import { useProfile } from '@/features/users/hooks/useProfile';
+import { WidgetService } from '../services/widget-service';
 
-export const RedirectWidget: React.FC<RedirectWidgetProps> = ({ 
-  widget, 
-  configuration, 
-  onInteraction 
+const widgetService = new WidgetService();
+
+export const RedirectWidget: React.FC<RedirectWidgetProps> = ({
+  widget,
+  configuration,
+  onInteraction,
 }) => {
-  const handleClick = () => {
-    if (configuration?.redirectUrl) {
-      // Log the interaction
-      onInteraction?.('click');
-      
-      // Perform redirect based on configuration
-      if (configuration.settings?.openInNewTab) {
-        window.open(configuration.redirectUrl, '_blank');
-      } else {
-        window.location.href = configuration.redirectUrl;
+  const { session } = useAuth();
+  const { profile } = useProfile(session);
+  const userId = session?.user?.id;
+  
+  // Extract styles and configuration
+  const styles = configuration?.styles || {};
+  const backgroundColor = styles.backgroundColor || '#C6FC36';
+  const titleColor = styles.titleColor || '#000000';
+  const textColor = styles.textColor || '#000000';
+  const borderRadius = styles.borderRadius || '8px';
+  const padding = styles.padding || '16px';
+  const thumbnailUrl = widget.thumbnail_url;
+  const isCircle = widget.shape === 'circle';
+  
+  const handleRedirectClick = () => {
+    if (!configuration?.redirectUrl) return;
+    
+    // Process the URL with user data
+    const processedUrl = processDynamicUrl(configuration.redirectUrl, profile);
+    
+    // Open the URL in a new tab
+    window.open(processedUrl, '_blank');
+    
+    // Track the click if needed
+    if (widget.id && userId) {
+      widgetService.trackWidgetInteraction(widget.id, userId, 'click');
+      if (onInteraction) {
+        onInteraction('click');
       }
     }
   };
-
+  
   return (
     <div 
-      className="p-4 rounded-md shadow-sm bg-white cursor-pointer hover:shadow-md transition-all"
-      onClick={handleClick}
-      style={configuration?.styles ? { ...configuration.styles } : {}}
+      className="redirect-widget w-full h-full cursor-pointer"
+      onClick={handleRedirectClick}
+      style={{
+        backgroundColor: thumbnailUrl ? 'transparent' : backgroundColor,
+        backgroundImage: thumbnailUrl ? `url(${thumbnailUrl})` : 'none',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        borderRadius: isCircle ? '50%' : borderRadius,
+        padding,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: isCircle ? 'center' : 'flex-end',
+        alignItems: isCircle ? 'center' : 'flex-start',
+        textAlign: isCircle ? 'center' : 'left',
+        overflow: 'hidden',
+        width: '100%',
+        height: '100%',
+      }}
     >
-      <h3 className="text-lg font-semibold">{configuration?.title || widget.name}</h3>
-      {configuration?.subtitle && (
-        <p className="text-sm text-gray-600">{configuration.subtitle}</p>
+      {!thumbnailUrl && (
+        <div 
+          className={`flex flex-col w-full ${isCircle ? 'items-center pb-0' : 'items-start pb-4'}`}
+        >
+          {configuration?.title && (
+            <h3 
+              className="font-semibold text-2xl md:text-3xl" 
+              style={{ color: titleColor }}
+            >
+              {configuration.title}
+            </h3>
+          )}
+          
+          {configuration?.subtitle && (
+            <p 
+              className="text-lg" 
+              style={{ color: textColor }}
+            >
+              {configuration.subtitle}
+            </p>
+          )}
+          
+          {configuration?.description && (
+            <p 
+              className="text-sm mt-1" 
+              style={{ color: textColor }}
+            >
+              {configuration.description}
+            </p>
+          )}
+        </div>
       )}
-      {configuration?.description && (
-        <p className="mt-2 text-gray-700">{configuration.description}</p>
-      )}
-      <div className="mt-3 text-blue-600 text-sm font-medium">
-        Click to navigate →
-      </div>
     </div>
   );
 };
+
+export default RedirectWidget;
 
 // Register this component with the registry
 import { widgetRegistry } from '../registry';

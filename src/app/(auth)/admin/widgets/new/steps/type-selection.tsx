@@ -1,3 +1,5 @@
+// my-app/src/app/(auth)/admin/widgets/new/steps/type-selection.tsx
+
 import { useFormContext } from 'react-hook-form';
 import { 
   Card, 

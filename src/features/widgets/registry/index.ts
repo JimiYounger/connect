@@ -3,8 +3,13 @@
 import { WidgetRegistry } from './widget-registry';
 import type { BaseWidgetProps } from '../types';
 
-// Export the singleton instance
+// Create and export the singleton instance
 export const widgetRegistry = WidgetRegistry.getInstance();
+
+// Export initialization function
+export async function initializeWidgetRegistry() {
+  await widgetRegistry.initialize();
+}
 
 // Export the class for advanced usage
 export { WidgetRegistry };
@@ -17,9 +22,12 @@ export function registerWidget<T extends BaseWidgetProps>(
   widgetRegistry.register(type, component);
 }
 
-// Convenience function to get a widget component
-export function getWidgetComponent<T extends BaseWidgetProps>(
-  type: string
-): React.ComponentType<T> {
-  return widgetRegistry.getComponent<T>(type);
-} 
+// Export the function to get a widget component with error handling
+export const getWidgetComponent = (type: string) => {
+  try {
+    return widgetRegistry.getComponent(type);
+  } catch (error) {
+    console.error(`Error getting widget component for type ${type}:`, error);
+    return widgetRegistry.getComponent('default');
+  }
+}; 

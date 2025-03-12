@@ -17,17 +17,18 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Switch } from '@/components/ui/switch';
+import { Switch as _Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { WidgetShape } from '@/features/widgets/types';
 import { ImageUpload } from '@/components/ui/uploadcare-uploader';
+// import { Image } from '@/components/ui/image';
 
 interface BasicInformationProps {
   categories: any[];
 }
 
 export function BasicInformation({ categories }: BasicInformationProps) {
-  const { control, register: _register, formState, setValue, watch: _watch } = useFormContext();
+  const { control, register: _register, formState, setValue: _setValue, watch: _watch } = useFormContext();
   const { errors: _errors } = formState;
   
   return (
@@ -125,10 +126,6 @@ export function BasicInformation({ categories }: BasicInformationProps) {
                     <Label htmlFor="shape-square">Square</Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value={WidgetShape.RECTANGLE} id="shape-rectangle" />
-                    <Label htmlFor="shape-rectangle">Rectangle</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
                     <RadioGroupItem value={WidgetShape.CIRCLE} id="shape-circle" />
                     <Label htmlFor="shape-circle">Circle</Label>
                   </div>
@@ -155,9 +152,13 @@ export function BasicInformation({ categories }: BasicInformationProps) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="1:1">1:1 (Square)</SelectItem>
+                  <SelectItem value="1:1">1:1 (Square - Small)</SelectItem>
+                  <SelectItem value="2:2">2:2 (Square - Medium)</SelectItem>
+                  <SelectItem value="4:4">4:4 (Square - Large)</SelectItem>
                   <SelectItem value="2:1">2:1 (Wide)</SelectItem>
+                  <SelectItem value="4:2">4:2 (Wide - Large)</SelectItem>
                   <SelectItem value="1:2">1:2 (Tall)</SelectItem>
+                  <SelectItem value="2:4">2:4 (Tall - Large)</SelectItem>
                   <SelectItem value="3:2">3:2 (Standard)</SelectItem>
                   <SelectItem value="2:3">2:3 (Portrait)</SelectItem>
                   <SelectItem value="4:3">4:3 (Classic)</SelectItem>
@@ -182,34 +183,24 @@ export function BasicInformation({ categories }: BasicInformationProps) {
             <FormControl>
               <ImageUpload
                 value={field.value}
-                onChange={(url) => setValue('thumbnail_url', url)}
+                onChange={(url: string, fileId?: string) => {
+                  console.log('ImageUpload onChange called with URL:', url);
+                  console.log('ImageUpload onChange called with fileId:', fileId);
+                  
+                  _setValue('thumbnail_url', url);
+                  if (fileId) {
+                    console.log('Setting file_id in form:', fileId);
+                    _setValue('file_id', fileId);
+                  }
+                  
+                  field.onChange(url);
+                }}
               />
             </FormControl>
             <FormDescription>
               Upload a preview image for this widget (optional)
             </FormDescription>
             <FormMessage />
-          </FormItem>
-        )}
-      />
-      
-      <FormField
-        control={control}
-        name="is_public"
-        render={({ field }) => (
-          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-            <div className="space-y-0.5">
-              <FormLabel className="text-base">Public Widget</FormLabel>
-              <FormDescription>
-                Make this widget available to all users
-              </FormDescription>
-            </div>
-            <FormControl>
-              <Switch
-                checked={field.value}
-                onCheckedChange={field.onChange}
-              />
-            </FormControl>
           </FormItem>
         )}
       />
