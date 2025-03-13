@@ -166,23 +166,23 @@ export function Dashboard() {
                 const totalHeight = (height * GRID_CELL_SIZE) + ((height - 1) * GRID_GAP);
                 
                 return (
-<div 
-  key={widget.id}
-  className="widget-container"
-  style={{
-    gridColumnStart: position_x + 1,
-    gridColumnEnd: position_x + width + 1,
-    gridRowStart: position_y + 1,
-    gridRowEnd: position_y + height + 1,
-    borderRadius: isCircle ? '50%' : WIDGET_BORDER_RADIUS,
-    // Add these for circle widgets:
-    ...(isCircle && {
-      aspectRatio: '1 / 1',
-      justifySelf: 'center', // Center in grid cell
-      alignSelf: 'center',
-    }),
-  }}
->
+                  <div 
+                    key={widget.id}
+                    className="widget-container"
+                    style={{
+                      gridColumnStart: position_x + 1,
+                      gridColumnEnd: position_x + width + 1,
+                      gridRowStart: position_y + 1,
+                      gridRowEnd: position_y + height + 1,
+                      borderRadius: isCircle ? '50%' : WIDGET_BORDER_RADIUS,
+                      // Add these for circle widgets:
+                      ...(isCircle && {
+                        aspectRatio: '1 / 1',
+                        justifySelf: 'center', // Center in grid cell
+                        alignSelf: 'center',
+                      }),
+                    }}
+                  >
                     <div 
                       className="widget-card placed-widget"
                       style={{

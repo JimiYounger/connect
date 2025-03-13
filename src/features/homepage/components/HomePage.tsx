@@ -7,8 +7,28 @@ import { Navigation } from './Navigation/Navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { GRID_GAP } from '@/config/uiConfig'
+import { useUserContent } from '@/features/content/hooks/useUserContent'
+import { useAuth } from '@/features/auth/context/auth-context'
+import { useProfile } from '@/features/users/hooks/useProfile'
 
 export function HomePage() {
+  console.log('HomePage component - Rendering');
+  
+  const { session, isAuthenticated } = useAuth();
+  console.log('HomePage - Auth state:', { isAuthenticated, hasSession: !!session });
+  
+  const { profile } = useProfile(session);
+  console.log('HomePage - Profile:', !!profile);
+  
+  const content = useUserContent();
+  console.log('HomePage - Content state:', { 
+    hasCarousel: !!content.carouselBanners, 
+    hasNavigation: !!content.navigationItems, 
+    hasDashboard: !!content.dashboard,
+    loading: content.loading,
+    errors: content.errors
+  });
+
   return (
     <div className="flex flex-col min-h-screen bg-black text-white">
       <main className="flex-1 relative">
