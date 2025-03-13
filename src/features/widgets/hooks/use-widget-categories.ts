@@ -1,3 +1,5 @@
+// my-app/src/features/widgets/hooks/use-widget-categories.ts
+
 import { useState, useEffect, useCallback } from 'react';
 import { WidgetCategory } from '../types';
 import { createClient } from '@/lib/supabase';

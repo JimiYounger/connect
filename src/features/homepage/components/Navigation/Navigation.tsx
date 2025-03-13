@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { useUserNavigation } from '@/features/content/hooks/useUserContent'
-import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetTrigger, SheetClose, SheetTitle } from '@/components/ui/sheet'
 import { ChevronLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -91,6 +91,7 @@ export function Navigation({ className }: NavigationProps) {
         </button>
       </SheetTrigger>
       <SheetContent side="left" className="p-0 bg-black text-white border-0" style={{ width: '409px' }}>
+        <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
         <style jsx global>{`
           button.absolute.right-4.top-4.rounded-sm.opacity-70 {
             display: none !important;
