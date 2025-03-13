@@ -12,12 +12,11 @@ export async function middleware(request: NextRequest) {
     const res = await updateSession(request)
 
     // Add public URLs and API routes that handle their own auth
-    const publicUrls = ['/', '/auth/callback', '/api/log-error', '/login', '/auth/processing']
-    const authFlowUrls = ['/auth/callback', '/auth/processing'] // Add URLs that are part of the auth flow
+    const publicUrls = ['/', '/auth/callback', '/api/log-error', '/login', '/auth/processing', '/auth/error']
+    const authFlowUrls = ['/auth/callback', '/auth/processing', '/auth/error'] 
     const isApiRoute = request.nextUrl.pathname.startsWith('/api/')
-    const isPublicUrl = publicUrls.includes(request.nextUrl.pathname)
-    const isAuthFlow = authFlowUrls.includes(request.nextUrl.pathname) || 
-                      request.nextUrl.pathname.startsWith('/auth/')
+    const isPublicUrl = publicUrls.some(url => request.nextUrl.pathname === url || request.nextUrl.pathname.startsWith(url + '?'))
+    const isAuthFlow = authFlowUrls.some(url => request.nextUrl.pathname === url || request.nextUrl.pathname.startsWith(url + '?'))
     
     // Skip session check for public URLs, API routes, and auth flow URLs
     if (!isPublicUrl && !isApiRoute && !isAuthFlow) {
@@ -35,25 +34,31 @@ export async function middleware(request: NextRequest) {
 
       const { data: { session } } = await supabase.auth.getSession()
 
+      // Check for auth-related cookies or headers
+      const hasAuthCookie = request.cookies.has('sb-access-token') || 
+                           request.cookies.has('sb-refresh-token') ||
+                           request.cookies.has('supabase-auth-token')
+      
       // Check referrer to see if we're coming from an auth flow
       const referrer = request.headers.get('referer') || ''
-      const isComingFromAuthFlow = 
-        referrer.includes('/auth/callback') || 
-        referrer.includes('/auth/processing') ||
-        request.cookies.has('supabase-auth-token')
+      const isComingFromAuthFlow = authFlowUrls.some(url => referrer.includes(url)) || hasAuthCookie
       
       // If we don't have a session and we're not coming from an auth flow, redirect to home
       if (!session) {
-        // If the user has a recent auth cookie but session isn't ready, give it a chance
-        // This helps in production where cookie propagation might be slightly delayed
+        // If the user has auth cookies but session isn't ready, give it a chance
+        // This helps with race conditions where cookies exist but session isn't fully established
         if (isComingFromAuthFlow) {
+          console.log('Coming from auth flow, allowing page to load despite no session')
           // Return the response as-is, letting the page load
           // The client-side code will handle redirecting if needed
           return res
         }
         
         const redirectUrl = new URL('/', request.url)
-        redirectUrl.searchParams.set('redirectedFrom', request.nextUrl.pathname)
+        // Only add the redirectedFrom param if we're not already on the home page
+        if (request.nextUrl.pathname !== '/') {
+          redirectUrl.searchParams.set('redirectedFrom', request.nextUrl.pathname)
+        }
         return NextResponse.redirect(redirectUrl)
       }
     }

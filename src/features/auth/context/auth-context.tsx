@@ -15,6 +15,7 @@ import type {
 import { initialAuthState } from '../types/auth'
 import { ErrorLogger } from '@/lib/logging/error-logger'
 import { ErrorSeverity, ErrorSource } from '@/lib/types/errors'
+import { useRouter } from 'next/navigation'
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
@@ -31,6 +32,7 @@ export function AuthProvider({
   initialLoading,
   initialProfile 
 }: AuthProviderProps) {
+  const router = useRouter()
   const [authState, setAuthState] = useState<AuthState>(() => ({
     ...initialAuthState,
     session: initialSession,
@@ -108,6 +110,43 @@ export function AuthProvider({
       debouncedRefetch()
     }
   }, [authState.session, debouncedRefetch])
+
+  // Add auth state change listener to immediately detect session changes
+  useEffect(() => {
+    const { data: { subscription } } = authService.client.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state changed:', event, !!session)
+        
+        if (event === 'SIGNED_IN' && session) {
+          updateAuthState({
+            session,
+            isAuthenticated: true,
+            loading: { ...authState.loading, session: false }
+          }, 'auth_state_change_signed_in')
+          
+          // Force a router refresh to ensure the app recognizes the new auth state
+          router.refresh()
+        } else if (event === 'SIGNED_OUT') {
+          updateAuthState({
+            session: null,
+            profile: null,
+            isAuthenticated: false,
+            loading: { ...authState.loading, session: false }
+          }, 'auth_state_change_signed_out')
+        } else if (event === 'TOKEN_REFRESHED' && session) {
+          updateAuthState({
+            session,
+            isAuthenticated: true,
+            loading: { ...authState.loading, session: false }
+          }, 'auth_state_token_refreshed')
+        }
+      }
+    )
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [updateAuthState, authState.loading, router])
 
   const contextValue = useMemo(() => ({
     ...authState,
