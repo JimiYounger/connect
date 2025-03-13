@@ -10,7 +10,13 @@ const profileCache = new Map<string, {
   profile: UserProfile,
   timestamp: number
 }>()
-const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes, shorter than your sync window
+
+// Optimize cache duration based on sync window
+const CACHE_DURATION = 15 * 60 * 1000 // 15 minutes
+const STALE_WHILE_REVALIDATE = 30 * 60 * 1000 // 30 minutes
+
+// Add request deduplication
+const pendingRequests = new Map<string, Promise<Response>>()
 
 export const dynamic = 'force-dynamic' // Ensure the route is not cached
 
@@ -29,6 +35,38 @@ export async function GET(request: Request) {
       )
     }
 
+    const cacheKey = `${email}-${googleUserId}`
+
+    // Check for pending request
+    const pendingRequest = pendingRequests.get(cacheKey)
+    if (pendingRequest) {
+      return pendingRequest
+    }
+
+    // Create new request promise
+    const requestPromise = handleProfileRequest(email, googleUserId, cacheKey)
+    pendingRequests.set(cacheKey, requestPromise)
+
+    // Cleanup after request completes
+    requestPromise.finally(() => {
+      pendingRequests.delete(cacheKey)
+    })
+
+    return requestPromise
+  } catch (error) {
+    console.error('API Route - Unexpected error:', error)
+    return NextResponse.json(
+      { 
+        error: 'Failed to process request',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    )
+  }
+}
+
+async function handleProfileRequest(email: string, googleUserId: string, cacheKey: string): Promise<Response> {
+  try {
     const supabase = await createServerSupabase()
 
     // Validate the user session first
@@ -48,84 +86,86 @@ export async function GET(request: Request) {
       )
     }
 
-    // Check memory cache first
-    const cacheKey = `${email}-${googleUserId}`
+    // Check memory cache
     const cached = profileCache.get(cacheKey)
-    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      console.log('API Route - Serving cached profile for:', email)
+    const now = Date.now()
+    
+    // Return cache if fresh
+    if (cached && (now - cached.timestamp < CACHE_DURATION)) {
       return NextResponse.json(cached.profile)
     }
 
-    // First try to get existing profile
-    const { data: existingProfile, error: fetchError } = await supabase
-      .from('user_profiles')
-      .select('*, last_airtable_sync')
-      .eq('email', email)
-      .single()
-
-    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "not found"
-      console.error('Database fetch error:', fetchError)
-      return NextResponse.json(
-        { error: 'Failed to fetch profile', details: fetchError },
-        { status: 500 }
-      )
+    // Return stale cache while revalidating in background
+    if (cached && (now - cached.timestamp < STALE_WHILE_REVALIDATE)) {
+      // Revalidate in background
+      revalidateProfile(email, googleUserId, cacheKey, supabase).catch(console.error)
+      // Return stale data
+      return NextResponse.json(cached.profile)
     }
 
-    // Check if we need to sync
-    const needsSync = !existingProfile || 
-      !existingProfile.last_airtable_sync || 
-      isStale(existingProfile.last_airtable_sync)
-
-    if (needsSync) {
-      try {
-        console.log('Profile needs sync, fetching from Airtable')
-        const syncedProfile = await syncService.syncUserProfile(email, googleUserId)
-        
-        // Cache the synced profile
-        profileCache.set(cacheKey, {
-          profile: syncedProfile,
-          timestamp: Date.now()
-        })
-        
-        return NextResponse.json(syncedProfile)
-      } catch (syncError) {
-        console.error('Sync error:', syncError)
-        // If sync fails but we have an existing profile, return it
-        if (existingProfile) {
-          console.log('Returning existing profile despite sync failure')
-          // Cache the existing profile
-          profileCache.set(cacheKey, {
-            profile: existingProfile,
-            timestamp: Date.now()
-          })
-          return NextResponse.json(existingProfile)
-        }
-        return NextResponse.json(
-          { 
-            error: 'Failed to sync profile with Airtable',
-            details: syncError instanceof Error ? syncError.message : 'Unknown error'
-          },
-          { status: 500 }
-        )
-      }
-    }
-
-    // Cache the existing profile
+    // No cache or cache too old, fetch fresh data
+    const profile = await getFreshProfile(email, googleUserId, supabase)
+    
+    // Cache the fresh profile
     profileCache.set(cacheKey, {
-      profile: existingProfile,
-      timestamp: Date.now()
+      profile,
+      timestamp: now
     })
 
-    return NextResponse.json(existingProfile)
+    return NextResponse.json(profile)
   } catch (error) {
-    console.error('API Route - Unexpected error:', error)
+    console.error('Profile request error:', error)
     return NextResponse.json(
       { 
-        error: 'Failed to process request',
+        error: 'Failed to fetch profile',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     )
+  }
+}
+
+async function getFreshProfile(email: string, googleUserId: string, supabase: any) {
+  // First try to get existing profile
+  const { data: existingProfile, error: fetchError } = await supabase
+    .from('user_profiles')
+    .select('*, last_airtable_sync')
+    .eq('email', email)
+    .single()
+
+  if (fetchError && fetchError.code !== 'PGRST116') {
+    throw fetchError
+  }
+
+  // Check if we need to sync
+  const needsSync = !existingProfile || 
+    !existingProfile.last_airtable_sync || 
+    isStale(existingProfile.last_airtable_sync)
+
+  if (needsSync) {
+    try {
+      return await syncService.syncUserProfile(email, googleUserId)
+    } catch (syncError) {
+      console.error('Sync error:', syncError)
+      if (existingProfile) {
+        return existingProfile
+      }
+      throw syncError
+    }
+  }
+
+  return existingProfile
+}
+
+async function revalidateProfile(email: string, googleUserId: string, cacheKey: string, supabase: any) {
+  try {
+    const profile = await getFreshProfile(email, googleUserId, supabase)
+    profileCache.set(cacheKey, {
+      profile,
+      timestamp: Date.now()
+    })
+  } catch (error) {
+    console.error('Background revalidation failed:', error)
   }
 }
 

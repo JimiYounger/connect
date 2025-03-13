@@ -82,25 +82,32 @@ export function AuthProvider({
         errors: []
       }, 'signOut')
     } catch (error) {
-      console.error('Sign out error:', error)
+      ErrorLogger.log(error, {
+        severity: ErrorSeverity.HIGH,
+        source: ErrorSource.CLIENT,
+        context: { action: 'signOut' }
+      })
     }
   }, [updateAuthState])
 
-  useEffect(() => {
-    if (authState.session) {
-      refetchProfile()
+  // Debounced profile refetch
+  const debouncedRefetch = useMemo(() => {
+    let timeout: NodeJS.Timeout
+    return () => {
+      clearTimeout(timeout)
+      timeout = setTimeout(() => {
+        if (authState.session) {
+          refetchProfile()
+        }
+      }, 100)
     }
   }, [authState.session, refetchProfile])
 
   useEffect(() => {
-    console.log("AuthProvider state:", { 
-      session: authState.session, 
-      profile: authState.profile, 
-      isLoading: authState.loading.session || authState.loading.profile || authState.loading.initializing,
-      isSessionLoading: authState.loading.session,
-      isProfileLoading: authState.loading.profile
-    });
-  }, [authState.session, authState.profile, authState.loading.session, authState.loading.profile, authState.loading.initializing])
+    if (authState.session) {
+      debouncedRefetch()
+    }
+  }, [authState.session, debouncedRefetch])
 
   const contextValue = useMemo(() => ({
     ...authState,
@@ -117,7 +124,12 @@ export function AuthProvider({
       'clearError'
     ),
     retryProfile: refetchProfile
-  }), [authState, handleSignOut, updateAuthState, refetchProfile])
+  }), [
+    authState,
+    handleSignOut,
+    updateAuthState,
+    refetchProfile
+  ])
 
   if (!authState.isInitialized || authState.loading.initializing) {
     return null

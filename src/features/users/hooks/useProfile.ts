@@ -11,8 +11,9 @@ import { ErrorSeverity, ErrorSource } from '@/lib/types/errors'
 
 // Cache management with automatic cleanup
 const profileCache = new Map<string, ProfileCache>()
-const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
-const CACHE_CLEANUP_INTERVAL = 10 * 60 * 1000 // 10 minutes
+const CACHE_DURATION = 15 * 60 * 1000 // 15 minutes
+const CACHE_CLEANUP_INTERVAL = 30 * 60 * 1000 // 30 minutes
+const pendingRequests = new Map<string, Promise<UserProfile | null>>()
 
 // Cleanup old cache entries periodically
 if (typeof window !== 'undefined') {
@@ -23,6 +24,8 @@ if (typeof window !== 'undefined') {
         profileCache.delete(key)
       }
     }
+    // Also clear pending requests map
+    pendingRequests.clear()
   }, CACHE_CLEANUP_INTERVAL)
 }
 
@@ -56,53 +59,75 @@ export function useProfile(session: Session | null): UseProfileResult {
   const mountedRef = useRef(true)
   const abortControllerRef = useRef<AbortController | null>(null)
 
-  const fetchProfile = useCallback(async (email: string, userId: string) => {
+  const fetchProfile = useCallback(async (email: string, userId: string): Promise<UserProfile> => {
+    const requestKey = `${userId}-${email}`
+    
+    // Check for pending request
+    const pendingRequest = pendingRequests.get(requestKey)
+    if (pendingRequest) {
+      const result = await pendingRequest
+      if (!result) {
+        throw new Error('Profile fetch failed')
+      }
+      return result
+    }
+
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
     }
     abortControllerRef.current = new AbortController()
 
-    try {
-      console.log('Fetching profile for:', email)
-      const response = await fetch(
-        `/api/users/profile?email=${encodeURIComponent(email)}&googleUserId=${userId}`,
-        { signal: abortControllerRef.current?.signal }
-      )
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch profile: ${response.statusText}`)
-      }
+    const fetchPromise = (async () => {
+      try {
+        const response = await fetch(
+          `/api/users/profile?email=${encodeURIComponent(email)}&googleUserId=${userId}`,
+          { signal: abortControllerRef.current?.signal }
+        )
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch profile: ${response.statusText}`)
+        }
 
-      const data: UserProfile = await response.json()
-      console.log('Received profile data:', data)
-      
-      if (!data || typeof data !== 'object') {
-        throw new Error('Invalid profile data received')
-      }
+        const data = await response.json()
+        
+        if (!data || typeof data !== 'object') {
+          throw new Error('Invalid profile data received')
+        }
 
-      if (sessionKey && mountedRef.current) {
-        console.log('Updating cache for:', sessionKey)
-        profileCache.set(sessionKey, {
-          data,
-          timestamp: Date.now()
-        })
+        // Validate that the response matches UserProfile type
+        const profile = data as UserProfile
+        if (!profile.email || !profile.user_id) {
+          throw new Error('Invalid profile data: missing required fields')
+        }
+
+        if (sessionKey && mountedRef.current) {
+          profileCache.set(sessionKey, {
+            data: profile,
+            timestamp: Date.now()
+          })
+        }
+        
+        return profile
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === 'AbortError')) {
+          ErrorLogger.log(error, {
+            severity: ErrorSeverity.MEDIUM,
+            source: ErrorSource.CLIENT,
+            context: {
+              userId,
+              email,
+              action: 'Fetch Profile'
+            }
+          })
+        }
+        throw error
+      } finally {
+        pendingRequests.delete(requestKey)
       }
-      
-      return data
-    } catch (error) {
-      if (!(error instanceof DOMException && error.name === 'AbortError')) {
-        ErrorLogger.log(error, {
-          severity: ErrorSeverity.MEDIUM,
-          source: ErrorSource.CLIENT,
-          context: {
-            userId,
-            email,
-            action: 'Fetch Profile'
-          }
-        })
-      }
-      throw error
-    }
+    })()
+
+    pendingRequests.set(requestKey, fetchPromise)
+    return fetchPromise
   }, [sessionKey])
 
   useEffect(() => {
@@ -114,7 +139,8 @@ export function useProfile(session: Session | null): UseProfileResult {
           setState(prev => ({ 
             ...prev, 
             isLoading: false, 
-            isInitialized: true 
+            isInitialized: true,
+            profile: null 
           }))
         }
         return
@@ -124,7 +150,6 @@ export function useProfile(session: Session | null): UseProfileResult {
       if (sessionKey) {
         const cached = profileCache.get(sessionKey)
         if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-          console.log('Using cached profile for:', sessionKey)
           if (mountedRef.current) {
             setState({
               profile: cached.data,
@@ -138,10 +163,11 @@ export function useProfile(session: Session | null): UseProfileResult {
         }
       }
 
+      setState(prev => ({ ...prev, isLoading: true, error: null }))
+
       try {
         const data = await fetchProfile(session.user.email, session.user.id)
         if (mountedRef.current) {
-          console.log('Setting profile data:', data)
           setState({
             profile: data,
             isLoading: false,
@@ -152,13 +178,13 @@ export function useProfile(session: Session | null): UseProfileResult {
         }
       } catch (err) {
         if (mountedRef.current && !(err instanceof DOMException && err.name === 'AbortError')) {
-          setState({
+          setState(prev => ({
+            ...prev,
             profile: null,
-            isLoading: false,
             error: err instanceof Error ? err : new Error('Profile fetch failed'),
-            isInitialized: true,
-            lastFetchTimestamp: null
-          })
+            isLoading: false,
+            isInitialized: true
+          }))
         }
       }
     }

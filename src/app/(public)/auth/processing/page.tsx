@@ -6,16 +6,13 @@ import { createBrowserClient } from '@supabase/ssr'
 
 export default function AuthProcessingPage() {
   const router = useRouter()
-  const [_attempts, setAttempts] = useState(0)
   const [message, setMessage] = useState('Processing your login...')
+  const [error, setError] = useState<string | null>(null)
   
   useEffect(() => {
-    // Mark as loading for visual feedback
-    document.body.classList.add('loading')
-    localStorage.setItem('auth_loading', 'true')
-    
-    const maxAttempts = 5
-    const checkInterval = 800 // ms between checks
+    const maxAttempts = 3
+    const checkInterval = 1000 // ms between checks
+    let attempts = 0
     
     async function verifySession() {
       try {
@@ -23,58 +20,67 @@ export default function AuthProcessingPage() {
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
           process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
         )
-        const { data: { session } } = await supabase.auth.getSession()
         
-        if (session) {
-          // We have a valid session, redirect to home
+        // Use getUser instead of getSession for security
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        
+        if (userError) throw userError
+        
+        if (user) {
+          // Clear loading state and redirect
           localStorage.removeItem('auth_loading')
+          document.body.classList.remove('loading')
           router.push('/home')
           return
         }
         
-        // No session yet, increment attempts
-        setAttempts(prev => {
-          const newCount = prev + 1
-          if (newCount >= maxAttempts) {
-            // Too many attempts, redirect to home
-            localStorage.removeItem('auth_loading')
-            document.body.classList.remove('loading')
-            setMessage('Login timed out. Please try again.')
-            setTimeout(() => {
-              router.push('/')
-            }, 2000)
-            return newCount
-          }
-          
-          // Try again after delay
-          setMessage(`Verifying login (attempt ${newCount}/${maxAttempts})...`)
-          setTimeout(verifySession, checkInterval)
-          return newCount
-        })
+        attempts++
+        if (attempts >= maxAttempts) {
+          setError('Login verification timed out. Please try again.')
+          localStorage.removeItem('auth_loading')
+          document.body.classList.remove('loading')
+          setTimeout(() => router.push('/'), 2000)
+          return
+        }
+        
+        setMessage(`Verifying login (attempt ${attempts}/${maxAttempts})...`)
+        setTimeout(verifySession, checkInterval)
       } catch (error) {
         console.error('Auth verification error:', error)
+        setError('Something went wrong. Please try logging in again.')
         localStorage.removeItem('auth_loading')
         document.body.classList.remove('loading')
-        setMessage('Something went wrong. Redirecting to login...')
-        setTimeout(() => {
-          router.push('/')
-        }, 2000)
+        setTimeout(() => router.push('/'), 2000)
       }
     }
     
+    // Mark as loading
+    document.body.classList.add('loading')
+    localStorage.setItem('auth_loading', 'true')
+    
     // Initial delay before first check
     setTimeout(verifySession, 1000)
+    
+    // Cleanup on unmount
+    return () => {
+      localStorage.removeItem('auth_loading')
+      document.body.classList.remove('loading')
+    }
   }, [router])
   
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50">
       <div className="text-center space-y-6 transition-opacity duration-200">
         <div className="auth-loading">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gray-900"></div>
+          {!error && <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gray-900"></div>}
         </div>
         <div className="auth-content">
-          <h1 className="text-2xl font-bold text-gray-900">{message}</h1>
-          <p className="text-gray-600">Please wait while we complete your sign in...</p>
+          <h1 className={`text-2xl font-bold ${error ? 'text-red-600' : 'text-gray-900'}`}>
+            {error || message}
+          </h1>
+          {!error && (
+            <p className="text-gray-600">Please wait while we complete your sign in...</p>
+          )}
         </div>
       </div>
     </div>
