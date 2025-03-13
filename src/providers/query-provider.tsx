@@ -21,11 +21,11 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
     // Debug listener for query cache
     const unsubscribe = queryClient.getQueryCache().subscribe(event => {
       if (event.type === 'added') {
-        console.log('Query added:', event.query.getQueryKey());
+        console.log('Query added:', event.query.queryKey);
       } else if (event.type === 'updated') {
-        console.log('Query updated:', event.query.getQueryKey(), 'Status:', event.query.getState().status);
+        console.log('Query updated:', event.query.queryKey, 'Status:', event.query.state.status);
       } else if (event.type === 'removed') {
-        console.log('Query removed:', event.query.getQueryKey());
+        console.log('Query removed:', event.query.queryKey);
       }
     })
     
