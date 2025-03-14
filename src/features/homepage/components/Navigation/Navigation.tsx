@@ -8,13 +8,30 @@ import { Sheet, SheetContent, SheetTrigger, SheetClose, SheetTitle } from '@/com
 import { ChevronLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+// Pre-fetch the image by creating a reference
+const connectLogoUrl = '/connect.png';
+if (typeof window !== 'undefined') {
+  const img = new window.Image();
+  img.src = connectLogoUrl;
+}
+
 interface NavigationProps {
   className?: string
 }
 
 export function Navigation({ className }: NavigationProps) {
   const [open, setOpen] = useState(false)
+  const [_imageLoaded, setImageLoaded] = useState(false)
   const { data: navigationItems = [], isLoading, error } = useUserNavigation()
+  
+  // Preload the image when component mounts
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const img = new window.Image();
+      img.src = connectLogoUrl;
+      img.onload = () => setImageLoaded(true);
+    }
+  }, []);
   
   // Group items by their parent_id
   const groupedItems = navigationItems.reduce<Record<string, typeof navigationItems>>(
@@ -105,11 +122,13 @@ export function Navigation({ className }: NavigationProps) {
           <div className="relative" style={{ paddingTop: '124px', paddingLeft: '57px', paddingRight: '72px' }}>
             <div className="font-bold text-2xl">
               <Image
-                src="/connect.png"
+                src={connectLogoUrl}
                 alt="Connect"
                 width={216}
                 height={61}
                 priority
+                loading="eager"
+                onLoadingComplete={() => setImageLoaded(true)}
               />
             </div>
             <SheetClose className="rounded-full custom-close absolute" style={{ right: '72px', top: '72px' }}>

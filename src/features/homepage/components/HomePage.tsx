@@ -220,6 +220,17 @@ export function HomePage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-black text-white">
+      {/* Preload the connect.png image */}
+      <div className="hidden">
+        <Image 
+          src="/connect.png" 
+          alt="Connect logo preload" 
+          width={216} 
+          height={61} 
+          priority
+        />
+      </div>
+      
       <main className="flex-1 relative">
         {/* Navigation positioned at x42, y46 */}
         <div className="absolute" style={{ top: '46px', left: '42px' }}>
