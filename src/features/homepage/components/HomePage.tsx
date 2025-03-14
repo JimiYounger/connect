@@ -10,7 +10,7 @@ import { GRID_GAP } from '@/config/uiConfig'
 import { useUserContent } from '@/features/content/hooks/useUserContent'
 import { useAuth } from '@/features/auth/context/auth-context'
 import { useProfile } from '@/features/users/hooks/useProfile'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 export function HomePage() {
   console.log('HomePage component - Rendering');
@@ -22,6 +22,16 @@ export function HomePage() {
   console.log('HomePage - Profile:', !!profile, 'Loading:', profileLoading);
   
   const content = useUserContent();
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
+  
+  // Set a timeout to prevent infinite loading screen
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoadingTimeout(true);
+    }, 5000); // 5 seconds timeout
+    
+    return () => clearTimeout(timer);
+  }, []);
   
   useEffect(() => {
     console.log('HomePage - Content state:', { 
@@ -38,11 +48,21 @@ export function HomePage() {
     }
   }, [content]);
 
-  // Show loading state if profile is loading or content is not initialized
-  if (profileLoading || (isAuthenticated && !content.isInitialized)) {
+  // Only show loading state if profile is loading or content is actively loading
+  // AND we haven't hit the timeout
+  const isLoading = (profileLoading || 
+    (isAuthenticated && 
+     (content.loading.carousel || content.loading.navigation || content.loading.dashboard))) && 
+    !loadingTimeout;
+
+  // Show loading state if still loading and timeout hasn't occurred
+  if (isLoading) {
     return (
       <div className="flex flex-col min-h-screen bg-black text-white items-center justify-center">
         <div className="text-xl">Loading your personalized content...</div>
+        <div className="mt-4 text-sm text-gray-400">
+          If this takes too long, the page will load automatically in a few seconds.
+        </div>
       </div>
     );
   }

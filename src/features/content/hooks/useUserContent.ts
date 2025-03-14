@@ -35,7 +35,10 @@ export function useUserBanners() {
     },
     staleTime: STALE_TIME,
     enabled: !!profile && !profileLoading,
-    retry: 3
+    retry: 3,
+    // Add a short refetch interval to ensure data loads after profile is available
+    refetchInterval: profile ? false : 1000,
+    refetchIntervalInBackground: false
   })
 }
 
@@ -64,7 +67,10 @@ export function useUserNavigation() {
     },
     staleTime: STALE_TIME,
     enabled: !!profile && !profileLoading,
-    retry: 3
+    retry: 3,
+    // Add a short refetch interval to ensure data loads after profile is available
+    refetchInterval: profile ? false : 1000,
+    refetchIntervalInBackground: false
   })
 }
 
@@ -93,7 +99,10 @@ export function useUserDashboard() {
     },
     staleTime: STALE_TIME,
     enabled: !!profile && !profileLoading,
-    retry: 3
+    retry: 3,
+    // Add a short refetch interval to ensure data loads after profile is available
+    refetchInterval: profile ? false : 1000,
+    refetchIntervalInBackground: false
   })
 }
 
