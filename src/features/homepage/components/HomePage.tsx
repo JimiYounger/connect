@@ -10,6 +10,7 @@ import { GRID_GAP } from '@/config/uiConfig'
 import { useUserContent } from '@/features/content/hooks/useUserContent'
 import { useAuth } from '@/features/auth/context/auth-context'
 import { useProfile } from '@/features/users/hooks/useProfile'
+import { useEffect } from 'react'
 
 export function HomePage() {
   console.log('HomePage component - Rendering');
@@ -17,17 +18,56 @@ export function HomePage() {
   const { session, isAuthenticated } = useAuth();
   console.log('HomePage - Auth state:', { isAuthenticated, hasSession: !!session });
   
-  const { profile } = useProfile(session);
-  console.log('HomePage - Profile:', !!profile);
+  const { profile, isLoading: profileLoading } = useProfile(session);
+  console.log('HomePage - Profile:', !!profile, 'Loading:', profileLoading);
   
   const content = useUserContent();
-  console.log('HomePage - Content state:', { 
-    hasCarousel: !!content.carouselBanners, 
-    hasNavigation: !!content.navigationItems, 
-    hasDashboard: !!content.dashboard,
-    loading: content.loading,
-    errors: content.errors
-  });
+  
+  useEffect(() => {
+    console.log('HomePage - Content state:', { 
+      hasCarousel: Array.isArray(content.carouselBanners) && content.carouselBanners.length > 0, 
+      hasNavigation: Array.isArray(content.navigationItems) && content.navigationItems.length > 0, 
+      hasDashboard: !!content.dashboard,
+      loading: content.loading,
+      errors: content.errors,
+      isInitialized: content.isInitialized
+    });
+    
+    if (content.errors.length > 0) {
+      console.error('Content loading errors:', content.errors);
+    }
+  }, [content]);
+
+  // Show loading state if profile is loading or content is not initialized
+  if (profileLoading || (isAuthenticated && !content.isInitialized)) {
+    return (
+      <div className="flex flex-col min-h-screen bg-black text-white items-center justify-center">
+        <div className="text-xl">Loading your personalized content...</div>
+      </div>
+    );
+  }
+
+  // Show error state if there are errors
+  if (content.errors.length > 0) {
+    return (
+      <div className="flex flex-col min-h-screen bg-black text-white items-center justify-center">
+        <div className="text-xl text-red-500">Error loading content</div>
+        <div className="mt-4">
+          {content.errors.map((error, index) => (
+            <div key={index} className="text-sm text-red-400">
+              {error.source}: {error.message}
+            </div>
+          ))}
+        </div>
+        <button 
+          className="mt-6 px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
+          onClick={() => window.location.reload()}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-black text-white">
