@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 import { LoginButtonWrapper } from "@/features/auth/components/LoginButtonWrapper"
 import { createBrowserClient } from "@supabase/ssr"
 import { motion } from "framer-motion"
@@ -10,6 +11,7 @@ export default function Home() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
   const [isLoaded, setIsLoaded] = useState(false)
+  const [imageError, setImageError] = useState(false)
 
   // Check for session on the client side
   useEffect(() => {
@@ -42,6 +44,41 @@ export default function Home() {
 
     checkSession()
   }, [router])
+
+  // This component handles image loading inline with fallback
+  const LogoImage = () => {
+    // Fallback to text if there's an image error
+    if (imageError) {
+      return (
+        <h1 className="text-white text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight">
+          CONNECT<span className="text-[#c4ff33]">®</span>
+        </h1>
+      )
+    }
+    
+    // The path should be relative to the public directory
+    const imagePath = "/connect.png"; // This should point to my-app/public/connect.png
+    
+    return (
+      <div className="inline-block relative h-[60px] md:h-[80px] lg:h-[90px] pl-5">
+        <Image 
+          src={imagePath}
+          alt="CONNECT" 
+          width={280}
+          height={90}
+          className="h-full w-auto object-contain"
+          priority
+          onError={(_e) => {
+            console.error("Failed to load image:", imagePath);
+            setImageError(true);
+          }}
+          onLoad={() => {
+            console.log("Image loaded successfully");
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="relative flex flex-col items-center justify-center w-full min-h-screen bg-black overflow-hidden">
@@ -99,10 +136,10 @@ export default function Home() {
                 animate={isLoaded ? { opacity: 1, y: 0 } : {}}
                 transition={{ duration: 0.8, delay: 0.2 }}
               >
-                <h2 className="text-zinc-400 text-xl md:text-2xl font-light mb-2">Welcome to</h2>
-                <h1 className="text-white text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6">
-                  CONNECT<span className="text-[#c4ff33]">®</span>
-                </h1>
+                <h2 className="text-zinc-400 text-xl md:text-2xl font-book mb-2">Welcome to</h2>
+                <div className="mb-6 flex justify-center items-center">
+                  <LogoImage />
+                </div>
               </motion.div>
 
               <motion.div
@@ -111,7 +148,7 @@ export default function Home() {
                 transition={{ duration: 0.8, delay: 0.5 }}
               >
                 <h2 className="text-white text-3xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-2">
-                  Explore and navigate your tools
+                  Navigate your tools
                 </h2>
                 <h2 className="text-white text-3xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-16">
                   <span className="text-[#c4ff33]">easier</span> than ever.
@@ -143,7 +180,7 @@ export default function Home() {
           animate={isLoaded ? { opacity: 0.7 } : {}}
           transition={{ duration: 1, delay: 1.5 }}
         >
-          © {new Date().getFullYear()} CONNECT. All rights reserved.
+          © {new Date().getFullYear()} CONNECT X Younger Creatives
         </motion.div>
       )}
     </div>
