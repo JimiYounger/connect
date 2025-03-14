@@ -60,7 +60,7 @@ export default function Home() {
     const imagePath = "/connect.png"; // This should point to my-app/public/connect.png
     
     return (
-      <div className="inline-block relative h-[60px] md:h-[80px] lg:h-[90px] pl-5">
+      <div className="inline-block relative h-[60px] md:h-[80px] lg:h-[90px] pl-2">
         <Image 
           src={imagePath}
           alt="CONNECT" 
