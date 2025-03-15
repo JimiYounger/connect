@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { AlertCircle, Send } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { SegmentCounter } from './SegmentCounter';
-import { VariableSelector } from './VariableSelector';
+import { SegmentCounter } from '@/features/messaging/components/SegmentCounter';
+import { VariableSelector } from '@/features/messaging/components/VariableSelector';
 import { calculateMessageSegments } from '@/features/messaging/services/twilio-service';
 import { MessageSegmentInfo } from '@/features/messaging/types';
 

@@ -36,7 +36,7 @@ export function useRecipients(options: UseRecipientsOptions = {}) {
     enabled = true 
   } = options;
   
-  const queryClient = useQueryClient();
+  const _queryClient = useQueryClient();
   const [filter, setFilter] = useState<OrganizationFilter>(initialFilter);
   const [page, setPage] = useState(1);
   const [error, setError] = useState<string | null>(null);

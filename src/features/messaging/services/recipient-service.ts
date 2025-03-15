@@ -1,16 +1,12 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase';
 import { 
   OrganizationFilter, 
   Recipient 
 } from '../types';
-import { Database } from '@/types/supabase';
 import type { OrganizationStructure } from '@/features/organization/types';
 import type { UserProfile } from '@/features/users/types';
-
-// Initialize Supabase client for client-side usage
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient<Database>(supabaseUrl, supabaseKey);
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
 /**
  * RecipientService class for handling recipient selection and filtering
@@ -26,7 +22,7 @@ export class RecipientService {
   ): Promise<{ recipients: Recipient[]; totalCount: number }> {
     try {
       // Start building the query
-      let query = supabase
+      let query = createClient()
         .from('user_profiles')
         .select('*', { count: 'exact' });
       
@@ -67,7 +63,7 @@ export class RecipientService {
       }
       
       // Get opted-out users to filter them out
-      const { data: optedOutUsers, error: optedOutError } = await supabase
+      const { data: optedOutUsers, error: optedOutError } = await createClient()
         .from('user_message_preferences')
         .select('user_id')
         .eq('opted_out', true);
@@ -94,13 +90,223 @@ export class RecipientService {
   }
   
   /**
-   * Gets a preview list of recipients (limited number for UI display)
+   * Get a preview of recipients based on filter criteria
    */
   async getRecipientsPreview(
     filter: OrganizationFilter,
-    previewLimit = 10
-  ): Promise<{ recipients: Recipient[]; totalCount: number }> {
-    return this.getRecipientsByFilter(filter, previewLimit, 0);
+    limit: number = 500
+  ): Promise<{ recipients: Recipient[], totalCount: number }> {
+    console.log('[RecipientService] Getting recipients preview with filter:', JSON.stringify(filter, null, 2));
+    
+    try {
+      // Initialize Supabase client
+      const cookieStore = await cookies();
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            get(name) {
+              return cookieStore.get(name)?.value;
+            },
+          },
+        }
+      );
+      
+      // Start building the query
+      let query = supabase
+        .from('user_profiles')
+        .select('*', { count: 'exact' });
+      
+      // Apply filters
+      query = this.applyFilters(query, filter);
+      
+      // First get the total count
+      let countQuery = supabase
+        .from('user_profiles')
+        .select('*', { count: 'exact', head: true });
+      
+      // Apply the same filters to the count query
+      countQuery = this.applyFilters(countQuery, filter);
+      
+      // Get the count
+      const { count: totalCount, error: countError } = await countQuery;
+      
+      if (countError) {
+        console.error('[RecipientService] Error counting recipients:', countError);
+        throw new Error(`Failed to count recipients: ${countError.message}`);
+      }
+      
+      console.log(`[RecipientService] Total count before pagination: ${totalCount}`);
+      
+      // Now get the actual recipients with limit
+      const { data, error } = await query
+        .limit(limit)
+        .order('last_name', { ascending: true });
+      
+      if (error) {
+        console.error('[RecipientService] Error fetching recipients:', error);
+        throw new Error(`Failed to fetch recipients: ${error.message}`);
+      }
+      
+      // Map the data to the Recipient type
+      const recipients = (data || []).map(profile => ({
+        id: profile.id,
+        firstName: profile.first_name,
+        lastName: profile.last_name,
+        name: `${profile.first_name} ${profile.last_name}`,
+        email: profile.email,
+        phone: profile.phone || '',
+        roleType: profile.role_type || '',
+        team: profile.team || undefined,
+        area: profile.area || undefined,
+        region: profile.region || undefined,
+        optedOut: false, // TODO: Implement opt-out functionality
+        avatarUrl: profile.profile_pic_url || undefined
+      }));
+      
+      console.log(`[RecipientService] Returning ${recipients.length} recipients out of ${totalCount} total`);
+      
+      return {
+        recipients,
+        totalCount: totalCount || 0
+      };
+    } catch (error) {
+      console.error('[RecipientService] Error in getRecipientsPreview:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Get the count of recipients based on filter criteria
+   */
+  async getRecipientCount(filter: OrganizationFilter): Promise<number> {
+    console.log('[RecipientService] Getting recipient count with filter:', JSON.stringify(filter, null, 2));
+    
+    try {
+      // Initialize Supabase client
+      const cookieStore = await cookies();
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            get(name) {
+              return cookieStore.get(name)?.value;
+            },
+          },
+        }
+      );
+      
+      // Start building the query
+      let query = supabase
+        .from('user_profiles')
+        .select('*', { count: 'exact', head: true });
+      
+      // Apply filters
+      query = this.applyFilters(query, filter);
+      
+      // Get count
+      const { count, error } = await query;
+      
+      if (error) {
+        console.error('[RecipientService] Error counting recipients:', error);
+        throw new Error(`Failed to count recipients: ${error.message}`);
+      }
+      
+      console.log(`[RecipientService] Total count: ${count}`);
+      
+      return count || 0;
+    } catch (error) {
+      console.error('[RecipientService] Error in getRecipientCount:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Apply filters to a Supabase query
+   * @private
+   */
+  private applyFilters(query: any, filter: OrganizationFilter): any {
+    console.log('[RecipientService] Applying filters:', JSON.stringify(filter, null, 2));
+    
+    // Apply role type filter - handle both legacy and new format
+    if (Array.isArray(filter.roleTypes) && filter.roleTypes.length > 0) {
+      // Check if "all" is selected (all role types)
+      const includesAll = filter.roleTypes.includes("all");
+      if (!includesAll) {
+        query = query.in('role_type', filter.roleTypes);
+        console.log(`[RecipientService] Applied role_type filter: ${filter.roleTypes.join(', ')}`);
+      } else {
+        console.log('[RecipientService] All role types selected, not applying role_type filter');
+      }
+    } else if (filter.roleType) {
+      // Handle legacy single value filter
+      if (filter.roleType !== "all") {
+        query = query.eq('role_type', filter.roleType);
+        console.log(`[RecipientService] Applied legacy role_type filter: ${filter.roleType}`);
+      }
+    }
+    
+    // Apply team filter - handle both legacy and new format
+    if (Array.isArray(filter.teams) && filter.teams.length > 0) {
+      // Check if "all" is selected (all teams)
+      const includesAll = filter.teams.includes("all");
+      if (!includesAll) {
+        query = query.in('team', filter.teams);
+        console.log(`[RecipientService] Applied team filter: ${filter.teams.join(', ')}`);
+      } else {
+        console.log('[RecipientService] All teams selected, not applying team filter');
+      }
+    } else if (filter.team) {
+      // Handle legacy single value filter
+      if (filter.team !== "all") {
+        query = query.eq('team', filter.team);
+        console.log(`[RecipientService] Applied legacy team filter: ${filter.team}`);
+      }
+    }
+    
+    // Apply area filter - handle both legacy and new format
+    if (Array.isArray(filter.areas) && filter.areas.length > 0) {
+      // Check if "all" is selected (all areas)
+      const includesAll = filter.areas.includes("all");
+      if (!includesAll) {
+        query = query.in('area', filter.areas);
+        console.log(`[RecipientService] Applied area filter: ${filter.areas.join(', ')}`);
+      } else {
+        console.log('[RecipientService] All areas selected, not applying area filter');
+      }
+    } else if (filter.area) {
+      // Handle legacy single value filter
+      if (filter.area !== "all") {
+        query = query.eq('area', filter.area);
+        console.log(`[RecipientService] Applied legacy area filter: ${filter.area}`);
+      }
+    }
+    
+    // Apply region filter - handle both legacy and new format
+    if (Array.isArray(filter.regions) && filter.regions.length > 0) {
+      // Check if "all" is selected (all regions)
+      const includesAll = filter.regions.includes("all");
+      if (!includesAll) {
+        query = query.in('region', filter.regions);
+        console.log(`[RecipientService] Applied region filter: ${filter.regions.join(', ')}`);
+      } else {
+        console.log('[RecipientService] All regions selected, not applying region filter');
+      }
+    } else if (filter.region) {
+      // Handle legacy single value filter
+      if (filter.region !== "all") {
+        query = query.eq('region', filter.region);
+        console.log(`[RecipientService] Applied legacy region filter: ${filter.region}`);
+      }
+    }
+    
+    // Only include profiles with a phone number
+    query = query.not('phone', 'is', null);
+    console.log('[RecipientService] Applied phone not null filter');
+    
+    return query;
   }
   
   /**
@@ -108,7 +314,7 @@ export class RecipientService {
    */
   async hasUserOptedOut(userId: string): Promise<boolean> {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await createClient()
         .from('user_message_preferences')
         .select('opted_out')
         .eq('user_id', userId)
@@ -153,24 +359,11 @@ export class RecipientService {
   }
   
   /**
-   * Gets a count of recipients matching the filter criteria
-   */
-  async getRecipientCount(filter: OrganizationFilter): Promise<number> {
-    try {
-      const { totalCount } = await this.getRecipientsByFilter(filter, 1, 0);
-      return totalCount;
-    } catch (error) {
-      console.error('Error getting recipient count:', error);
-      return 0;
-    }
-  }
-  
-  /**
    * Gets a single recipient by ID
    */
   async getRecipientById(userId: string): Promise<Recipient | null> {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await createClient()
         .from('user_profiles')
         .select('*')
         .eq('id', userId)
@@ -200,7 +393,7 @@ export class RecipientService {
     }
     
     try {
-      const { data, error } = await supabase
+      const { data, error } = await createClient()
         .from('user_profiles')
         .select('*')
         .in('id', userIds);
@@ -226,7 +419,7 @@ export class RecipientService {
   }> {
     try {
       // Get all opted-out users
-      const { data: optedOutUsers, error: optedOutError } = await supabase
+      const { data: optedOutUsers, error: optedOutError } = await createClient()
         .from('user_message_preferences')
         .select('user_id')
         .eq('opted_out', true);

@@ -55,13 +55,27 @@ interface RecipientPreviewProps {
 
 // Fetch recipients preview based on filter
 const fetchRecipientsPreview = async (filter: RecipientFilter, page: number, limit: number): Promise<RecipientsPreviewResponse> => {
+  // Convert the filter to the format expected by the API
+  const apiFilter = {
+    // Include both formats for backward compatibility
+    roleType: filter.roleTypes && filter.roleTypes.length === 1 ? filter.roleTypes[0] : null,
+    team: filter.teams && filter.teams.length === 1 ? filter.teams[0] : null,
+    area: filter.areas && filter.areas.length === 1 ? filter.areas[0] : null,
+    region: filter.regions && filter.regions.length === 1 ? filter.regions[0] : null,
+    // New multi-select format
+    roleTypes: filter.roleTypes,
+    teams: filter.teams,
+    areas: filter.areas,
+    regions: filter.regions
+  };
+
   const response = await fetch('/api/messaging/recipients/preview', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      filter,
+      filter: apiFilter,
       limit,
       offset: (page - 1) * limit
     }),
@@ -76,12 +90,26 @@ const fetchRecipientsPreview = async (filter: RecipientFilter, page: number, lim
 
 // Fetch total count of recipients matching the filter
 const fetchRecipientsCount = async (filter: RecipientFilter): Promise<number> => {
+  // Convert the filter to the format expected by the API
+  const apiFilter = {
+    // Include both formats for backward compatibility
+    roleType: filter.roleTypes && filter.roleTypes.length === 1 ? filter.roleTypes[0] : null,
+    team: filter.teams && filter.teams.length === 1 ? filter.teams[0] : null,
+    area: filter.areas && filter.areas.length === 1 ? filter.areas[0] : null,
+    region: filter.regions && filter.regions.length === 1 ? filter.regions[0] : null,
+    // New multi-select format
+    roleTypes: filter.roleTypes,
+    teams: filter.teams,
+    areas: filter.areas,
+    regions: filter.regions
+  };
+
   const response = await fetch('/api/messaging/recipients/count', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ filter }),
+    body: JSON.stringify({ filter: apiFilter }),
   });
   
   if (!response.ok) {

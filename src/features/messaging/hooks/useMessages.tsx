@@ -5,13 +5,13 @@ import {
   useQuery, 
   useMutation, 
   useQueryClient, 
-  UseQueryResult 
+  
 } from '@tanstack/react-query';
 import { messageService } from '../services/message-service';
 import { 
   MessageWithDetails, 
   MessageStatus, 
-  Recipient 
+  
 } from '../types';
 import { useAuth } from '@/features/auth/context/auth-context';
 

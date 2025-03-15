@@ -9,9 +9,9 @@ import { ErrorSeverity, ErrorSource } from '@/lib/types/errors';
 import { OrganizationFilter } from '@/features/messaging/types';
 
 /**
- * Schema for recipient preview request
+ * Schema for recipient count request
  */
-const recipientPreviewSchema = z.object({
+const recipientCountSchema = z.object({
   filter: z.object({
     // Support both old and new formats
     roleType: z.string().nullable().optional(),
@@ -23,13 +23,11 @@ const recipientPreviewSchema = z.object({
     teams: z.array(z.string()).optional(),
     areas: z.array(z.string()).optional(),
     regions: z.array(z.string()).optional()
-  }),
-  limit: z.number().min(1).max(500).optional().default(100),
-  offset: z.number().min(0).optional().default(0)
+  })
 });
 
 /**
- * POST handler for previewing recipients based on filter criteria
+ * POST handler for counting recipients based on filter criteria
  * 
  * Request format:
  * {
@@ -44,16 +42,13 @@ const recipientPreviewSchema = z.object({
  *     teams?: string[],
  *     areas?: string[],
  *     regions?: string[]
- *   },
- *   limit?: number, // Optional, default: 10, max: 100
- *   offset?: number // Optional, default: 0
+ *   }
  * }
  * 
  * Response format:
  * {
  *   success: boolean,
- *   recipients?: Recipient[],
- *   totalCount?: number,
+ *   count?: number,
  *   error?: string
  * }
  */
@@ -96,7 +91,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user has permission to send messages (which implies they can preview recipients)
+    // Check if user has permission to send messages (which implies they can count recipients)
     const userPermissions = {
       roleType: profile.role_type || 'Setter',
       role: profile.role || '',
@@ -108,7 +103,7 @@ export async function POST(request: NextRequest) {
     const hasPermission = checkPermission(userPermissions, 'manage_users');
     if (!hasPermission) {
       await ErrorLogger.log(
-        new Error('Unauthorized attempt to preview message recipients'),
+        new Error('Unauthorized attempt to count message recipients'),
         {
           severity: ErrorSeverity.MEDIUM,
           source: ErrorSource.SERVER,
@@ -128,12 +123,9 @@ export async function POST(request: NextRequest) {
 
     // Parse and validate request body
     const body = await request.json();
-    console.log('[API] Recipient preview request body:', JSON.stringify(body, null, 2));
-    
-    const validationResult = recipientPreviewSchema.safeParse(body);
+    const validationResult = recipientCountSchema.safeParse(body);
     
     if (!validationResult.success) {
-      console.error('[API] Validation error:', validationResult.error.format());
       return NextResponse.json(
         { 
           success: false, 
@@ -144,36 +136,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { filter, limit } = validationResult.data;
-    console.log('[API] Validated filter:', JSON.stringify(filter, null, 2));
+    const { filter } = validationResult.data;
 
     // Convert filter to the format expected by the recipient service
-    // We need to handle multi-select filters properly
+    // Prioritize the new array format if provided
     const normalizedFilter: OrganizationFilter = {
-      roleTypes: Array.isArray(filter.roleTypes) ? filter.roleTypes : [],
-      teams: Array.isArray(filter.teams) ? filter.teams : [],
-      areas: Array.isArray(filter.areas) ? filter.areas : [],
-      regions: Array.isArray(filter.regions) ? filter.regions : []
+      roleType: filter.roleTypes && filter.roleTypes.length > 0 
+        ? filter.roleTypes[0] // Use first item if array provided
+        : filter.roleType,
+      team: filter.teams && filter.teams.length > 0 
+        ? filter.teams[0] 
+        : filter.team,
+      area: filter.areas && filter.areas.length > 0 
+        ? filter.areas[0] 
+        : filter.area,
+      region: filter.regions && filter.regions.length > 0 
+        ? filter.regions[0] 
+        : filter.region
     };
 
-    // Add legacy single-value filters if they exist and the corresponding array is empty
-    if (filter.roleType && normalizedFilter.roleTypes.length === 0) {
-      normalizedFilter.roleTypes = [filter.roleType];
-    }
-    if (filter.team && normalizedFilter.teams.length === 0) {
-      normalizedFilter.teams = [filter.team];
-    }
-    if (filter.area && normalizedFilter.areas.length === 0) {
-      normalizedFilter.areas = [filter.area];
-    }
-    if (filter.region && normalizedFilter.regions.length === 0) {
-      normalizedFilter.regions = [filter.region];
-    }
-
-    console.log('[API] Normalized filter:', JSON.stringify(normalizedFilter, null, 2));
-
     // Apply additional permission-based filtering based on user's role
-    // For example, managers might only be able to message their own team
     const effectiveFilter: OrganizationFilter = { ...normalizedFilter };
     
     // If user is not an admin or executive, restrict to their own team/area/region
@@ -181,39 +163,30 @@ export async function POST(request: NextRequest) {
       if (userPermissions.roleType === 'Manager') {
         // Managers can message across teams but only in their area
         if (userPermissions.area) {
-          effectiveFilter.areas = [userPermissions.area];
+          effectiveFilter.area = userPermissions.area;
         }
       } else {
         // Other roles can only message within their team
         if (userPermissions.team) {
-          effectiveFilter.teams = [userPermissions.team];
+          effectiveFilter.team = userPermissions.team;
         }
       }
     }
 
-    console.log('[API] Effective filter after permissions:', JSON.stringify(effectiveFilter, null, 2));
-    console.log('[API] User permissions:', JSON.stringify(userPermissions, null, 2));
-
-    // Get preview of recipients based on filter
-    const { recipients, totalCount } = await recipientService.getRecipientsPreview(
-      effectiveFilter,
-      limit
-    );
-
-    console.log(`[API] Found ${recipients.length} recipients out of ${totalCount} total`);
+    // Get count of recipients based on filter
+    const count = await recipientService.getRecipientCount(effectiveFilter);
 
     return NextResponse.json({
       success: true,
-      recipients,
-      totalCount
+      count
     });
   } catch (error) {
-    console.error('Error previewing recipients:', error);
+    console.error('Error counting recipients:', error);
     
     await ErrorLogger.log(error, {
       severity: ErrorSeverity.MEDIUM,
       source: ErrorSource.SERVER,
-      context: { route: '/api/messaging/recipients/preview' }
+      context: { route: '/api/messaging/recipients/count' }
     });
     
     return NextResponse.json(

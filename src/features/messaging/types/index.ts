@@ -24,10 +24,16 @@ export interface TemplateVariable {
 
 // Organization filter criteria
 export interface OrganizationFilter {
+  // Legacy format (single values)
   roleType?: string | null;
   team?: string | null;
   area?: string | null;
   region?: string | null;
+  // New format (arrays)
+  roleTypes?: string[];
+  teams?: string[];
+  areas?: string[];
+  regions?: string[];
 }
 
 // Recipient interface

@@ -15,7 +15,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -29,7 +28,6 @@ import {
   Variable, 
   User, 
   Building, 
-  Calendar, 
   Plus, 
   X, 
   Edit, 

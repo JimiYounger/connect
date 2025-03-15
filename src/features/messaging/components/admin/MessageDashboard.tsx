@@ -31,6 +31,7 @@ import { MessageComposer } from '../../components/MessageComposer';
 import { SegmentCounter } from '../../components/SegmentCounter';
 import { calculateMessageSegments } from '../../services/twilio-service';
 import { Recipient } from '../../types';
+import { useToast } from '@/hooks/use-toast';
 
 // Fetch unread message count
 const fetchUnreadCount = async (): Promise<number> => {
@@ -45,33 +46,66 @@ const fetchUnreadCount = async (): Promise<number> => {
 };
 
 // Fetch recipients based on filter
-const fetchRecipients = async (filter: RecipientFilter): Promise<Recipient[]> => {
-  const queryParams = new URLSearchParams();
+const fetchRecipients = async (filter: RecipientFilter): Promise<{ recipients: Recipient[], totalCount: number }> => {
+  console.log('[MessageDashboard] Fetching recipients with filter:', JSON.stringify(filter, null, 2));
   
-  if (filter.roleType) {
-    queryParams.append('roleType', filter.roleType);
+  // Check if any filters are applied
+  const hasFilters = filter.roleTypes.length > 0 || 
+                     filter.teams.length > 0 || 
+                     filter.areas.length > 0 || 
+                     filter.regions.length > 0;
+  
+  // If no filters are applied, return an empty array to prevent fetching all users
+  if (!hasFilters) {
+    console.log('[MessageDashboard] No filters applied, returning empty array');
+    return { recipients: [], totalCount: 0 };
   }
   
-  if (filter.team) {
-    queryParams.append('team', filter.team);
+  try {
+    // Create a simple filter object with just the arrays
+    const apiFilter = {
+      roleTypes: filter.roleTypes || [],
+      teams: filter.teams || [],
+      areas: filter.areas || [],
+      regions: filter.regions || []
+    };
+
+    console.log('[MessageDashboard] API filter:', JSON.stringify(apiFilter, null, 2));
+
+    // Use POST request with JSON body
+    const response = await fetch('/api/messaging/recipients/preview', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        filter: apiFilter,
+        limit: 100 // Use a reasonable limit
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch (_e) {
+        errorData = { error: errorText || 'Failed to fetch recipients' };
+      }
+      console.error('[MessageDashboard] Error fetching recipients:', errorData);
+      throw new Error(errorData.error || 'Failed to fetch recipients');
+    }
+    
+    const data = await response.json();
+    console.log(`[MessageDashboard] Received ${data.recipients?.length || 0} recipients out of ${data.totalCount || 0} total`);
+    return { 
+      recipients: data.recipients || [], 
+      totalCount: data.totalCount || 0 
+    };
+  } catch (error) {
+    console.error('[MessageDashboard] Error in fetchRecipients:', error);
+    throw error;
   }
-  
-  if (filter.area) {
-    queryParams.append('area', filter.area);
-  }
-  
-  if (filter.region) {
-    queryParams.append('region', filter.region);
-  }
-  
-  const response = await fetch(`/api/messaging/recipients?${queryParams.toString()}`);
-  
-  if (!response.ok) {
-    throw new Error('Failed to fetch recipients');
-  }
-  
-  const data = await response.json();
-  return data.recipients || [];
 };
 
 export function MessageDashboard() {
@@ -79,11 +113,17 @@ export function MessageDashboard() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [bulkMessage, setBulkMessage] = useState('');
   const [selectedRecipients, setSelectedRecipients] = useState<Recipient[]>([]);
-  const [recipientFilter, setRecipientFilter] = useState<RecipientFilter>({});
-  const [showRecipientSelector, setShowRecipientSelector] = useState(false);
+  const [recipientFilter, setRecipientFilter] = useState<RecipientFilter>({
+    roleTypes: ['Admin'], // Default to Admin role type for testing
+    teams: [],
+    areas: [],
+    regions: []
+  });
+  const [showRecipientSelector, setShowRecipientSelector] = useState(true); // Show selector by default for testing
   const [sendingBulkMessage, setSendingBulkMessage] = useState(false);
   const [bulkMessageError, setBulkMessageError] = useState<string | undefined>(undefined);
   const [bulkMessageSuccess, setBulkMessageSuccess] = useState<string | null>(null);
+  const { toast } = useToast();
   
   // Calculate message segments for bulk message
   const segmentInfo = calculateMessageSegments(bulkMessage);
@@ -100,27 +140,82 @@ export function MessageDashboard() {
   
   // Fetch recipients based on filter
   const {
-    data: recipients = [],
+    data: recipientsData = { recipients: [], totalCount: 0 },
     isLoading: isLoadingRecipients,
-    refetch: refetchRecipients
+    refetch: refetchRecipients,
+    isError: isRecipientsError,
+    error: recipientsError
   } = useQuery({
     queryKey: ['recipients', recipientFilter],
     queryFn: () => fetchRecipients(recipientFilter),
     enabled: false, // Don't fetch automatically, only when preview is requested
   });
   
-  // Handle preview request
-  const handlePreviewRequest = () => {
-    refetchRecipients();
-    setSelectedRecipients(recipients);
-  };
+  // Extract recipients and totalCount from the data
+  const recipients = recipientsData.recipients;
+  const totalRecipientCount = recipientsData.totalCount;
+  
+  // Automatically trigger preview request when component mounts
+  useEffect(() => {
+    console.log('[MessageDashboard] Component mounted');
+    // We're disabling the automatic fetch on mount to prevent potential issues
+    // If you want to enable it later, uncomment the code below
+    /*
+    // Set a timeout to allow the component to fully render
+    const timer = setTimeout(() => {
+      refetchRecipients();
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+    */
+  }, []); // Empty dependency array means this only runs once on mount
   
   // Update selected recipients when recipients data changes
   useEffect(() => {
-    if (recipients.length > 0) {
-      setSelectedRecipients(recipients);
+    console.log('[MessageDashboard] Recipients data changed:', recipients.length);
+    
+    if (isRecipientsError) {
+      console.error('[MessageDashboard] Error fetching recipients:', recipientsError);
+      toast({
+        variant: "destructive",
+        title: "Error fetching recipients",
+        description: recipientsError instanceof Error ? recipientsError.message : "An unexpected error occurred",
+      });
+      return;
     }
-  }, [recipients]);
+    
+    // Only update if we have recipients
+    if (recipients.length > 0) {
+      // Check if the recipients are actually different before updating state
+      const currentIds = selectedRecipients.map(r => r.id).sort().join(',');
+      const newIds = recipients.map(r => r.id).sort().join(',');
+      
+      // Only update if the IDs are different
+      if (currentIds !== newIds) {
+        setSelectedRecipients(recipients);
+        console.log('[MessageDashboard] Selected recipients updated:', recipients.length);
+        
+        // Show toast with total count information
+        const countMessage = totalRecipientCount > recipients.length 
+          ? `Found ${recipients.length} recipients (showing ${recipients.length} of ${totalRecipientCount} total)`
+          : `Found ${recipients.length} recipients matching your filters`;
+          
+        toast({
+          title: "Recipients found",
+          description: countMessage,
+        });
+      }
+    } else if (recipients.length === 0 && selectedRecipients.length > 0) {
+      // Only clear selected recipients if we had some before
+      setSelectedRecipients([]);
+      console.log('[MessageDashboard] No recipients found for the current filter');
+      toast({
+        variant: "default",
+        title: "No recipients found",
+        description: "No recipients match your current filters. Try adjusting your criteria.",
+      });
+    }
+  }, [recipients, isRecipientsError, recipientsError, toast, selectedRecipients, totalRecipientCount]);
   
   // Handle sending bulk message
   const handleSendBulkMessage = async () => {
@@ -162,7 +257,12 @@ export function MessageDashboard() {
       // Reset form
       setBulkMessage('');
       setSelectedRecipients([]);
-      setRecipientFilter({});
+      setRecipientFilter({
+        roleTypes: ['Admin'],
+        teams: [],
+        areas: [],
+        regions: []
+      });
       setBulkMessageSuccess(`Message sent to ${data.successCount || 0} recipients`);
       
       // Refetch unread count
@@ -376,9 +476,38 @@ export function MessageDashboard() {
                     <RecipientSelector
                       filter={recipientFilter}
                       onChange={setRecipientFilter}
-                      onPreviewRequest={handlePreviewRequest}
+                      onPreviewRequest={() => refetchRecipients()}
                       disabled={isLoadingRecipients}
                     />
+                    
+                    {/* Show loading state when fetching recipients */}
+                    {isLoadingRecipients && (
+                      <div className="mt-4 flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900 mr-2" />
+                        <span>Fetching recipients...</span>
+                      </div>
+                    )}
+                    
+                    {/* Show recipient count when available */}
+                    {!isLoadingRecipients && recipients.length > 0 && (
+                      <Alert className="mt-4">
+                        <AlertTitle>Recipients Found</AlertTitle>
+                        <AlertDescription>
+                          Found {recipients.length} recipients matching your filters
+                          {totalRecipientCount > recipients.length && ` (showing ${recipients.length} of ${totalRecipientCount} total)`}.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                    
+                    {/* Show no recipients message when none found */}
+                    {!isLoadingRecipients && recipients.length === 0 && recipientFilter.roleTypes.length + recipientFilter.teams.length + recipientFilter.areas.length + recipientFilter.regions.length > 0 && (
+                      <Alert className="mt-4" variant="destructive">
+                        <AlertTitle>No Recipients Found</AlertTitle>
+                        <AlertDescription>
+                          No recipients match your current filters. Try adjusting your criteria.
+                        </AlertDescription>
+                      </Alert>
+                    )}
                   </div>
                 )}
               </div>
@@ -421,7 +550,12 @@ export function MessageDashboard() {
                     onClick={() => {
                       setBulkMessage('');
                       setSelectedRecipients([]);
-                      setRecipientFilter({});
+                      setRecipientFilter({
+                        roleTypes: ['Admin'],
+                        teams: [],
+                        areas: [],
+                        regions: []
+                      });
                       setBulkMessageError(undefined);
                       setBulkMessageSuccess(null);
                     }}
