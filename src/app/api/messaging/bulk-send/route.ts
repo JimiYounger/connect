@@ -6,6 +6,7 @@ import { checkPermission } from '@/features/permissions/utils/checkPermissions';
 import { z } from 'zod';
 import { ErrorLogger } from '@/lib/logging/error-logger';
 import { ErrorSeverity, ErrorSource } from '@/lib/types/errors';
+import { DEFAULT_ADMIN_ID } from '@/features/messaging/constants';
 
 /**
  * Schema for bulk message requests
@@ -212,7 +213,7 @@ export async function POST(request: NextRequest) {
     const result = await messageService.sendBulkMessage({
       content,
       recipients: transformedRecipients,
-      senderId: profile.id,
+      senderId: DEFAULT_ADMIN_ID,
       templateVariables
     });
 

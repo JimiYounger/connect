@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { ErrorLogger } from '@/lib/logging/error-logger';
 import { ErrorSeverity, ErrorSource } from '@/lib/types/errors';
 import { Recipient } from '@/features/messaging/types';
+import { DEFAULT_ADMIN_ID } from '@/features/messaging/constants';
 
 /**
  * Schema for individual message requests
@@ -177,7 +178,7 @@ export async function POST(request: NextRequest) {
       const result = await messageService.sendMessage(
         individualPayload.content,
         actualRecipientId,
-        profile.id,
+        DEFAULT_ADMIN_ID,
         individualPayload.templateVariables
       );
 
@@ -198,7 +199,7 @@ export async function POST(request: NextRequest) {
         const result = await messageService.sendMessage(
           bulkPayload.content,
           profile.id,
-          profile.id,
+          DEFAULT_ADMIN_ID,
           bulkPayload.templateVariables
         );
 
@@ -237,7 +238,7 @@ export async function POST(request: NextRequest) {
       const result = await messageService.sendBulkMessage({
         content: bulkPayload.content,
         recipients,
-        senderId: profile.id,
+        senderId: DEFAULT_ADMIN_ID,
         templateVariables: bulkPayload.templateVariables
       });
 
