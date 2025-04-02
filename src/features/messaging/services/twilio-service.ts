@@ -183,7 +183,8 @@ export class TwilioService {
       formData.append('From', request.from || this.config.phoneNumber);
       formData.append('Body', request.body);
       
-      if (request.statusCallback) {
+      // Only add statusCallback if not in development environment
+      if (request.statusCallback && process.env.NODE_ENV !== 'development') {
         formData.append('StatusCallback', request.statusCallback);
       }
       

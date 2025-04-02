@@ -110,33 +110,8 @@ export class MessageService {
       // Create message record in database
       const messageId = uuidv4();
       
-      // First, check if an RPC function exists for message insertion
+      // Standard insert approach - removed RPC call
       try {
-        const { error: rpcError } = await this.supabase.rpc('insert_message', {
-          p_id: messageId,
-          p_sender_id: senderId,
-          p_recipient_id: recipientId,
-          p_content: processedContent,
-          p_bulk_message_id: bulkMessageId,
-          p_status: 'pending',
-          p_is_outbound: true
-        });
-        
-        if (rpcError) {
-          console.error('[MessageService] RPC Error:', rpcError);
-          // Fall through to the next approach
-        } else {
-          // RPC succeeded
-          return { success: true, messageId };
-        }
-      } catch (rpcError) {
-        console.error('[MessageService] RPC Error:', rpcError);
-        // Fall through to the next approach
-      }
-      
-      // Try inserting using the standard approach
-      try {
-        // Standard insert approach
         const { error: insertError } = await this.supabase
           .from('messages')
           .insert({
@@ -175,10 +150,17 @@ export class MessageService {
         console.log(`[MessageService] Sending message via Twilio to ${recipient.phone} (${recipient.first_name} ${recipient.last_name})`);
         
         try {
+          // Get the API URL based on environment
+          const apiUrl = process.env.NODE_ENV === 'development' 
+            ? null // No callback in development
+            : process.env.NEXT_PUBLIC_API_URL || '';
+            
+          const statusCallback = apiUrl ? `${apiUrl}/api/webhooks/twilio/status` : undefined;
+          
           const twilioResponse = await twilioService.sendSms({
             to: recipient.phone,
             body: processedContent,
-            statusCallback: `${process.env.NEXT_PUBLIC_API_URL}/api/webhooks/twilio/status`
+            statusCallback
           });
           
           console.log(`[MessageService] Twilio response:`, {
