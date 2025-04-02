@@ -31,6 +31,11 @@ interface TwilioApiResponse {
   status: string;
   errorCode?: string;
   errorMessage?: string;
+  code?: number;
+  message?: string;
+  moreInfo?: string;
+  detail?: string;
+  rawResponse?: any;
 }
 
 /**
@@ -128,10 +133,12 @@ export const processTemplateVariables = (
 export class TwilioService {
   private config: TwilioConfig;
   private baseUrl: string;
+  private debugMode: boolean;
   
-  constructor(config: TwilioConfig) {
+  constructor(config: TwilioConfig, debugMode = false) {
     this.config = config;
     this.baseUrl = `https://api.twilio.com/2010-04-01/Accounts/${config.accountSid}/Messages.json`;
+    this.debugMode = debugMode;
   }
   
   /**
@@ -139,13 +146,35 @@ export class TwilioService {
    */
   async sendSms(request: SendSmsRequest): Promise<TwilioMessageResponse> {
     try {
+      // Log request in debug mode
+      if (this.debugMode) {
+        console.log('[Twilio] Sending SMS request:', {
+          to: request.to,
+          from: request.from || this.config.phoneNumber,
+          bodyLength: request.body.length,
+          statusCallback: request.statusCallback,
+          // Mask auth credentials for security
+          accountSid: this.config.accountSid ? `${this.config.accountSid.substring(0, 4)}...` : undefined
+        });
+      }
+      
       // Validate phone number format
       const formattedTo = this.formatPhoneNumber(request.to);
+      
+      // Log the formatted phone number
+      if (this.debugMode) {
+        console.log('[Twilio] Formatted phone number:', {
+          original: request.to,
+          formatted: formattedTo
+        });
+      }
       
       // Check message length
       const segmentInfo = calculateMessageSegments(request.body);
       if (segmentInfo.isOverLimit) {
-        throw new Error(`Message exceeds maximum length of 1600 characters (${segmentInfo.characterCount} provided)`);
+        const error = `Message exceeds maximum length of 1600 characters (${segmentInfo.characterCount} provided)`;
+        console.error('[Twilio] Message length error:', error);
+        throw new Error(error);
       }
       
       // Prepare request body
@@ -168,18 +197,85 @@ export class TwilioService {
         body: formData
       });
       
+      // Get response text for detailed logging
+      const responseText = await response.text();
+      
+      // Log raw response in debug mode
+      if (this.debugMode) {
+        console.log('[Twilio] Response status:', response.status);
+        console.log('[Twilio] Response headers:', Object.fromEntries([...response.headers.entries()]));
+        console.log('[Twilio] Response body:', responseText);
+      }
+      
       // Parse response
-      const data = await response.json() as TwilioApiResponse;
+      let data: TwilioApiResponse;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('[Twilio] Failed to parse JSON response:', parseError);
+        console.error('[Twilio] Response text:', responseText);
+        return {
+          sid: '',
+          status: 'failed',
+          error: {
+            code: 'INVALID_RESPONSE',
+            message: `Failed to parse Twilio response: ${responseText.substring(0, 100)}${responseText.length > 100 ? '...' : ''}`
+          }
+        };
+      }
       
       if (!response.ok) {
+        const errorDetails = {
+          statusCode: response.status,
+          twilioErrorCode: data.errorCode || data.code?.toString(),
+          twilioErrorMessage: data.errorMessage || data.message || data.detail,
+          moreInfo: data.moreInfo,
+          url: this.baseUrl,
+          recipient: formattedTo,
+          // Include full response in debug mode
+          fullResponse: this.debugMode ? data : undefined
+        };
+        
+        console.error('[Twilio] API error:', errorDetails);
+        
+        // Check for common errors and provide more helpful messages
+        let errorMessage = data.errorMessage || data.message || 'Unknown Twilio API error';
+        const errorCode = data.errorCode || data.code?.toString() || response.status.toString();
+        
+        if (errorCode === '21608') {
+          errorMessage = 'The phone number is unverified. In trial mode, you can only send messages to verified numbers.';
+        } else if (errorCode === '21610') {
+          errorMessage = 'This Twilio account does not have permission to send messages to this region.';
+        } else if (errorCode === '21611') {
+          errorMessage = 'This phone number is not a valid mobile number.';
+        } else if (errorCode === '20003') {
+          errorMessage = 'Authentication error. Please check your Twilio account SID and auth token.';
+        } else if (errorCode === '20404') {
+          errorMessage = 'Resource not found. Check that your Twilio phone number is correct.';
+        } else if (errorCode === '20429') {
+          errorMessage = 'Too many requests to the Twilio API. Please try again later.';
+        } else if (response.status === 401) {
+          errorMessage = 'Authentication failed. Check your Twilio credentials.';
+        } else if (response.status === 429) {
+          errorMessage = 'Rate limit exceeded. Your application is making too many requests to Twilio.';
+        }
+        
         return {
           sid: data.sid || '',
           status: 'failed',
           error: {
-            code: data.errorCode || response.status.toString(),
-            message: data.errorMessage || 'Unknown error occurred'
+            code: errorCode,
+            message: errorMessage,
+            details: errorDetails
           }
         };
+      }
+      
+      if (this.debugMode) {
+        console.log('[Twilio] Message sent successfully:', {
+          sid: data.sid,
+          status: data.status
+        });
       }
       
       return {
@@ -187,13 +283,27 @@ export class TwilioService {
         status: data.status
       };
     } catch (error) {
-      console.error('Error sending SMS via Twilio:', error);
+      // Create a detailed error object
+      const errorDetails = {
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        stack: error instanceof Error ? error.stack : undefined,
+        request: {
+          to: request.to,
+          from: request.from || this.config.phoneNumber,
+          bodyLength: request.body.length,
+          statusCallback: request.statusCallback
+        }
+      };
+      
+      console.error('[Twilio] Error sending SMS:', errorDetails);
+      
       return {
         sid: '',
         status: 'failed',
         error: {
           code: 'TWILIO_REQUEST_FAILED',
-          message: error instanceof Error ? error.message : 'Unknown error occurred'
+          message: error instanceof Error ? error.message : 'Unknown error occurred',
+          details: errorDetails
         }
       };
     }
@@ -230,34 +340,115 @@ export class TwilioService {
   /**
    * Creates a configured instance of TwilioService
    */
-  static createFromEnvironment(): TwilioService {
-    const accountSid = process.env.TWILIO_ACCOUNT_SID;
-    const authToken = process.env.TWILIO_AUTH_TOKEN;
-    const phoneNumber = process.env.TWILIO_PHONE_NUMBER;
+  static createFromEnvironment(debugMode = false): TwilioService {
+    // Try both standard and Next.js server env var formats
+    const accountSid = process.env.TWILIO_ACCOUNT_SID || process.env.NEXT_TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN || process.env.NEXT_TWILIO_AUTH_TOKEN;
+    const phoneNumber = process.env.TWILIO_PHONE_NUMBER || process.env.NEXT_TWILIO_PHONE_NUMBER;
+    
+    // Log environment variables (masked) if in debug mode
+    if (debugMode) {
+      console.log('[Twilio] Environment variables:', {
+        accountSid: accountSid ? `${accountSid.substring(0, 4)}...${accountSid.substring(accountSid.length - 4)}` : undefined,
+        authToken: authToken ? '********' : undefined,
+        phoneNumber: phoneNumber,
+        NODE_ENV: process.env.NODE_ENV,
+        envKeys: Object.keys(process.env).filter(key => key.includes('TWILIO'))
+      });
+    }
     
     if (!accountSid || !authToken || !phoneNumber) {
-      throw new Error('Missing required Twilio environment variables');
+      const missingVars = [];
+      if (!accountSid) missingVars.push('TWILIO_ACCOUNT_SID');
+      if (!authToken) missingVars.push('TWILIO_AUTH_TOKEN');
+      if (!phoneNumber) missingVars.push('TWILIO_PHONE_NUMBER');
+      
+      const error = `Missing required Twilio environment variables: ${missingVars.join(', ')}`;
+      console.error('[Twilio] Configuration error:', error);
+      throw new Error(error);
     }
     
     return new TwilioService({
       accountSid,
       authToken,
       phoneNumber
-    });
+    }, debugMode);
+  }
+  
+  /**
+   * Enable or disable debug mode
+   */
+  setDebugMode(enabled: boolean): void {
+    this.debugMode = enabled;
+    console.log(`[Twilio] Debug mode ${enabled ? 'enabled' : 'disabled'}`);
   }
 }
 
 // Export a singleton instance for use throughout the application
-export const twilioService = (() => {
-  // Only create the service on the server side
-  if (typeof window === 'undefined') {
-    try {
-      return TwilioService.createFromEnvironment();
-    } catch (error) {
-      console.error('Failed to initialize Twilio service:', error);
-      // Return null in case of initialization failure
-      return null;
+let twilioServiceInstance: TwilioService | null = null;
+
+// Ensure this code only runs on the server
+if (typeof window === 'undefined') {
+  // Create the service instance with error handling
+  try {
+    // Always enable debug mode
+    twilioServiceInstance = TwilioService.createFromEnvironment(true); // Force debug mode on
+  } catch (error) {
+    console.error('[Twilio] Failed to initialize Twilio service:', error);
+    // In development, provide a mock implementation so the app doesn't crash
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[Twilio] Using mock Twilio service in development mode');
+      
+      // Create a proper mock that matches the TwilioService type
+      const mockService = new TwilioService({
+        accountSid: 'MOCK_SID',
+        authToken: 'MOCK_TOKEN',
+        phoneNumber: 'MOCK_PHONE'
+      }, true);
+      
+      // Override the sendSms method with a mock implementation
+      mockService.sendSms = async (request) => {
+        console.log('[Twilio][MOCK] Would send SMS:', request);
+        return { 
+          sid: 'MOCK_SID_' + Date.now(), 
+          status: 'mock',
+          error: {
+            code: 'MOCK_SERVICE',
+            message: 'This is a mock Twilio service for development. No real messages are sent.',
+            details: { mock: true }
+          }
+        };
+      };
+      
+      twilioServiceInstance = mockService;
     }
   }
-  return null;
-})(); 
+} else {
+  // Client-side, provide a stub that redirects to the API
+  console.log('[Twilio] Creating stub Twilio service for client-side');
+  
+  // Create a stub service that delegates to the API
+  const stubService = new TwilioService({
+    accountSid: 'CLIENT_STUB',
+    authToken: 'CLIENT_STUB',
+    phoneNumber: 'CLIENT_STUB'
+  }, false);
+  
+  // Override with a warning implementation for client-side
+  stubService.sendSms = async () => {
+    console.warn('[Twilio] Client-side SMS sending attempted. Use the messaging API instead.');
+    return {
+      sid: '',
+      status: 'failed',
+      error: {
+        code: 'CLIENT_SIDE_CALL',
+        message: 'SMS sending can only be done via server API routes. Use /api/messaging/send instead.',
+        details: { clientSide: true }
+      }
+    };
+  };
+  
+  twilioServiceInstance = stubService;
+}
+
+export const twilioService = twilioServiceInstance; 

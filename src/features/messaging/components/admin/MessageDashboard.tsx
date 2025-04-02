@@ -235,24 +235,42 @@ export function MessageDashboard() {
       setBulkMessageSuccess(null);
       
       const recipientIds = selectedRecipients.map(recipient => recipient.id);
+      console.log('Selected recipient IDs:', recipientIds);
+      console.log('Selected recipients details:', selectedRecipients);
+      
+      // Use the new bulk-send endpoint with correct payload structure
+      const requestBody = {
+        content: bulkMessage.trim(),
+        recipientIds: recipientIds,
+        templateVariables: {}
+      };
+      
+      console.log('Sending request to /api/messaging/bulk-send:', JSON.stringify(requestBody, null, 2));
       
       const response = await fetch('/api/messaging/bulk-send', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          content: bulkMessage.trim(),
-          recipientIds,
-        }),
+        body: JSON.stringify(requestBody),
       });
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to send bulk message');
+      // Log raw response
+      const responseText = await response.text();
+      console.log('Response status:', response.status);
+      console.log('Response text:', responseText);
+      
+      // Parse the response back to JSON
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (_e) {
+        throw new Error(`Invalid JSON response: ${responseText}`);
       }
       
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send bulk message');
+      }
       
       // Reset form
       setBulkMessage('');
@@ -263,11 +281,26 @@ export function MessageDashboard() {
         areas: [],
         regions: []
       });
-      setBulkMessageSuccess(`Message sent to ${data.successCount || 0} recipients`);
+      
+      // Show success message even with partial success
+      if (data.bulkMessageId) {
+        // We have a valid bulkMessageId, so some messages were processed
+        if (data.error && data.successCount) {
+          // Show partial success message
+          setBulkMessageSuccess(`Message partially sent: ${data.successCount} recipient(s) processed. ${data.error}`);
+        } else {
+          // Show regular success message
+          setBulkMessageSuccess(`Message sent to ${data.successCount || 0} recipient(s)`);
+        }
+      } else {
+        // Something went wrong but response was OK
+        throw new Error(data.error || 'Failed to process bulk message');
+      }
       
       // Refetch unread count
       refetchUnreadCount();
     } catch (error) {
+      console.error('Error sending bulk message:', error);
       setBulkMessageError(error instanceof Error ? error.message : 'Failed to send bulk message');
     } finally {
       setSendingBulkMessage(false);

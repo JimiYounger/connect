@@ -1,4 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase';
+import { SupabaseClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import { 
   MessageStatus, 
@@ -8,18 +9,29 @@ import {
   BulkMessageRow,
   MessageWithDetails
 } from '../types';
-import { Database } from '@/types/supabase';
 import { twilioService, processTemplateVariables } from './twilio-service';
 
-// Initialize Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient<Database>(supabaseUrl, supabaseKey);
+// Add debug logging
+if (typeof window === 'undefined') {
+  console.log('[MessageService] Server-side execution detected');
+}
 
 /**
  * MessageService class for handling message operations
  */
 export class MessageService {
+  private supabase: SupabaseClient;
+  
+  constructor(existingClient?: SupabaseClient) {
+    // Use the provided client or create a new one
+    this.supabase = existingClient || createClient();
+    
+    if (typeof window === 'undefined') {
+      console.log('[MessageService] Using Supabase client', 
+                 existingClient ? '(provided from API route)' : '(created with createClient)');
+    }
+  }
+  
   /**
    * Sends a single message to a recipient
    */
@@ -30,20 +42,42 @@ export class MessageService {
     templateVariables?: Record<string, string>,
     bulkMessageId?: string
   ): Promise<{ success: boolean; messageId: string; error?: string }> {
+    // Early return if this code is running on the client side
+    if (typeof window !== 'undefined') {
+      console.warn('[MessageService] Direct message sending from client-side is not supported.');
+      console.warn('[MessageService] Use the API endpoints (/api/messaging/send or /api/messaging/bulk-send) instead.');
+      return { 
+        success: false, 
+        messageId: '', 
+        error: 'Client-side message sending is not supported. Use the messaging API instead.' 
+      };
+    }
+    
     try {
-      // Get recipient details
-      const { data: recipient, error: recipientError } = await supabase
+      // FIXED QUERY: Get recipient details
+      console.log(`[MessageService] Looking up recipient with ID: ${recipientId}`);
+      const { data: recipientData, error: recipientError } = await this.supabase
         .from('user_profiles')
         .select('*')
-        .eq('id', recipientId)
-        .single();
+        .eq('id', recipientId);
         
-      if (recipientError || !recipient) {
-        throw new Error(`Recipient not found: ${recipientError?.message || 'Unknown error'}`);
+      // Handle cases where no recipient is found or multiple are returned
+      if (recipientError) {
+        console.error(`[MessageService] Database error fetching recipient:`, recipientError);
+        throw new Error(`Database error fetching recipient: ${recipientError.message}`);
       }
       
+      if (!recipientData || recipientData.length === 0) {
+        console.error(`[MessageService] Recipient not found with ID: ${recipientId}`);
+        throw new Error(`Recipient not found with ID: ${recipientId}`);
+      }
+      
+      // Use the first recipient if multiple are returned (shouldn't happen with ID lookup)
+      const recipient = recipientData[0];
+      console.log(`[MessageService] Found recipient: ${recipient.first_name} ${recipient.last_name}`);
+      
       // Check if recipient has opted out
-      const { data: preferences, error: preferencesError } = await supabase
+      const { data: preferences, error: preferencesError } = await this.supabase
         .from('user_message_preferences')
         .select('*')
         .eq('user_id', recipientId)
@@ -75,50 +109,119 @@ export class MessageService {
       
       // Create message record in database
       const messageId = uuidv4();
-      const timestamp = new Date().toISOString();
       
-      const { error: insertError } = await supabase
-        .from('messages')
-        .insert({
-          id: messageId,
-          content: processedContent,
-          sender_id: senderId,
-          recipient_id: recipientId,
-          bulk_message_id: bulkMessageId || null,
-          is_outbound: true,
-          status: MessageStatus.QUEUED,
-          created_at: timestamp,
-          updated_at: timestamp
+      // First, check if an RPC function exists for message insertion
+      try {
+        const { error: rpcError } = await this.supabase.rpc('insert_message', {
+          p_id: messageId,
+          p_sender_id: senderId,
+          p_recipient_id: recipientId,
+          p_content: processedContent,
+          p_bulk_message_id: bulkMessageId,
+          p_status: 'pending',
+          p_is_outbound: true
         });
         
-      if (insertError) {
-        throw new Error(`Failed to create message record: ${insertError.message}`);
+        if (rpcError) {
+          console.error('[MessageService] RPC Error:', rpcError);
+          // Fall through to the next approach
+        } else {
+          // RPC succeeded
+          return { success: true, messageId };
+        }
+      } catch (rpcError) {
+        console.error('[MessageService] RPC Error:', rpcError);
+        // Fall through to the next approach
+      }
+      
+      // Try inserting using the standard approach
+      try {
+        // Standard insert approach
+        const { error: insertError } = await this.supabase
+          .from('messages')
+          .insert({
+            id: messageId,
+            sender_id: senderId,
+            recipient_id: recipientId,
+            content: processedContent,
+            bulk_message_id: bulkMessageId || null,
+            status: 'pending', 
+            is_outbound: true
+          })
+          .select('id')
+          .single();
+        
+        if (insertError) {
+          console.error('[MessageService] Insert Error:', insertError);
+          return {
+            success: false,
+            messageId,
+            error: `Failed to insert message: ${insertError.message}`
+          };
+        }
+        
+        // Success with database insert, now try to send via Twilio
+      } catch (insertError) {
+        console.error('[MessageService] Error during insert:', insertError);
+        return {
+          success: false,
+          messageId,
+          error: insertError instanceof Error ? insertError.message : 'Unknown error'
+        };
       }
       
       // Send message via Twilio (server-side only)
       if (typeof window === 'undefined' && twilioService) {
-        const twilioResponse = await twilioService.sendSms({
-          to: recipient.phone,
-          body: processedContent,
-          statusCallback: `${process.env.NEXT_PUBLIC_API_URL}/api/webhooks/twilio/status`
-        });
+        console.log(`[MessageService] Sending message via Twilio to ${recipient.phone} (${recipient.first_name} ${recipient.last_name})`);
         
-        // Update message with Twilio SID and status
-        await supabase
-          .from('messages')
-          .update({
-            twilio_sid: twilioResponse.sid,
-            status: twilioResponse.error ? MessageStatus.FAILED : MessageStatus.SENDING,
-            error_message: twilioResponse.error?.message || null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', messageId);
+        try {
+          const twilioResponse = await twilioService.sendSms({
+            to: recipient.phone,
+            body: processedContent,
+            statusCallback: `${process.env.NEXT_PUBLIC_API_URL}/api/webhooks/twilio/status`
+          });
           
-        if (twilioResponse.error) {
-          return { 
-            success: false, 
-            messageId, 
-            error: twilioResponse.error.message 
+          console.log(`[MessageService] Twilio response:`, {
+            sid: twilioResponse.sid,
+            status: twilioResponse.status,
+            hasError: !!twilioResponse.error
+          });
+          
+          // Update message with Twilio SID and status
+          await this.supabase
+            .from('messages')
+            .update({
+              twilio_sid: twilioResponse.sid,
+              status: twilioResponse.error ? 'failed' : 'sent',
+              error_message: twilioResponse.error?.message || null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', messageId);
+          
+          if (twilioResponse.error) {
+            return { 
+              success: false, 
+              messageId, 
+              error: twilioResponse.error.message 
+            };
+          }
+        } catch (twilioError) {
+          console.error('[MessageService] Error calling Twilio service:', twilioError);
+          
+          // Update message status to failed
+          await this.supabase
+            .from('messages')
+            .update({
+              status: 'failed',
+              error_message: twilioError instanceof Error ? twilioError.message : 'Unknown Twilio error',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', messageId);
+            
+          return {
+            success: false,
+            messageId,
+            error: twilioError instanceof Error ? twilioError.message : 'Unknown Twilio error'
           };
         }
       }
@@ -139,24 +242,35 @@ export class MessageService {
    */
   async sendBulkMessage(
     messageComposition: MessageComposition
-  ): Promise<{ success: boolean; bulkMessageId: string; error?: string }> {
+  ): Promise<{ success: boolean; bulkMessageId: string; error?: string; successCount: number }> {
+    // Early return if this code is running on the client side
+    if (typeof window !== 'undefined') {
+      console.warn('[MessageService] Direct bulk message sending from client-side is not supported.');
+      console.warn('[MessageService] Use the API endpoint /api/messaging/bulk-send instead.');
+      return { 
+        success: false, 
+        bulkMessageId: '', 
+        error: 'Client-side bulk message sending is not supported. Use the messaging API instead.',
+        successCount: 0
+      };
+    }
+    
     try {
       const { content, templateVariables, recipients, senderId } = messageComposition;
       
       // Create bulk message record
       const bulkMessageId = uuidv4();
-      const timestamp = new Date().toISOString();
       
-      const { error } = await supabase
+      const { error } = await this.supabase
         .from('bulk_messages')
         .insert({
           id: bulkMessageId,
           content,
           sender_id: senderId,
-          template_variables: templateVariables || null,
-          query_parameters: {}, // This would contain the filter criteria
           total_recipients: recipients.length,
-          created_at: timestamp
+          query_parameters: {}, // Required field - can't be null
+          template_variables: templateVariables || null,
+          created_at: new Date().toISOString()
         });
         
       if (error) {
@@ -184,25 +298,28 @@ export class MessageService {
       const failureCount = results.length - successCount;
       
       // Update bulk message with results
-      await supabase
+      await this.supabase
         .from('bulk_messages')
         .update({
-          message_segments: recipients.length,
-          total_recipients: recipients.length
+          total_recipients: recipients.length,
+          success_count: successCount, // Store the success count in the database
+          failure_count: failureCount  // Store the failure count in the database
         })
         .eq('id', bulkMessageId);
       
       return { 
         success: successCount > 0, 
         bulkMessageId,
-        error: failureCount > 0 ? `${failureCount} messages failed to send` : undefined
+        error: failureCount > 0 ? `${failureCount} messages failed to send` : undefined,
+        successCount
       };
     } catch (error) {
       console.error('Error sending bulk message:', error);
       return { 
         success: false, 
         bulkMessageId: '', 
-        error: error instanceof Error ? error.message : 'Unknown error occurred' 
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        successCount: 0
       };
     }
   }
@@ -214,7 +331,7 @@ export class MessageService {
     filter: OrganizationFilter
   ): Promise<Recipient[]> {
     try {
-      let query = supabase
+      let query = this.supabase
         .from('user_profiles')
         .select('*');
       
@@ -239,7 +356,7 @@ export class MessageService {
       query = query.not('phone', 'is', null);
       
       // Exclude opted-out users
-      const { data: optedOutUsers, error: optedOutError } = await supabase
+      const { data: optedOutUsers, error: optedOutError } = await this.supabase
         .from('user_message_preferences')
         .select('user_id')
         .eq('opted_out', true);
@@ -278,14 +395,22 @@ export class MessageService {
    */
   async updateMessageStatus(
     twilioSid: string,
-    status: MessageStatus,
+    status: MessageStatus | string,
     errorMessage?: string
   ): Promise<void> {
     try {
-      const { error } = await supabase
+      // Ensure status is lowercase to match database constraint
+      let formattedStatus: string;
+      if (typeof status === 'string') {
+        formattedStatus = status.toLowerCase();
+      } else {
+        formattedStatus = String(status).toLowerCase();
+      }
+      
+      const { error } = await this.supabase
         .from('messages')
         .update({
-          status,
+          status: formattedStatus,
           error_message: errorMessage,
           updated_at: new Date().toISOString()
         })
@@ -311,7 +436,7 @@ export class MessageService {
   ): Promise<MessageWithDetails[]> {
     try {
       // Get messages between the two users
-      const query = supabase
+      const query = this.supabase
         .from('messages')
         .select(`
           *,
@@ -343,7 +468,7 @@ export class MessageService {
     try {
       // Since the RPC function doesn't exist in the database schema,
       // we'll use a direct query instead
-      const { data, error } = await supabase
+      const { data, error } = await this.supabase
         .from('messages')
         .select(`
           *,
@@ -378,15 +503,13 @@ export class MessageService {
    */
   async markMessageAsRead(messageId: string): Promise<void> {
     try {
-      const { error } = await supabase
+      const { error } = await this.supabase
         .from('messages')
         .update({
-          status: MessageStatus.READ,
-          read_at: new Date().toISOString(),
+          status: 'read',
           updated_at: new Date().toISOString()
         })
-        .eq('id', messageId)
-        .eq('is_outbound', false); // Only mark inbound messages as read
+        .eq('id', messageId);
         
       if (error) {
         throw new Error(`Failed to mark message as read: ${error.message}`);
@@ -406,7 +529,7 @@ export class MessageService {
   ): Promise<void> {
     try {
       // Check if preferences record exists
-      const { data, error } = await supabase
+      const { data, error } = await this.supabase
         .from('user_message_preferences')
         .select('*')
         .eq('user_id', userId)
@@ -420,7 +543,7 @@ export class MessageService {
       
       if (data) {
         // Update existing record
-        const { error: updateError } = await supabase
+        const { error: updateError } = await this.supabase
           .from('user_message_preferences')
           .update({
             opted_out: optedOut,
@@ -433,7 +556,7 @@ export class MessageService {
         }
       } else {
         // Create new record
-        const { error: insertError } = await supabase
+        const { error: insertError } = await this.supabase
           .from('user_message_preferences')
           .insert({
             user_id: userId,
@@ -456,7 +579,7 @@ export class MessageService {
    */
   async getMessageById(messageId: string): Promise<MessageWithDetails | null> {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await this.supabase
         .from('messages')
         .select(`
           *,
@@ -482,7 +605,7 @@ export class MessageService {
    */
   async getBulkMessageById(bulkMessageId: string): Promise<BulkMessageRow | null> {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await this.supabase
         .from('bulk_messages')
         .select('*')
         .eq('id', bulkMessageId)

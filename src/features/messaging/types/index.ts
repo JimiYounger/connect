@@ -8,8 +8,7 @@ export type UserProfileRow = Database['public']['Tables']['user_profiles']['Row'
 
 // Message status types
 export enum MessageStatus {
-  QUEUED = 'queued',
-  SENDING = 'sending',
+  PENDING = 'pending',
   SENT = 'sent',
   DELIVERED = 'delivered',
   FAILED = 'failed',
@@ -87,6 +86,7 @@ export interface TwilioMessageResponse {
   error?: {
     code: string;
     message: string;
+    details?: any;
   };
 }
 
