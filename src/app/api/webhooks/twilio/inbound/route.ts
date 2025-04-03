@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import { createClient } from '@/lib/supabase-server';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { InboundMessagePayload as _InboundMessagePayload } from '@/features/messaging/types';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';

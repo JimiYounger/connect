@@ -36,13 +36,16 @@ interface ConversationListProps {
 
 // Fetch all conversations
 const fetchConversations = async (): Promise<Record<string, MessageWithDetails>> => {
+  console.log('[ConversationList] Fetching conversations');
   const response = await fetch('/api/messaging/conversations');
   
   if (!response.ok) {
+    console.error('[ConversationList] Error fetching conversations:', response.statusText);
     throw new Error('Failed to fetch conversations');
   }
   
   const data = await response.json();
+  console.log('[ConversationList] Received conversations data:', data);
   return data.conversations || {};
 };
 
@@ -64,15 +67,31 @@ export function ConversationList({
   const conversationArray = useMemo(() => {
     if (!conversations) return [];
     
-    return Object.entries(conversations)
-      .map(([userId, message]) => ({
-        userId,
-        message,
-        recipient: message.is_outbound ? message.recipient : message.sender,
-        sender: message.is_outbound ? message.sender : message.recipient,
-        timestamp: new Date(message.created_at)
-      }))
+    console.log('[ConversationList] Processing conversations object:', conversations);
+    
+    const result = Object.entries(conversations)
+      .map(([userId, message]) => {
+        const isOutbound = message.is_outbound;
+        const recipient = isOutbound ? message.recipient : message.sender;
+        const sender = isOutbound ? message.sender : message.recipient;
+        
+        console.log(`[ConversationList] Processing conversation with user ID ${userId}:`);
+        console.log(`[ConversationList] - is_outbound: ${isOutbound}`);
+        console.log(`[ConversationList] - recipient:`, recipient || 'null');
+        console.log(`[ConversationList] - sender:`, sender || 'null');
+        
+        return {
+          userId,
+          message,
+          recipient,
+          sender,
+          timestamp: new Date(message.created_at)
+        };
+      })
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+      
+    console.log(`[ConversationList] Processed ${result.length} conversations`);
+    return result;
   }, [conversations]);
   
   // Filter conversations by search query

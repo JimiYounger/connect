@@ -444,34 +444,80 @@ export class MessageService {
   }
   
   /**
-   * Fetches all conversations for a user
+   * Gets all conversations for a user, grouped by conversation partner
    */
   async getUserConversations(userId: string): Promise<Record<string, MessageWithDetails>> {
     try {
+      console.log(`[MessageService] Fetching conversations for user ID: ${userId}`);
+      
       // Since the RPC function doesn't exist in the database schema,
       // we'll use a direct query instead
-      const { data, error } = await this.supabase
+      
+      // First, get all messages involving this user
+      const { data: messages, error } = await this.supabase
         .from('messages')
-        .select(`
-          *,
-          recipient:recipient_id(id, first_name, last_name, email, phone, profile_pic_url),
-          sender:sender_id(id, first_name, last_name, email, phone, profile_pic_url)
-        `)
+        .select('*')
         .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
         .order('created_at', { ascending: false });
         
       if (error) {
+        console.error(`[MessageService] Error fetching conversations:`, error);
         throw new Error(`Failed to fetch user conversations: ${error.message}`);
       }
       
+      console.log(`[MessageService] Retrieved ${messages?.length || 0} messages for conversations`);
+
+      // Get all unique user IDs that need profile data
+      const userIds = new Set<string>();
+      messages?.forEach(msg => {
+        if (msg.sender_id !== userId) userIds.add(msg.sender_id);
+        if (msg.recipient_id !== userId) userIds.add(msg.recipient_id);
+      });
+      
+      // Fetch all relevant user profiles
+      const { data: profiles, error: profilesError } = await this.supabase
+        .from('user_profiles')
+        .select('id, first_name, last_name, email, phone, profile_pic_url')
+        .in('id', Array.from(userIds));
+        
+      if (profilesError) {
+        console.error(`[MessageService] Error fetching user profiles:`, profilesError);
+        throw new Error(`Failed to fetch user profiles: ${profilesError.message}`);
+      }
+      
+      console.log(`[MessageService] Retrieved ${profiles?.length || 0} user profiles`);
+      
+      // Create a map of user IDs to user profiles for quick lookup
+      const profileMap: Record<string, any> = {};
+      profiles?.forEach(profile => {
+        profileMap[profile.id] = profile;
+      });
+      
       // Group by conversation partner and take the most recent
       const conversations: Record<string, MessageWithDetails> = {};
-      (data as unknown as MessageWithDetails[])?.forEach(message => {
+      messages?.forEach(message => {
         const partnerId = message.sender_id === userId ? message.recipient_id : message.sender_id;
+        
+        // Add recipient and sender data
+        const messageWithDetails = {
+          ...message,
+          recipient: message.recipient_id ? profileMap[message.recipient_id] || null : null,
+          sender: message.sender_id ? profileMap[message.sender_id] || null : null
+        } as MessageWithDetails;
+        
+        // Log data for debugging
+        console.log(`[MessageService] Message ID: ${message.id}, Partner ID: ${partnerId}`);
+        console.log(`[MessageService] Recipient ID: ${message.recipient_id}, data:`, 
+                   JSON.stringify(messageWithDetails.recipient || 'null'));
+        console.log(`[MessageService] Sender ID: ${message.sender_id}, data:`, 
+                   JSON.stringify(messageWithDetails.sender || 'null'));
+        
         if (!conversations[partnerId] || new Date(message.created_at) > new Date(conversations[partnerId].created_at)) {
-          conversations[partnerId] = message;
+          conversations[partnerId] = messageWithDetails;
         }
       });
+      
+      console.log(`[MessageService] Grouped into ${Object.keys(conversations).length} conversations`);
       
       return conversations;
     } catch (error) {

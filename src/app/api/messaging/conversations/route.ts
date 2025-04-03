@@ -121,6 +121,11 @@ export async function GET(request: NextRequest) {
     // Get all conversations for the admin
     const conversations = await messageService.getUserConversations(profile.id);
 
+    console.log(`[API] Retrieved ${Object.keys(conversations).length} conversations for user ${profile.id}`);
+    console.log(`[API] Sample conversation:`, Object.entries(conversations).length > 0 
+      ? JSON.stringify(Object.entries(conversations)[0][1])
+      : 'No conversations found');
+
     return NextResponse.json({
       success: true,
       conversations
