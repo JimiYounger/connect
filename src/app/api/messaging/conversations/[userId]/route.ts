@@ -36,9 +36,10 @@ const conversationHistorySchema = z.object({
  */
 export async function GET(
   request: NextRequest,
-  { params: routeParams }: { params: { userId: string } }
+  context: { params: Promise<{ userId: string }> }
 ) {
   try {
+    const routeParams = await context.params;
     const { userId } = routeParams;
     
     // Validate userId format
@@ -184,4 +185,4 @@ export async function GET(
       { status: 500 }
     );
   }
-} 
+}

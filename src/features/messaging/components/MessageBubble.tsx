@@ -52,18 +52,18 @@ export function MessageBubble({
   
   // Get status icon and color
   const getStatusIcon = () => {
+    if (!status) return null;
+    
     switch (status) {
-      case 'queued':
+      case MessageStatus.PENDING:
         return <Clock className="h-3 w-3 text-gray-400" />;
-      case 'sending':
-        return <Clock className="h-3 w-3 text-blue-400" />;
-      case 'sent':
+      case MessageStatus.SENT:
         return <CheckCircle className="h-3 w-3 text-blue-500" />;
-      case 'delivered':
+      case MessageStatus.DELIVERED:
         return <CheckCircle2 className="h-3 w-3 text-green-500" />;
-      case 'read':
+      case MessageStatus.READ:
         return <CheckCircle2 className="h-3 w-3 text-green-600" />;
-      case 'failed':
+      case MessageStatus.FAILED:
         return <XCircle className="h-3 w-3 text-red-500" />;
       default:
         return null;
@@ -72,18 +72,18 @@ export function MessageBubble({
   
   // Get status text
   const getStatusText = () => {
+    if (!status) return '';
+    
     switch (status) {
-      case 'queued':
-        return 'Queued';
-      case 'sending':
-        return 'Sending...';
-      case 'sent':
+      case MessageStatus.PENDING:
+        return 'Pending';
+      case MessageStatus.SENT:
         return 'Sent';
-      case 'delivered':
+      case MessageStatus.DELIVERED:
         return 'Delivered';
-      case 'read':
+      case MessageStatus.READ:
         return 'Read';
-      case 'failed':
+      case MessageStatus.FAILED:
         return `Failed: ${errorMessage || 'Unknown error'}`;
       default:
         return '';
@@ -139,7 +139,7 @@ export function MessageBubble({
                     <div className="flex items-center gap-1">
                       {getStatusIcon()}
                       <span className="text-xs">
-                        {status === 'failed' ? 'Failed' : ''}
+                        {status === MessageStatus.FAILED ? 'Failed' : ''}
                       </span>
                     </div>
                   </TooltipTrigger>
@@ -152,7 +152,7 @@ export function MessageBubble({
           )}
         </div>
         
-        {isOutbound && status === 'failed' && errorMessage && (
+        {isOutbound && status === MessageStatus.FAILED && errorMessage && (
           <div className="flex items-center mt-1 text-xs text-red-500">
             <AlertCircle className="h-3 w-3 mr-1" />
             <span className="truncate max-w-[250px]">{errorMessage}</span>

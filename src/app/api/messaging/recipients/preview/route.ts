@@ -157,16 +157,16 @@ export async function POST(request: NextRequest) {
     };
 
     // Add legacy single-value filters if they exist and the corresponding array is empty
-    if (filter.roleType && normalizedFilter.roleTypes.length === 0) {
+    if (filter.roleType && normalizedFilter.roleTypes && normalizedFilter.roleTypes.length === 0) {
       normalizedFilter.roleTypes = [filter.roleType];
     }
-    if (filter.team && normalizedFilter.teams.length === 0) {
+    if (filter.team && normalizedFilter.teams && normalizedFilter.teams.length === 0) {
       normalizedFilter.teams = [filter.team];
     }
-    if (filter.area && normalizedFilter.areas.length === 0) {
+    if (filter.area && normalizedFilter.areas && normalizedFilter.areas.length === 0) {
       normalizedFilter.areas = [filter.area];
     }
-    if (filter.region && normalizedFilter.regions.length === 0) {
+    if (filter.region && normalizedFilter.regions && normalizedFilter.regions.length === 0) {
       normalizedFilter.regions = [filter.region];
     }
 
@@ -224,4 +224,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}
