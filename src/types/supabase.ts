@@ -62,6 +62,47 @@ export type Database = {
           },
         ]
       }
+      bulk_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          message_segments: number | null
+          query_parameters: Json
+          sender_id: string
+          template_variables: Json | null
+          total_recipients: number | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          message_segments?: number | null
+          query_parameters: Json
+          sender_id: string
+          template_variables?: Json | null
+          total_recipients?: number | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          message_segments?: number | null
+          query_parameters?: Json
+          sender_id?: string
+          template_variables?: Json | null
+          total_recipients?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bulk_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       carousel_banner_roles: {
         Row: {
           area: string | null
@@ -433,6 +474,76 @@ export type Database = {
         }
         Relationships: []
       }
+      messages: {
+        Row: {
+          bulk_message_id: string | null
+          content: string
+          created_at: string
+          error_message: string | null
+          id: string
+          is_outbound: boolean
+          message_segments: number | null
+          read_at: string | null
+          recipient_id: string
+          sender_id: string
+          status: string | null
+          twilio_sid: string | null
+          updated_at: string
+        }
+        Insert: {
+          bulk_message_id?: string | null
+          content: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          is_outbound: boolean
+          message_segments?: number | null
+          read_at?: string | null
+          recipient_id: string
+          sender_id: string
+          status?: string | null
+          twilio_sid?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bulk_message_id?: string | null
+          content?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          is_outbound?: boolean
+          message_segments?: number | null
+          read_at?: string | null
+          recipient_id?: string
+          sender_id?: string
+          status?: string | null
+          twilio_sid?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_bulk_message_id_fkey"
+            columns: ["bulk_message_id"]
+            isOneToOne: false
+            referencedRelation: "bulk_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       navigation_analytics: {
         Row: {
           created_at: string | null
@@ -671,6 +782,32 @@ export type Database = {
           uploadcare_url?: string
         }
         Relationships: []
+      }
+      user_message_preferences: {
+        Row: {
+          opted_out: boolean
+          opted_out_at: string | null
+          user_id: string
+        }
+        Insert: {
+          opted_out?: boolean
+          opted_out_at?: string | null
+          user_id: string
+        }
+        Update: {
+          opted_out?: boolean
+          opted_out_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_message_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_profiles: {
         Row: {
