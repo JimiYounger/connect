@@ -221,9 +221,10 @@ export function HomePage() {
   }
 
   // Responsive positioning for navigation elements
-  const navTopPosition = isMobile ? '20px' : '46px';
-  const homeIconTopPosition = isMobile ? '7px' : '35px';
+  const navTopPosition = isMobile ? '18px' : '46px';
+  const homeIconTopPosition = isMobile ? '5px' : '35px';
   const carouselTopPadding = isMobile ? '60px' : '80px';
+  const containerBottomPadding = isMobile ? '40px' : '0px';
 
   return (
     <div className="flex flex-col min-h-screen bg-black text-white">
@@ -259,7 +260,7 @@ export function HomePage() {
           </Link>
         </div>
         
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-4" style={{ paddingBottom: containerBottomPadding }}>
           {/* Reduce padding to bring carousel closer to navigation */}
           <div style={{ paddingTop: carouselTopPadding }}>
             <Carousel autoplayInterval={7000} />
