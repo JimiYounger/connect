@@ -11,6 +11,7 @@ import { useUserContent } from '@/features/content/hooks/useUserContent'
 import { useAuth } from '@/features/auth/context/auth-context'
 import { useProfile } from '@/features/users/hooks/useProfile'
 import { useEffect, useState } from 'react'
+import { useMediaQuery } from '@/hooks/use-media-query'
 
 // Sleek, high-end animation styles
 const premiumAnimationStyles = `
@@ -69,6 +70,7 @@ export function HomePage() {
   const content = useUserContent();
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const isMobile = useMediaQuery('(max-width: 1023px)');
   
   // Set a timeout to prevent infinite loading screen
   useEffect(() => {
@@ -218,6 +220,11 @@ export function HomePage() {
     );
   }
 
+  // Responsive positioning for navigation elements
+  const navTopPosition = isMobile ? '20px' : '46px';
+  const homeIconTopPosition = isMobile ? '7px' : '35px';
+  const carouselTopPadding = isMobile ? '60px' : '80px';
+
   return (
     <div className="flex flex-col min-h-screen bg-black text-white">
       {/* Preload the connect.png image */}
@@ -232,13 +239,13 @@ export function HomePage() {
       </div>
       
       <main className="flex-1 relative">
-        {/* Navigation positioned at x42, y46 */}
-        <div className="absolute" style={{ top: '46px', left: '42px' }}>
+        {/* Navigation with responsive positioning */}
+        <div className="absolute" style={{ top: navTopPosition, left: '42px' }}>
           <Navigation />
         </div>
         
-        {/* Logo/Home button in top right corner */}
-        <div className="absolute" style={{ top: '35px', right: '42px' }}>
+        {/* Logo/Home button in top right corner with responsive positioning */}
+        <div className="absolute" style={{ top: homeIconTopPosition, right: '42px' }}>
           <Link href="/">
             <div className="cursor-pointer">
               <Image 
@@ -254,7 +261,7 @@ export function HomePage() {
         
         <div className="container mx-auto px-4">
           {/* Reduce padding to bring carousel closer to navigation */}
-          <div style={{ paddingTop: '80px' }}>
+          <div style={{ paddingTop: carouselTopPadding }}>
             <Carousel autoplayInterval={7000} />
           </div>
           
