@@ -36,11 +36,11 @@ export function CarouselItem({ banner, isActive, hideOverlay = false }: Carousel
   // Video banner content
   if (banner.click_behavior === 'video' && banner.vimeo_video_id) {
     return (
-      <div className={`${isActive ? '' : 'hidden'}`}>
+      <div className={`${isActive ? '' : 'hidden'} absolute inset-0`}>
         <Dialog>
           <DialogTrigger asChild>
             <div 
-              className="relative w-full h-[300px] md:h-[400px] overflow-hidden rounded-lg cursor-pointer group"
+              className="relative w-full h-full overflow-hidden rounded-lg cursor-pointer group"
               style={{ opacity: loaded ? 1 : 0, transition: 'opacity 0.5s ease-in-out' }}
             >
               {banner.banner_url && (
@@ -92,7 +92,7 @@ export function CarouselItem({ banner, isActive, hideOverlay = false }: Carousel
   // Regular banner content (link or no action)
   const content = (
     <div 
-      className="relative w-full h-[300px] md:h-[400px] overflow-hidden rounded-lg"
+      className="relative w-full h-full overflow-hidden rounded-lg"
       style={{ opacity: loaded ? 1 : 0, transition: 'opacity 0.5s ease-in-out' }}
       onClick={handleBannerClick}
     >
@@ -125,5 +125,5 @@ export function CarouselItem({ banner, isActive, hideOverlay = false }: Carousel
     </div>
   )
   
-  return <div className={isActive ? '' : 'hidden'}>{content}</div>
+  return <div className={`${isActive ? '' : 'hidden'} absolute inset-0`}>{content}</div>
 }

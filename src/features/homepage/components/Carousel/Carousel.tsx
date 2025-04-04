@@ -51,7 +51,7 @@ export function Carousel({ autoplayInterval = 5000 }: CarouselProps) {
 
   if (isLoading) {
     return (
-      <div className="w-full h-[300px] md:h-[400px] bg-accent/10 animate-pulse rounded-lg flex items-center justify-center">
+      <div className="w-full max-w-[992px] mx-auto aspect-[992/400] bg-accent/10 animate-pulse rounded-lg flex items-center justify-center">
         <p className="text-muted-foreground">Loading banners...</p>
       </div>
     )
@@ -59,7 +59,7 @@ export function Carousel({ autoplayInterval = 5000 }: CarouselProps) {
   
   if (error) {
     return (
-      <div className="w-full h-[300px] md:h-[400px] bg-destructive/10 rounded-lg flex items-center justify-center">
+      <div className="w-full max-w-[992px] mx-auto aspect-[992/400] bg-destructive/10 rounded-lg flex items-center justify-center">
         <p className="text-destructive">Error loading banners</p>
       </div>
     )
@@ -71,12 +71,12 @@ export function Carousel({ autoplayInterval = 5000 }: CarouselProps) {
   
   return (
     <div 
-      className="relative w-full group" 
+      className="relative w-full max-w-[992px] mx-auto group" 
       onMouseEnter={() => setShowControls(true)} 
       onMouseLeave={() => setShowControls(false)}
     >
       {/* Carousel items */}
-      <div className="relative overflow-hidden rounded-lg">
+      <div className="relative overflow-hidden rounded-lg aspect-[992/400]">
         {activeBanners.map((banner, index) => (
           <CarouselItem 
             key={banner.id} 
