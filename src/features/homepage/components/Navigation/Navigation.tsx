@@ -7,6 +7,9 @@ import { useUserNavigation } from '@/features/content/hooks/useUserContent'
 import { Sheet, SheetContent, SheetTrigger, SheetClose, SheetTitle } from '@/components/ui/sheet'
 import { ChevronLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/features/auth/context/auth-context'
+import { useProfile } from '@/features/users/hooks/useProfile'
+import { processDynamicUrl } from '@/features/widgets/components/widget-renderer'
 
 // Pre-fetch the image by creating a reference
 const connectLogoUrl = '/connect.png';
@@ -25,6 +28,10 @@ export function Navigation({ className }: NavigationProps) {
   const { data: navigationItems = [], isLoading, error } = useUserNavigation()
   const [currentLevel, setCurrentLevel] = useState<'parent' | 'child'>('parent')
   const [currentParentItem, setCurrentParentItem] = useState<typeof navigationItems[0] | null>(null)
+  
+  // Get user data for dynamic URLs
+  const { session } = useAuth()
+  const { profile } = useProfile(session)
   
   // Preload the image when component mounts
   useEffect(() => {
@@ -193,10 +200,14 @@ export function Navigation({ className }: NavigationProps) {
                       // Navigate to children instead of the URL
                       handleNavigateToChildren(item);
                     } else if (item.is_external) {
-                      window.open(item.url, '_blank');
+                      // Process the URL with user profile data
+                      const processedUrl = processDynamicUrl(item.url, profile);
+                      window.open(processedUrl, '_blank');
                       setOpen(false);
                     } else {
-                      window.location.href = item.url;
+                      // Also process the URL for internal links
+                      const processedUrl = processDynamicUrl(item.url, profile);
+                      window.location.href = processedUrl;
                       setOpen(false);
                     }
                   };
