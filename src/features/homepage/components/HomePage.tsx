@@ -253,8 +253,8 @@ export function HomePage() {
         </div>
         
         <div className="container mx-auto px-4">
-          {/* Add padding to the top to push content below the navigation */}
-          <div style={{ paddingTop: '100px' }}>
+          {/* Reduce padding to bring carousel closer to navigation */}
+          <div style={{ paddingTop: '80px' }}>
             <Carousel autoplayInterval={7000} />
           </div>
           

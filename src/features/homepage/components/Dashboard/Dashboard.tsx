@@ -6,6 +6,8 @@ import { useMediaQuery } from '@/hooks/use-media-query'
 import { 
   GRID_CELL_SIZE, 
   GRID_GAP,
+  GRID_GAP_MOBILE_VERTICAL,
+  GRID_GAP_MOBILE_HORIZONTAL,
   WIDGET_BORDER_RADIUS
 } from '@/config/uiConfig'
 import { WidgetRenderer } from '@/features/widgets/components/widget-renderer'
@@ -70,10 +72,10 @@ export function Dashboard() {
     return layoutType === 'desktop';
   });
 
-  // Calculate grid width for desktop - exact 992px max width to match carousel
+  // Calculate grid width for desktop or mobile
   const calculatedGridWidth = !isMobile 
     ? Math.min(992, (DESKTOP_GRID.cols * GRID_CELL_SIZE) + ((DESKTOP_GRID.cols - 1) * GRID_GAP))
-    : (MOBILE_GRID.cols * GRID_CELL_SIZE) + ((MOBILE_GRID.cols - 1) * GRID_GAP);
+    : (MOBILE_GRID.cols * GRID_CELL_SIZE) + ((MOBILE_GRID.cols - 1) * GRID_GAP_MOBILE_HORIZONTAL);
 
   return (
     <div className="flex justify-center w-full">
@@ -139,7 +141,7 @@ export function Dashboard() {
         </div>
       )}
       
-      {/* Mobile Layout */}
+      {/* Mobile Layout with different horizontal and vertical gaps */}
       {isMobile && (
         <div 
           className="ios-widget-grid dashboard-grid"
@@ -147,7 +149,8 @@ export function Dashboard() {
             display: 'grid',
             gridTemplateColumns: `repeat(${MOBILE_GRID.cols}, ${GRID_CELL_SIZE}px)`,
             gridAutoRows: `${GRID_CELL_SIZE}px`,
-            gap: `${GRID_GAP}px`,
+            columnGap: `${GRID_GAP_MOBILE_HORIZONTAL}px`,
+            rowGap: `${GRID_GAP_MOBILE_VERTICAL}px`,
             width: `${calculatedGridWidth}px`,
             maxWidth: '100%',
           }}
@@ -162,9 +165,9 @@ export function Dashboard() {
             
             const isCircle = widget.shape === 'circle';
             
-            // Calculate dimensions including gaps
-            const totalWidth = (width * GRID_CELL_SIZE) + ((width - 1) * GRID_GAP);
-            const totalHeight = (height * GRID_CELL_SIZE) + ((height - 1) * GRID_GAP);
+            // Calculate dimensions with specific horizontal and vertical gaps
+            const totalWidth = (width * GRID_CELL_SIZE) + ((width - 1) * GRID_GAP_MOBILE_HORIZONTAL);
+            const totalHeight = (height * GRID_CELL_SIZE) + ((height - 1) * GRID_GAP_MOBILE_VERTICAL);
             
             return (
               <div 
