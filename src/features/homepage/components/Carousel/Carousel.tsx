@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useUserBanners } from '@/features/content/hooks/useUserContent'
 import { CarouselItem } from './CarouselItem'
+import { useMediaQuery } from '@/hooks/use-media-query'
 
 interface CarouselProps {
   autoplayInterval?: number // in milliseconds
@@ -15,6 +16,7 @@ export function Carousel({ autoplayInterval = 5000 }: CarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0)
   const [showControls, setShowControls] = useState(false)
   const autoScrollIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined)
+  const isMobile = useMediaQuery('(max-width: 1023px)')
   
   // Filter out inactive banners
   const activeBanners = banners.filter(banner => banner.is_currently_active)
@@ -48,6 +50,10 @@ export function Carousel({ autoplayInterval = 5000 }: CarouselProps) {
       }
     }
   }, [autoplayInterval, resetAutoScroll, activeBanners.length])
+
+  // Define dot sizes based on device
+  const dotSize = isMobile ? 8 : 13;
+  const dotSpacing = isMobile ? 15 : 23;
 
   if (isLoading) {
     return (
@@ -119,7 +125,7 @@ export function Carousel({ autoplayInterval = 5000 }: CarouselProps) {
           </button>
           
           {/* Pagination dots */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-[23px]">
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex" style={{ gap: `${dotSpacing}px` }}>
             {activeBanners.map((_, index) => (
               <button
                 key={index}
@@ -127,8 +133,10 @@ export function Carousel({ autoplayInterval = 5000 }: CarouselProps) {
                   setActiveIndex(index);
                   resetAutoScroll();
                 }}
-                className={`w-[13px] h-[13px] rounded-full transition-colors`}
+                className="rounded-full transition-colors"
                 style={{
+                  width: `${dotSize}px`,
+                  height: `${dotSize}px`,
                   backgroundColor: index === activeIndex ? '#C6FC36' : '#666666',
                 }}
                 aria-label={`Go to banner ${index + 1}`}
