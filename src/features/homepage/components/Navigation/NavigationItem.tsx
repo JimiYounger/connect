@@ -6,6 +6,9 @@ import Link from 'next/link'
 import { ChevronRight, ExternalLink } from 'lucide-react'
 import type { NavigationItem as NavigationItemType } from '@/features/content/types'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/features/auth/context/auth-context'
+import { useProfile } from '@/features/users/hooks/useProfile'
+import { processDynamicUrl } from '@/features/widgets/components/widget-renderer'
 
 interface NavigationItemProps {
   item: NavigationItemType
@@ -24,6 +27,13 @@ export function NavigationItem({
 }: NavigationItemProps) {
   const [expanded, setExpanded] = useState(false)
   const hasChildren = childItems && childItems.length > 0
+  
+  // Get user data for dynamic URLs
+  const { session } = useAuth()
+  const { profile } = useProfile(session)
+  
+  // Process the URL with user data
+  const processedUrl = processDynamicUrl(item.url, profile)
 
   const handleClick = () => {
     if (hasChildren) {
@@ -68,7 +78,7 @@ export function NavigationItem({
     <div className="space-y-4">
       {item.is_external ? (
         <a 
-          href={item.url} 
+          href={processedUrl} 
           target="_blank" 
           rel="noopener noreferrer"
           onClick={onNavigate}
@@ -78,7 +88,7 @@ export function NavigationItem({
         </a>
       ) : (
         <Link 
-          href={item.url}
+          href={processedUrl}
           onClick={!hasChildren ? onNavigate : undefined}
           className="block"
         >
