@@ -2,7 +2,7 @@
 
 export const GRID_BASE_UNIT = 74;
 export const GRID_GAP = 16;
-export const GRID_GAP_MOBILE_VERTICAL = 10; // Vertical gap for mobile devices (smaller)
+export const GRID_GAP_MOBILE_VERTICAL = 14; // Vertical gap for mobile devices (smaller)
 export const GRID_GAP_MOBILE_HORIZONTAL = 20; // Horizontal gap for mobile devices
 export const WIDGET_BORDER_RADIUS = '34px';
 export const GRID_CELL_SIZE = GRID_BASE_UNIT;
