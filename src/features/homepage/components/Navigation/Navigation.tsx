@@ -23,6 +23,8 @@ export function Navigation({ className }: NavigationProps) {
   const [open, setOpen] = useState(false)
   const [_imageLoaded, setImageLoaded] = useState(false)
   const { data: navigationItems = [], isLoading, error } = useUserNavigation()
+  const [currentLevel, setCurrentLevel] = useState<'parent' | 'child'>('parent')
+  const [currentParentItem, setCurrentParentItem] = useState<typeof navigationItems[0] | null>(null)
   
   // Preload the image when component mounts
   useEffect(() => {
@@ -51,8 +53,24 @@ export function Navigation({ className }: NavigationProps) {
     groupedItems[key].sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
   })
   
-  // Render the root level items (those with no parent)
+  // Determine which items to show based on current level
   const rootItems = groupedItems['root'] || []
+  const childItems = currentParentItem ? (groupedItems[currentParentItem.id] || []) : []
+  
+  // Current items to display based on navigation level
+  const currentItems = currentLevel === 'parent' ? rootItems : childItems
+
+  // Navigate to children view
+  const handleNavigateToChildren = (item: typeof navigationItems[0]) => {
+    setCurrentParentItem(item)
+    setCurrentLevel('child')
+  }
+
+  // Navigate back to parent level
+  const handleBackToParent = () => {
+    setCurrentLevel('parent')
+    setCurrentParentItem(null)
+  }
 
   // Use a more specific approach to remove the X button
   useEffect(() => {
@@ -121,15 +139,19 @@ export function Navigation({ className }: NavigationProps) {
         <div className="flex flex-col h-full">
           <div className="relative" style={{ paddingTop: '124px', paddingLeft: '57px', paddingRight: '72px' }}>
             <div className="font-bold text-2xl">
-              <Image
-                src={connectLogoUrl}
-                alt="Connect"
-                width={216}
-                height={61}
-                priority
-                loading="eager"
-                onLoadingComplete={() => setImageLoaded(true)}
-              />
+              {currentLevel === 'child' ? (
+                <div className="text-2xl">{currentParentItem?.title || 'Navigation'}</div>
+              ) : (
+                <Image
+                  src={connectLogoUrl}
+                  alt="Connect"
+                  width={216}
+                  height={61}
+                  priority
+                  loading="eager"
+                  onLoadingComplete={() => setImageLoaded(true)}
+                />
+              )}
             </div>
             <SheetClose className="rounded-full custom-close absolute" style={{ right: '72px', top: '72px' }}>
               <div className="h-8 w-8 bg-white rounded-full flex items-center justify-center">
@@ -138,6 +160,16 @@ export function Navigation({ className }: NavigationProps) {
             </SheetClose>
           </div>
           <div className="overflow-y-auto flex-grow" style={{ paddingTop: '42px', paddingLeft: '38px', paddingRight: '37px' }}>
+            {currentLevel === 'child' && (
+              <button
+                className="flex items-center mb-6 text-white"
+                onClick={handleBackToParent}
+              >
+                <ChevronLeft className="h-5 w-5 mr-2" />
+                <span>Back</span>
+              </button>
+            )}
+          
             {isLoading ? (
               <div className="flex items-center justify-center min-h-[200px]">
                 <div className="text-center">
@@ -147,18 +179,26 @@ export function Navigation({ className }: NavigationProps) {
               </div>
             ) : error ? (
               <div className="p-6 text-center text-red-400">Error loading navigation</div>
-            ) : rootItems.length === 0 ? (
-              <div className="p-6 text-center text-zinc-400">No navigation items found</div>
+            ) : currentItems.length === 0 ? (
+              <div className="p-6 text-center text-zinc-400">
+                {currentLevel === 'child' ? 'No child items found' : 'No navigation items found'}
+              </div>
             ) : (
               <nav className="space-y-[13px]">
-                {rootItems.map((item) => {
+                {currentItems.map((item) => {
+                  const hasChildren = groupedItems[item.id]?.length > 0;
+                  
                   const onClick = () => {
-                    if (item.is_external) {
+                    if (hasChildren) {
+                      // Navigate to children instead of the URL
+                      handleNavigateToChildren(item);
+                    } else if (item.is_external) {
                       window.open(item.url, '_blank');
+                      setOpen(false);
                     } else {
                       window.location.href = item.url;
+                      setOpen(false);
                     }
-                    setOpen(false);
                   };
                   
                   return (
