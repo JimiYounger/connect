@@ -20,7 +20,8 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // Handle domain redirects and https enforcement
+  // Removed HTTP to HTTPS redirect to prevent conflicts with hosting platform
+  /*
   async redirects() {
     return [
       // Redirect from HTTP to HTTPS
@@ -38,6 +39,7 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  */
 };
 
 export default nextConfig;
