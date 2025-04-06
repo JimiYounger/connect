@@ -66,7 +66,7 @@ export default function RootLayout({
 
         {/* Android: Link to Manifest & Set Theme Color */}
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#ffffff" />
+        <meta name="theme-color" content="#000000" />
         <style>{`
           .auth-loading { display: none; }
           .auth-content { opacity: 1; }
