@@ -8,7 +8,9 @@ import { ErrorSeverity, ErrorSource } from '@/lib/types/errors'
 
 export async function middleware(request: NextRequest) {
   try {
-    // Handle www to non-www redirect
+    // Commented out to prevent redirect loops with hosting platform
+    // The hosting platform should handle www to non-www redirects
+    /*
     const hostname = request.headers.get('host') || '';
     const isProd = process.env.NODE_ENV === 'production';
     
@@ -29,6 +31,7 @@ export async function middleware(request: NextRequest) {
         },
       });
     }
+    */
     
     // Update session if needed
     const res = await updateSession(request)

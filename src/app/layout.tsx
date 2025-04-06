@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Connect by Purelight",
     description: "Everything You Need In One Place",
-    url: "https://www.plpconnect.com",
+    url: "https://plpconnect.com",
     images: [
       {
         url: "https://ucarecdn.com/43907444-0ddb-4271-a3ec-c28ab182b972/-/preview/1000x1000/",
@@ -61,7 +61,8 @@ export default function RootLayout({
         />
         <meta name="apple-mobile-web-app-title" content="Connect" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="mobile-web-app-capable" content="yes" />
 
         {/* Android: Link to Manifest & Set Theme Color */}
         <link rel="manifest" href="/manifest.json" />
