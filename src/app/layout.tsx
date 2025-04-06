@@ -63,10 +63,39 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 
         {/* Android: Link to Manifest & Set Theme Color */}
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#000000" />
+
+        {/* iOS PWA fixes */}
+        <script dangerouslySetInnerHTML={{
+          __html: `
+            // Fix for iOS PWA scrolling issues
+            document.addEventListener('touchmove', function(event) {
+              // Prevent pull-to-refresh behavior on PWA
+              if (window.navigator.standalone) {
+                // Allow scrolling of normal scrollable elements
+                if (!event.target.closest('.scrollable')) {
+                  event.preventDefault();
+                }
+              }
+            }, { passive: false });
+
+            // Detect standalone mode (PWA)
+            if (window.navigator.standalone) {
+              document.documentElement.classList.add('pwa-mode');
+            }
+
+            // Make sure viewport height is correct on iOS
+            const setAppHeight = () => {
+              document.documentElement.style.setProperty('--app-height', \`\${window.innerHeight}px\`);
+            };
+            window.addEventListener('resize', setAppHeight);
+            setAppHeight();
+          `
+        }} />
         <style>{`
           .auth-loading { display: none; }
           .auth-content { opacity: 1; }
@@ -302,10 +331,16 @@ export default function RootLayout({
         }} />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col ${inter.className}`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col ${inter.className}`}
+        style={{
+          paddingTop: 'env(safe-area-inset-top)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+          paddingLeft: 'env(safe-area-inset-left)',
+          paddingRight: 'env(safe-area-inset-right)'
+        }}
       >
         <Providers>
-          <main className="flex-1 w-full min-h-screen bg-white text-black">
+          <main className="flex-1 w-full bg-black text-black">
             {children}
           </main>
           <Toaster />
