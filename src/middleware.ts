@@ -8,6 +8,28 @@ import { ErrorSeverity, ErrorSource } from '@/lib/types/errors'
 
 export async function middleware(request: NextRequest) {
   try {
+    // Handle www to non-www redirect
+    const hostname = request.headers.get('host') || '';
+    const isProd = process.env.NODE_ENV === 'production';
+    
+    // If in production and the hostname starts with 'www.'
+    if (isProd && hostname.startsWith('www.')) {
+      // Get the base domain (without www.)
+      const baseDomain = hostname.replace(/^www\./, '');
+      
+      // Create a URL for the redirect
+      const url = new URL(request.url);
+      url.host = baseDomain;
+      
+      // Return a 301 permanent redirect
+      return NextResponse.redirect(url.toString(), {
+        status: 301,
+        headers: {
+          'Cache-Control': 'public, max-age=31536000, immutable',
+        },
+      });
+    }
+    
     // Update session if needed
     const res = await updateSession(request)
 
