@@ -58,8 +58,9 @@ export interface NavigationItemRow extends NavigationItemBase {
 
 export interface NavigationItemInsert extends Partial<Omit<NavigationItemRow, 'title' | 'url' | 'order_index'>> {
   title: string
-  url: string
+  url: string  // URL must be a string for Supabase, we'll handle empty/null values in the service
   order_index: number
+  is_folder?: boolean  // Not stored in DB, used for UI/logic
 }
 
 export interface NavigationItemUpdate extends Partial<NavigationItemRow> {}

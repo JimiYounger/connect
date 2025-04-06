@@ -247,11 +247,23 @@ export async function createNavigationItem(data: NavigationItemInsert): Promise<
   
   console.log('Creating navigation item with data:', data)
   
+  // Process data to ensure URL is always a string (not null)
+  const { is_folder, ...dataToProcess } = data;
+  
+  // Create a copy with guaranteed string URL
+  const dataToInsert = {
+    ...dataToProcess,
+    // For folders without a URL or empty URL, use # as placeholder
+    url: (is_folder && (!dataToProcess.url || dataToProcess.url.trim() === '')) 
+      ? '#' 
+      : (dataToProcess.url || '') // Ensure a string value for non-folders too
+  };
+  
   try {
     // Just select the fields we know exist in the navigation_items table
     const { data: newItem, error } = await supabase
       .from('navigation_items')
-      .insert(data)
+      .insert(dataToInsert)
       .select(`
         id,
         menu_id,
@@ -292,9 +304,24 @@ export async function createNavigationItem(data: NavigationItemInsert): Promise<
 export async function updateNavigationItem(id: string, data: NavigationItemUpdate): Promise<NavigationItemRow> {
   const supabase = createClient()
   
+  // Process data to ensure URL is always a string (not null) if present in the update
+  const { is_folder, ...dataToProcess } = data as NavigationItemUpdate & { is_folder?: boolean };
+  
+  // Create a copy with guaranteed string URL if URL is being updated
+  const dataToUpdate = {
+    ...dataToProcess,
+    // Only modify URL if it's included in the update
+    ...(dataToProcess.url !== undefined ? {
+      // For folders without a URL or empty URL, use # as placeholder
+      url: (is_folder && (!dataToProcess.url || dataToProcess.url === '')) 
+        ? '#' 
+        : (dataToProcess.url || '') // Ensure a string value for non-folders too
+    } : {})
+  };
+  
   const { data: updatedItem, error } = await supabase
     .from('navigation_items')
-    .update(data)
+    .update(dataToUpdate)
     .eq('id', id)
     .select()
     .single()
