@@ -45,10 +45,42 @@ import { NavigationItemForm } from '@/features/navigation/components/admin/Navig
 import { deleteRolesByItemId, } from '@/features/navigation/services/navigation-service'
 import type { NavigationItemWithChildren, RoleType } from '@/features/navigation/types'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Users, MapPin, Globe, Eye, Info } from 'lucide-react'
+import { Users, MapPin, Globe, Eye, Info, FolderTree } from 'lucide-react'
 
 // Component for showing navigation item visibility
 const NavigationItemVisibility = ({ item }: { item: NavigationItemWithChildren }) => {
+  // Check if item is a folder (has children but no URL)
+  const isFolder = item.children && item.children.length > 0 && (!item.url || item.url === '#' || item.url === 'javascript:void(0)');
+  
+  // If it's a folder, show the folder indicator
+  if (isFolder) {
+    return (
+      <div className="flex gap-1">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="secondary" className="flex items-center gap-1 bg-indigo-600/20 text-indigo-400 border border-indigo-600/30 hover:bg-indigo-600/30">
+                <FolderTree className="h-3 w-3" />
+                <span>Folder</span>
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-xs">
+              <div className="text-sm">This is a folder for organizing child links</div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        
+        {/* Show visibility badge alongside folder badge */}
+        {renderVisibilityBadge()}
+      </div>
+    );
+  }
+  
+  // For non-folders, just show the regular visibility badge
+  return renderVisibilityBadge();
+  
+  // Helper function to render visibility badges
+  function renderVisibilityBadge() {
   // If item is public, show a simple indicator
   if (item.is_public) {
     return (
@@ -122,109 +154,110 @@ const NavigationItemVisibility = ({ item }: { item: NavigationItemWithChildren }
     );
   }
   
-  return (
-    <div className="flex gap-1 flex-wrap">
-      {roleTypes.size > 0 && (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Badge variant="secondary" className="flex items-center gap-1 bg-blue-600/20 text-blue-400 border border-blue-600/30 hover:bg-blue-600/30">
-                <Users className="h-3 w-3" />
-                <span>{roleTypes.size}</span>
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="p-0 overflow-hidden">
-              <div className="bg-zinc-950 text-white p-3 rounded-md max-w-xs">
-                <div className="font-medium mb-2">Visible to roles:</div>
-                <div className="flex flex-wrap gap-2">
-                  {Array.from(roleTypes).map(role => (
-                    <Badge key={`role-${role}`} variant="outline" className="border-white/30 text-white">
-                      {role}
-                    </Badge>
-                  ))}
+    return (
+      <div className="flex gap-1 flex-wrap">
+        {roleTypes.size > 0 && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="secondary" className="flex items-center gap-1 bg-blue-600/20 text-blue-400 border border-blue-600/30 hover:bg-blue-600/30">
+                  <Users className="h-3 w-3" />
+                  <span>{roleTypes.size}</span>
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="p-0 overflow-hidden">
+                <div className="bg-zinc-950 text-white p-3 rounded-md max-w-xs">
+                  <div className="font-medium mb-2">Visible to roles:</div>
+                  <div className="flex flex-wrap gap-2">
+                    {Array.from(roleTypes).map(role => (
+                      <Badge key={`role-${role}`} variant="outline" className="border-white/30 text-white">
+                        {role}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      )}
-      
-      {teams.size > 0 && (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Badge variant="secondary" className="flex items-center gap-1 bg-purple-600/20 text-purple-400 border border-purple-600/30 hover:bg-purple-600/30">
-                <Users className="h-3 w-3" />
-                <span>{teams.size}</span>
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="p-0 overflow-hidden">
-              <div className="bg-zinc-950 text-white p-3 rounded-md max-w-xs">
-                <div className="font-medium mb-2">Visible to teams:</div>
-                <div className="flex flex-wrap gap-2">
-                  {Array.from(teams).map(team => (
-                    <Badge key={`team-${team}`} variant="outline" className="border-white/30 text-white">
-                      {team}
-                    </Badge>
-                  ))}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+        
+        {teams.size > 0 && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="secondary" className="flex items-center gap-1 bg-purple-600/20 text-purple-400 border border-purple-600/30 hover:bg-purple-600/30">
+                  <Users className="h-3 w-3" />
+                  <span>{teams.size}</span>
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="p-0 overflow-hidden">
+                <div className="bg-zinc-950 text-white p-3 rounded-md max-w-xs">
+                  <div className="font-medium mb-2">Visible to teams:</div>
+                  <div className="flex flex-wrap gap-2">
+                    {Array.from(teams).map(team => (
+                      <Badge key={`team-${team}`} variant="outline" className="border-white/30 text-white">
+                        {team}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      )}
-      
-      {areas.size > 0 && (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Badge variant="secondary" className="flex items-center gap-1 bg-amber-600/20 text-amber-400 border border-amber-600/30 hover:bg-amber-600/30">
-                <MapPin className="h-3 w-3" />
-                <span>{areas.size}</span>
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="p-0 overflow-hidden">
-              <div className="bg-zinc-950 text-white p-3 rounded-md max-w-xs">
-                <div className="font-medium mb-2">Visible to areas:</div>
-                <div className="flex flex-wrap gap-2">
-                  {Array.from(areas).map(area => (
-                    <Badge key={`area-${area}`} variant="outline" className="border-white/30 text-white">
-                      {area}
-                    </Badge>
-                  ))}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+        
+        {areas.size > 0 && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="secondary" className="flex items-center gap-1 bg-amber-600/20 text-amber-400 border border-amber-600/30 hover:bg-amber-600/30">
+                  <MapPin className="h-3 w-3" />
+                  <span>{areas.size}</span>
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="p-0 overflow-hidden">
+                <div className="bg-zinc-950 text-white p-3 rounded-md max-w-xs">
+                  <div className="font-medium mb-2">Visible to areas:</div>
+                  <div className="flex flex-wrap gap-2">
+                    {Array.from(areas).map(area => (
+                      <Badge key={`area-${area}`} variant="outline" className="border-white/30 text-white">
+                        {area}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      )}
-      
-      {regions.size > 0 && (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Badge variant="secondary" className="flex items-center gap-1 bg-teal-600/20 text-teal-400 border border-teal-600/30 hover:bg-teal-600/30">
-                <Globe className="h-3 w-3" />
-                <span>{regions.size}</span>
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="p-0 overflow-hidden">
-              <div className="bg-zinc-950 text-white p-3 rounded-md max-w-xs">
-                <div className="font-medium mb-2">Visible to regions:</div>
-                <div className="flex flex-wrap gap-2">
-                  {Array.from(regions).map(region => (
-                    <Badge key={`region-${region}`} variant="outline" className="border-white/30 text-white">
-                      {region}
-                    </Badge>
-                  ))}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+        
+        {regions.size > 0 && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="secondary" className="flex items-center gap-1 bg-teal-600/20 text-teal-400 border border-teal-600/30 hover:bg-teal-600/30">
+                  <Globe className="h-3 w-3" />
+                  <span>{regions.size}</span>
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="p-0 overflow-hidden">
+                <div className="bg-zinc-950 text-white p-3 rounded-md max-w-xs">
+                  <div className="font-medium mb-2">Visible to regions:</div>
+                  <div className="flex flex-wrap gap-2">
+                    {Array.from(regions).map(region => (
+                      <Badge key={`region-${region}`} variant="outline" className="border-white/30 text-white">
+                        {region}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      )}
-    </div>
-  );
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+      </div>
+    );
+  }
 };
 
 // Helper function to transform NavigationItemWithChildren to the form expected format
@@ -261,11 +294,15 @@ const transformNavigationItemForForm = (item: NavigationItemWithChildren | null 
   const startDate = item.start_date ? new Date(item.start_date) : null;
   const endDate = item.end_date ? new Date(item.end_date) : null;
   
+  // Determine if this is a folder item
+  const isFolder = item.children && item.children.length > 0 && (!item.url || item.url === '#' || item.url === 'javascript:void(0)');
+  
   return {
     title: item.title,
-    url: item.url,
+    url: isFolder ? '' : (item.url || ''),
     description: item.description || '',
     parent_id: item.parent_id || 'none',
+    is_folder: isFolder,
     is_public: item.is_public === null ? true : item.is_public,
     is_active: item.is_active === null ? true : item.is_active,
     is_external: item.is_external === null ? true : item.is_external,
@@ -681,7 +718,17 @@ export default function EditNavigationMenuPage() {
   const handleSubmit = async (data: any) => {
     try {
       // Extract roleAssignments from form data
-      const { roleAssignments = { roleTypes: [], teams: [], areas: [], regions: [] }, ...itemData } = data;
+      const { roleAssignments = { roleTypes: [], teams: [], areas: [], regions: [] }, is_folder, ...itemData } = data;
+      
+      // For folder items, we'll handle the URL at the service level
+      // but ensure we always send a string for url (not null)
+      const processedData = {
+        ...itemData,
+        url: itemData.url || '',  // Ensure URL is never null
+        is_folder: is_folder || false,
+        start_date: itemData.start_date?.toISOString() || null,
+        end_date: itemData.end_date?.toISOString() || null
+      };
       
       let navItemId: string;
       
@@ -689,22 +736,16 @@ export default function EditNavigationMenuPage() {
         // Update existing item
         await updateNavigationItem({
           id: selectedItem,
-          data: {
-            ...itemData,
-            start_date: itemData.start_date?.toISOString() || null,
-            end_date: itemData.end_date?.toISOString() || null
-          }
+          data: processedData
         });
         navItemId = selectedItem;
         await deleteRolesByItemId(selectedItem);
       } else {
         // Create new item
         const newItem = await createNavigationItem({
-          ...itemData,
+          ...processedData,
           menu_id: menuId,
-          order_index: items?.length || 0,
-          start_date: itemData.start_date?.toISOString() || null,
-          end_date: itemData.end_date?.toISOString() || null
+          order_index: items?.length || 0
         });
         
         navItemId = newItem.id;

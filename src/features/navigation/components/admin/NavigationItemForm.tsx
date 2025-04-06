@@ -5,7 +5,7 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { CalendarIcon, ExternalLink } from 'lucide-react'
+import { CalendarIcon, ExternalLink, FolderTree } from 'lucide-react'
 import { format } from 'date-fns'
 import { useNavigation } from '@/features/navigation/hooks/useNavigation'
 import type { NavigationItemWithChildren } from '../../types'
@@ -41,7 +41,8 @@ import { RoleAssignment } from '@/features/navigation/components/admin/RoleAssig
 
 const navigationItemSchema = z.object({
   title: z.string().min(1, 'Title is required'),
-  url: z.string().min(1, 'URL is required'),
+  is_folder: z.boolean().optional(),
+  url: z.string().default(''),
   description: z.string().optional(),
   parent_id: z.string().transform(val => val === 'none' ? null : val),
   is_public: z.boolean(),
@@ -81,6 +82,7 @@ export function NavigationItemForm({
     title: '',
     url: '',
     description: '',
+    is_folder: false,
     is_public: true,
     is_active: true,
     is_external: true,
@@ -122,6 +124,14 @@ export function NavigationItemForm({
   const handleSubmit = async (data: NavigationItemFormValues) => {
     console.log('Form submission started with data:', data)
     
+    // Custom validation: URL is required for non-folder items
+    if (!data.is_folder && (!data.url || data.url.trim() === '')) {
+      form.setError('url', { 
+        message: 'URL is required for non-folder items'
+      });
+      return;
+    }
+    
     try {
       await onSubmit(data)
       console.log('Form submission successful')
@@ -133,6 +143,7 @@ export function NavigationItemForm({
 
   const isPublic = form.watch('is_public')
   const isExternal = form.watch('is_external')
+  const isFolder = form.watch('is_folder')
 
   // Filter out the current item and its children from parent options
   const availableParents = items?.filter(item => {
@@ -169,55 +180,83 @@ export function NavigationItemForm({
             </FormItem>
           )}
         />
-
+        
         <FormField
           control={form.control}
-          name="url"
+          name="is_folder"
           render={({ field }) => (
-            <FormItem>
-              <FormLabel>URL</FormLabel>
+            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <FormLabel className="text-base">
+                  <div className="flex items-center space-x-2">
+                    <FolderTree className="h-4 w-4" />
+                    <span>Folder Item</span>
+                  </div>
+                </FormLabel>
+                <FormDescription>
+                  This is a container for child items and doesn&apos;t need a URL
+                </FormDescription>
+              </div>
               <FormControl>
-                <div className="space-y-4">
-                  <Input
-                    {...field}
-                    placeholder={isExternal ? 'https://' : '/path/to/page'}
-                    onChange={(e) => {
-                      console.log('URL changed:', e.target.value)
-                      field.onChange(e)
-                    }}
-                    id="url-input"
-                  />
-                  <NavigationUrlBuilder
-                    onSelect={(placeholder: string) => {
-                      console.log('Field selected:', placeholder)
-                      const input = document.getElementById('url-input') as HTMLInputElement;
-                      const cursorPos = input?.selectionStart || 0;
-                      const currentValue = field.value;
-                      const newValue = currentValue.slice(0, cursorPos) + placeholder + currentValue.slice(cursorPos);
-                      field.onChange(newValue);
-                      
-                      // Restore cursor position after the inserted placeholder
-                      setTimeout(() => {
-                        if (input) {
-                          const newPos = cursorPos + placeholder.length;
-                          input.focus();
-                          input.setSelectionRange(newPos, newPos);
-                        }
-                      }, 0);
-                    }}
-                    isExternal={isExternal}
-                  />
-                </div>
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
               </FormControl>
-              <FormDescription>
-                {isExternal
-                  ? 'Enter a complete URL for external links'
-                  : 'Use the URL builder or enter a path manually'}
-              </FormDescription>
-              <FormMessage />
             </FormItem>
           )}
         />
+
+        {!isFolder && (
+          <FormField
+            control={form.control}
+            name="url"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>URL</FormLabel>
+                <FormControl>
+                  <div className="space-y-4">
+                    <Input
+                      {...field}
+                      placeholder={isExternal ? 'https://' : '/path/to/page'}
+                      onChange={(e) => {
+                        console.log('URL changed:', e.target.value)
+                        field.onChange(e)
+                      }}
+                      id="url-input"
+                    />
+                    <NavigationUrlBuilder
+                      onSelect={(placeholder: string) => {
+                        console.log('Field selected:', placeholder)
+                        const input = document.getElementById('url-input') as HTMLInputElement;
+                        const cursorPos = input?.selectionStart || 0;
+                        const currentValue = field.value || '';
+                        const newValue = currentValue.slice(0, cursorPos) + placeholder + currentValue.slice(cursorPos);
+                        field.onChange(newValue);
+                        
+                        // Restore cursor position after the inserted placeholder
+                        setTimeout(() => {
+                          if (input) {
+                            const newPos = cursorPos + placeholder.length;
+                            input.focus();
+                            input.setSelectionRange(newPos, newPos);
+                          }
+                        }, 0);
+                      }}
+                      isExternal={isExternal}
+                    />
+                  </div>
+                </FormControl>
+                <FormDescription>
+                  {isExternal
+                    ? 'Enter a complete URL for external links'
+                    : 'Use the URL builder or enter a path manually'}
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <FormField
           control={form.control}
@@ -311,31 +350,33 @@ export function NavigationItemForm({
             )}
           />
 
-          <FormField
-            control={form.control}
-            name="is_external"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <FormLabel className="text-base">
-                    <div className="flex items-center space-x-2">
-                      <ExternalLink className="h-4 w-4" />
-                      <span>External Link</span>
-                    </div>
-                  </FormLabel>
-                  <FormDescription>
-                    Link to an external website
-                  </FormDescription>
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
+          {!isFolder && (
+            <FormField
+              control={form.control}
+              name="is_external"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">
+                      <div className="flex items-center space-x-2">
+                        <ExternalLink className="h-4 w-4" />
+                        <span>External Link</span>
+                      </div>
+                    </FormLabel>
+                    <FormDescription>
+                      Link to an external website
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          )}
         </div>
 
         {!isPublic && (
