@@ -46,35 +46,30 @@ html.pwa-mode body {
   -webkit-overflow-scrolling: auto; /* Disable body scrolling */
 }
 
-/* Adjustments for Fixed Navigation in PWA Mode */
+/* Adjustments for Fixed Navigation in PWA Mode - IMPORTANT: Now set to relative to match browser behavior */
 html.pwa-mode .navigation-wrapper {
-  position: fixed !important; /* Stick to the viewport */
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000 !important; /* Ensure it's on top */
-  padding-top: calc(env(safe-area-inset-top, 20px) + 10px) !important; /* Increase padding to push content well below the status bar */
-  background-color: #000000;
+  position: relative !important; /* Use relative positioning like browser version */
+  width: 100%;
+  z-index: 50 !important;
+  padding-top: env(safe-area-inset-top, 0); /* Account for safe area only */
+  background-color: transparent;
   pointer-events: auto;
-  height: auto !important; /* Override fixed height to accommodate the safe area */
-  min-height: 60px; /* Ensure minimum height */
+  height: auto !important; 
 }
 
-/* Adjust the positioners to account for the safe area when in PWA mode */
+/* Keep positioners absolute within the navigation-wrapper for consistency with browser version */
 html.pwa-mode .nav-menu-positioner {
-  top: 0 !important; /* Position relative to the nav-wrapper which already has padding-top for safe area */
-  /* Use position relative to the padded wrapper */
-  position: relative !important;
-  padding-top: 18px;
-  z-index: 1010 !important; /* Ensure above other elements */
+  position: absolute !important;
+  top: 18px !important;
+  left: 18px !important;
+  z-index: 1010 !important;
 }
 
 html.pwa-mode .nav-logo-positioner {
-  top: 0 !important; /* Position relative to the nav-wrapper which already has padding-top for safe area */
-  /* Use position relative to the padded wrapper */
-  position: relative !important;
-  padding-top: 5px;
-  z-index: 1010 !important; /* Ensure above other elements */
+  position: absolute !important;
+  top: 5px !important;
+  right: 18px !important;
+  z-index: 1010 !important;
 }
 
 /* Fix iOS touch handling for navigation elements */
@@ -83,28 +78,23 @@ html.pwa-mode .navigation-wrapper button,
 html.pwa-mode .nav-menu-positioner *,
 html.pwa-mode .nav-logo-positioner * {
   pointer-events: auto !important;
-  z-index: 1020 !important; /* Extra high z-index for interactive elements */
-  position: relative; /* Ensure proper stacking context */
-  touch-action: auto !important; /* Allow natural touch behavior */
+  z-index: 1020 !important;
+  position: relative;
+  touch-action: auto !important;
 }
 
-/* Adjust main content to start below the fixed header - increase padding to accommodate larger nav area */
+/* Main content should be a scrollable container with proper height */
 html.pwa-mode #pwa-main-content {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  position: relative; /* Changed from absolute to relative */
   width: 100%;
   height: 100%; /* Fill the fixed body */
-  overflow-y: scroll; /* Enable scrolling ONLY for this container */
-  -webkit-overflow-scrolling: touch; /* Smooth iOS scrolling */
-  overscroll-behavior-y: contain; /* Allow pull-to-refresh, prevent body scroll */
-  /* Increase padding to accommodate taller nav with safe area */
-  padding-top: calc(env(safe-area-inset-top, 20px) + 80px) !important; 
-  padding-bottom: env(safe-area-inset-bottom, 0); /* Respect bottom home bar */
-  background-color: #000000; /* Ensure background consistency */
-  z-index: 1; /* Lower than navigation */
+  overflow-y: scroll;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  padding-top: env(safe-area-inset-top, 0); /* Only account for safe area, no extra padding */
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  background-color: #000000;
+  z-index: 1;
 }
 
 /* Media query to adjust padding-top for desktop PWA nav height (70px) */

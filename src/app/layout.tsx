@@ -73,123 +73,98 @@ export default function RootLayout({
         {/* iOS PWA fixes */}
         <script dangerouslySetInnerHTML={{
           __html: `
-            // Complete iOS PWA scrolling fix
-            const isPwa = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+            // Improved iOS/Android PWA detection and handling
+            // standalone property exists on iOS Safari but not in TypeScript types
+            const isPwa = (window.navigator as any).standalone || window.matchMedia('(display-mode: standalone)').matches;
             let wasPwaBeforePause = false;
             
-            // Detect standalone mode (PWA)
+            // Initial PWA detection
             if (isPwa) {
               console.log("PWA mode detected - applying PWA layout");
               document.documentElement.classList.add('pwa-mode');
               
-              // Fix iOS Safari viewport issues - ensure viewport-fit=cover is included
+              // Fix iOS Safari viewport issues
               const viewport = document.querySelector('meta[name="viewport"]');
               if (viewport) {
                 viewport.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
               }
               
-              // Store that we were in PWA mode
+              // Store PWA state persistently
               sessionStorage.setItem('was_pwa_mode', 'true');
+              localStorage.setItem('pwa_mode_detected', 'true');
             }
             
-            // Track touch start position
-            let startY = 0;
+            // Try to detect PWA from previous sessions
+            if (!isPwa && (sessionStorage.getItem('was_pwa_mode') === 'true' || localStorage.getItem('pwa_mode_detected') === 'true')) {
+              console.log("Previously detected as PWA - restoring PWA layout");
+              document.documentElement.classList.add('pwa-mode');
+            }
             
-            // Capture the start position on touch
-            document.addEventListener('touchstart', function(e) {
-              startY = e.touches[0].clientY;
-            }, { passive: true });
-            
-            // Enhanced PWA Layout setup with focus on navigation accessibility
+            // Enhanced PWA Layout setup
             function setupPwaLayout() {
-              const isPwaActive = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
-              wasPwaBeforePause = sessionStorage.getItem('was_pwa_mode') === 'true';
+              const isPwaActive = (window.navigator as any).standalone || window.matchMedia('(display-mode: standalone)').matches;
+              wasPwaBeforePause = sessionStorage.getItem('was_pwa_mode') === 'true' || localStorage.getItem('pwa_mode_detected') === 'true';
               
-              // Apply PWA mode if currently in PWA or was in PWA before pause
+              // Apply PWA mode if currently in PWA or was in PWA before
               if (isPwaActive || wasPwaBeforePause) {
                 console.log("Setting up PWA layout", { isPwaActive, wasPwaBeforePause });
                 document.documentElement.classList.add('pwa-mode');
                 
                 const mainEl = document.getElementById('pwa-main-content');
                 if (mainEl) {
+                  // Configure main content container
                   mainEl.classList.add('pwa-active-content');
-                  
-                  // Fix iOS scrolling and interaction issues
                   mainEl.style.webkitOverflowScrolling = 'touch';
-                  
-                  // Make navigation interactive - reinforce event handling
-                  const navWrapper = document.querySelector('.navigation-wrapper');
-                  if (navWrapper) {
-                    // Remove and reapply event listeners on resume to fix iOS bugs
-                    const reinitializeNavigation = () => {
-                      const navButtons = navWrapper.querySelectorAll('a, button');
-                      navButtons.forEach(el => {
-                        // Clone and replace to remove stale event listeners
-                        const newEl = el.cloneNode(true);
-                        el.parentNode.replaceChild(newEl, el);
-                        
-                        // Add explicit touch handler
-                        newEl.addEventListener('touchstart', (e) => {
-                          // Prevent default only if needed
-                          e.stopPropagation();
-                        }, { passive: false });
-                        
-                        newEl.addEventListener('touchend', (e) => {
-                          e.stopPropagation();
-                          // Delay the click to ensure iOS registers it
-                          setTimeout(() => {
-                            newEl.click();
-                          }, 10);
-                        }, { passive: false });
-                      });
-                    };
+                
+                  // Ensure navigation items can be clicked
+                  const navElems = document.querySelectorAll('.nav-menu-positioner, .nav-logo-positioner');
+                  navElems.forEach(navElem => {
+                    navElem.style.pointerEvents = 'auto';
                     
-                    // Initialize immediately and on visibility change
-                    reinitializeNavigation();
-                    
-                    // Handle app resume to refix navigation issues
-                    document.addEventListener('visibilitychange', () => {
-                      if (document.visibilityState === 'visible') {
-                        console.log("App resumed - reinitializing navigation");
-                        reinitializeNavigation();
-                      }
-                    });
-                  }
-                  
-                  // Pull-to-refresh indicator logic
-                  let refreshTimeout;
-                  mainEl.addEventListener('scroll', () => {
-                    if (mainEl.scrollTop < -60 && !document.getElementById('pull-to-refresh-indicator')) {
-                      const indicator = document.createElement('div');
-                      indicator.id = 'pull-to-refresh-indicator';
-                      indicator.style.position = 'absolute';
-                      indicator.style.top = '80px';
-                      indicator.style.left = '0';
-                      indicator.style.right = '0';
-                      indicator.style.textAlign = 'center';
-                      indicator.style.color = 'white';
-                      indicator.style.padding = '10px';
-                      indicator.style.zIndex = '1050';
-                      indicator.style.backgroundColor = 'rgba(0,0,0,0.7)';
-                      indicator.textContent = 'Release to refresh';
-                      mainEl.appendChild(indicator);
+                    // Process all clickable elements
+                    const clickableElements = navElem.querySelectorAll('a, button');
+                    clickableElements.forEach(el => {
+                      // Ensure the element can receive touch events
+                      el.style.pointerEvents = 'auto';
+                      el.style.cursor = 'pointer';
+                      el.style.touchAction = 'manipulation';
                       
-                      if (refreshTimeout) clearTimeout(refreshTimeout);
-                      refreshTimeout = setTimeout(() => window.location.reload(), 800);
-                    } else if (mainEl.scrollTop >= -60) {
-                      const indicator = document.getElementById('pull-to-refresh-indicator');
-                      if (indicator) {
-                        indicator.remove();
-                        if (refreshTimeout) clearTimeout(refreshTimeout);
-                      }
+                      // Remove click delay on mobile
+                      el.style.tapHighlightColor = 'transparent';
+                      el.style.webkitTapHighlightColor = 'transparent';
+                      
+                      // Add active state visual feedback
+                      el.addEventListener('touchstart', function() {
+                        this.style.opacity = '0.7';
+                      });
+                      
+                      el.addEventListener('touchend', function() {
+                        this.style.opacity = '1';
+                      });
+                    });
+                  });
+                  
+                  // Handle visibility changes to fix iOS issues
+                  document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState === 'visible') {
+                      // Force recalculation of navigation layout when app resumes
+                      setTimeout(() => {
+                        const navWrapper = document.querySelector('.navigation-wrapper');
+                        if (navWrapper) {
+                          // This subtle manipulation forces a layout recalculation
+                          navWrapper.style.display = 'none';
+                          void navWrapper.offsetHeight; // Force reflow
+                          navWrapper.style.display = '';
+                        }
+                      }, 100);
                     }
-                  }, { passive: true });
+                  });
                 }
               }
             }
             
             // Apply PWA setup with multiple trigger points
-            if (isPwa || sessionStorage.getItem('was_pwa_mode') === 'true') {
+            if (isPwa || sessionStorage.getItem('was_pwa_mode') === 'true' || localStorage.getItem('pwa_mode_detected') === 'true') {
               // Run immediately
               setupPwaLayout();
               
@@ -211,7 +186,12 @@ export default function RootLayout({
               });
               
               // Run on orientation change
-              window.addEventListener('orientationchange', setupPwaLayout);
+              window.addEventListener('orientationchange', () => {
+                console.log("Orientation changed - reapplying PWA layout");
+                // Apply after a delay to ensure new dimensions are correct
+                setTimeout(setupPwaLayout, 100);
+                setTimeout(setupPwaLayout, 500);
+              });
             }
           `
         }} />

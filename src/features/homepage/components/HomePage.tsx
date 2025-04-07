@@ -239,9 +239,10 @@ export function HomePage() {
             className="absolute nav-menu-positioner" 
             style={{ 
               left: '18px',
-              top: '18px' // Ensure consistent top positioning
+              top: '18px'
             }}
             id="nav-menu-container"
+            data-testid="nav-menu-container"
           >
             <Navigation />
           </div>
@@ -251,17 +252,19 @@ export function HomePage() {
             className="absolute nav-logo-positioner" 
             style={{ 
               right: '18px',
-              top: '5px' // Ensure consistent top positioning
+              top: '5px'
             }}
             id="nav-logo-container"
+            data-testid="nav-logo-container"
           >
-            <Link href="/">
+            <Link href="/" prefetch={false}>
               <div 
-                className="cursor-pointer"
+                className="cursor-pointer touch-manipulation"
                 style={{ 
-                  padding: '10px', // Larger touch target
-                  margin: '-10px', // Offset the padding to keep visual size
-                  zIndex: 1050, // High z-index to ensure accessibility 
+                  padding: '15px', // Increased touch target
+                  margin: '-15px', // Offset the padding to keep visual size
+                  zIndex: 1050,
+                  WebkitTapHighlightColor: 'transparent' // Remove tap highlight
                 }}
               >
                 <Image 
@@ -270,6 +273,9 @@ export function HomePage() {
                   width={48} 
                   height={48}
                   priority
+                  style={{
+                    pointerEvents: 'none' // Prevent image from interfering with touch
+                  }}
                 />
               </div>
             </Link>
