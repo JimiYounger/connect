@@ -98,10 +98,11 @@ export default function RootLayout({
             document.addEventListener('touchmove', function(e) {
               if (isPwa) {
                 const y = e.touches[0].clientY;
-                const delta = y - startY;
+                const mainContent = document.getElementById('pwa-main-content');
+                const scrollTop = mainContent ? mainContent.scrollTop : 0;
                 
-                // Prevent all pull-down motions to disable refresh
-                if (delta > 0) {
+                // Only prevent default when at the top of content and pulling down
+                if (scrollTop <= 0 && y > startY) {
                   e.preventDefault();
                 }
               }
