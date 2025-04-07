@@ -8,6 +8,7 @@
   "orientation": "portrait",
   "background_color": "#000000",
   "theme_color": "#000000",
+  "display_override": ["window-controls-overlay"],
   "icons": [
     {
       "src": "/connect.png",
@@ -30,5 +31,21 @@
       "type": "image/png",
       "form_factor": "wide"
     }
-  ]
+  ],
+  "screenshots": [
+    {
+      "src": "/pwa-screenshot.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "url": "/dashboard",
+      "icons": [{ "src": "/connect.png", "sizes": "192x192" }]
+    }
+  ],
+  "id": "com.purelight.connect"
 }
