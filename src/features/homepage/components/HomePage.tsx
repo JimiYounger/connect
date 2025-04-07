@@ -11,7 +11,6 @@ import { useUserContent } from '@/features/content/hooks/useUserContent'
 import { useAuth } from '@/features/auth/context/auth-context'
 import { useProfile } from '@/features/users/hooks/useProfile'
 import { useEffect, useState } from 'react'
-import { useMediaQuery } from '@/hooks/use-media-query'
 
 // Sleek, high-end animation styles
 const premiumAnimationStyles = `
@@ -70,7 +69,6 @@ export function HomePage() {
   const content = useUserContent();
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
-  const isMobile = useMediaQuery('(max-width: 1023px)');
 
   // Set a timeout to prevent infinite loading screen
   useEffect(() => {
@@ -220,10 +218,6 @@ export function HomePage() {
     );
   }
 
-  // Responsive positioning for navigation elements
-  const navTopPosition = isMobile ? '18px' : '46px';
-  const homeIconTopPosition = isMobile ? '5px' : '35px';
-
   return (
     <div className="flex flex-col h-full bg-black text-white">
       {/* Preload the connect.png image */}
@@ -238,17 +232,15 @@ export function HomePage() {
       </div>
       
       <>
-        {/* Navigation with responsive positioning - now part of scrollable content */}
-        <div className={`navigation-wrapper relative bg-black`} 
-             style={{ 
-               height: isMobile ? '60px' : '70px',
-             }}>
-          <div className="absolute" style={{ top: navTopPosition, left: '42px' }}>
+        {/* Removed inline height style, added class */}
+        <div className={`navigation-wrapper relative bg-black`}>
+          {/* Added class 'nav-menu-positioner', removed inline top style */}
+          <div className="absolute nav-menu-positioner" style={{ left: '42px' }}>
             <Navigation />
           </div>
           
-          {/* Logo/Home button in top right corner with responsive positioning */}
-          <div className="absolute" style={{ top: homeIconTopPosition, right: '42px' }}>
+          {/* Added class 'nav-logo-positioner', removed inline top style */}
+          <div className="absolute nav-logo-positioner" style={{ right: '42px' }}>
             <Link href="/">
               <div className="cursor-pointer">
                 <Image 

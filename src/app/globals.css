@@ -196,9 +196,33 @@ html.pwa-mode [contenteditable] {
     padding-bottom: env(safe-area-inset-bottom);
   }
 
-  /* Removed PWA specific header/content styles here - consolidated above */
-  /* .pwa-header { ... } */
-  /* .pwa-content { ... } */
+  /* Navigation Wrapper Base Styles (Desktop First) */
+  .navigation-wrapper {
+    height: 70px; /* Desktop height */
+  }
+
+  .nav-menu-positioner {
+    top: 46px; /* Desktop top position */
+  }
+
+  .nav-logo-positioner {
+    top: 35px; /* Desktop top position */
+  }
+
+  /* Navigation Wrapper Mobile Styles */
+  @media (max-width: 1023px) {
+    .navigation-wrapper {
+      height: 60px; /* Mobile height */
+    }
+
+    .nav-menu-positioner {
+      top: 18px; /* Mobile top position */
+    }
+
+    .nav-logo-positioner {
+      top: 5px; /* Mobile top position */
+    }
+  }
 }
 
 @layer base {
