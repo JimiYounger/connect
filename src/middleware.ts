@@ -119,8 +119,12 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - public folder
+     * - manifest.json (PWA manifest)
+     * - apple-touch-icon.png (iOS icon)
+     * - connect.png (App icon)
+     * - sw.js (Service worker)
+     * - workbox-*.js (Workbox service worker files)
      */
-    '/((?!_next/static|_next/image|favicon.ico|public/).*)',
+    '/((?!_next/static|_next/image|favicon.ico|manifest.json|apple-touch-icon.png|connect.png|sw.js|workbox-[a-zA-Z0-9]+).*)',
   ],
 }

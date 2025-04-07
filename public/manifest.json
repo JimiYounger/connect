@@ -4,7 +4,7 @@
   "description": "Everything You Need In One Place",
   "start_url": "/?source=pwa",
   "scope": "/",
-  "display": "fullscreen",
+  "display": "standalone",
   "orientation": "portrait",
   "background_color": "#000000",
   "theme_color": "#000000",
@@ -12,20 +12,23 @@
     {
       "src": "/connect.png",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     },
     {
       "src": "/apple-touch-icon.png",
       "sizes": "180x180",
-      "type": "image/png",
-      "purpose": "any"
+      "type": "image/png"
     },
     {
       "src": "/apple-touch-icon.png",
       "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/connect.png",
+      "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any"
+      "form_factor": "wide"
     }
   ]
 }
