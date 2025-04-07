@@ -82,7 +82,7 @@ html.pwa-mode .navigation-wrapper {
 }
 
 html.pwa-mode .bottom-padding {
-  padding-bottom: calc(env(safe-area-inset-bottom) + 80px);
+  padding-bottom: calc(env(safe-area-inset-bottom) + 20px);
 }
 
 /* Enable pull-to-refresh in PWA mode */
@@ -279,7 +279,7 @@ html.pwa-mode #pwa-main-content {
   overscroll-behavior-y: contain;
   padding-top: env(safe-area-inset-top, 0);
   min-height: 100%;
-  padding-bottom: calc(env(safe-area-inset-bottom) + 60px) !important;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* PWA active content container */
@@ -289,5 +289,10 @@ html.pwa-mode #pwa-main-content {
 
 /* Fix bottom padding */
 html.pwa-mode .bottom-padding {
-  padding-bottom: calc(env(safe-area-inset-bottom) + 80px);
+  padding-bottom: calc(env(safe-area-inset-bottom) + 20px);
+}
+
+/* Bottom navigation in PWA needs proper spacing */
+.dashboard-grid {
+  margin-bottom: 0;
 }

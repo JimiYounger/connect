@@ -242,7 +242,7 @@ export function HomePage() {
         {/* Navigation with responsive positioning - now part of scrollable content */}
         <div className="navigation-wrapper relative bg-black" 
              style={{ 
-               height: isMobile ? '80px' : '100px',
+               height: isMobile ? '60px' : '70px',
                paddingTop: 'env(safe-area-inset-top)'
              }}>
           <div className="absolute" style={{ top: navTopPosition, left: '42px' }}>
@@ -273,7 +273,9 @@ export function HomePage() {
           
           {/* Dashboard section with significantly reduced spacing (1/6 of GRID_GAP) */}
           <div style={{ marginTop: `${GRID_GAP / 6}px` }}>
-            <Dashboard />
+            <div className="w-full bottom-padding" style={{ paddingBottom: isMobile ? '20px' : '0' }}>
+              <Dashboard />
+            </div>
           </div>
         </div>
       </main>
