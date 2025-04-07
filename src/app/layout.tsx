@@ -98,11 +98,10 @@ export default function RootLayout({
             document.addEventListener('touchmove', function(e) {
               if (isPwa) {
                 const y = e.touches[0].clientY;
-                const mainContent = document.getElementById('pwa-main-content');
-                const scrollTop = mainContent ? mainContent.scrollTop : 0;
+                const delta = y - startY;
                 
-                // Only prevent default for pull-to-refresh at the top
-                if (scrollTop <= 0 && y > startY && (y - startY > 10)) {
+                // Prevent all pull-down motions to disable refresh
+                if (delta > 0) {
                   e.preventDefault();
                 }
               }
@@ -113,9 +112,11 @@ export default function RootLayout({
               if (isPwa) {
                 const mainEl = document.getElementById('pwa-main-content');
                 if (mainEl) {
-                  mainEl.style.height = "calc(100vh - env(safe-area-inset-top))";
+                  mainEl.style.height = "100%";
+                  mainEl.style.minHeight = "100vh";
                   mainEl.style.overflow = "auto";
                   mainEl.style.WebkitOverflowScrolling = "touch";
+                  mainEl.style.overscrollBehavior = "none";
                   mainEl.classList.add('pwa-content');
                   
                   // Create a better scrolling area within the main element
