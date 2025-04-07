@@ -31,22 +31,36 @@ body {
 
 /* Specific PWA styles */
 html.pwa-mode {
-  position: fixed;
-  width: 100%;
   height: 100%;
+  width: 100%;
   overflow: hidden;
+  position: fixed;
 }
 
 html.pwa-mode body {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100%;
   height: 100%;
+  width: 100%;
   overflow: hidden;
-  background-color: #000000;
+  position: fixed;
+  margin: 0;
+  padding: 0;
+}
+
+/* For regular browser mode */
+body:not(.pwa-mode) #pwa-main-content {
+  overflow: auto;
+  height: auto;
+  min-height: 100vh;
+}
+
+.pwa-content {
+  -webkit-overflow-scrolling: touch !important;
+  overflow-y: scroll !important;
+}
+
+/* Additional margin for bottom elements in PWA mode */
+html.pwa-mode .bottom-elements {
+  margin-bottom: calc(env(safe-area-inset-bottom) + 20px);
 }
 
 @layer base {

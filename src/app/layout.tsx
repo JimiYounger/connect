@@ -113,10 +113,10 @@ export default function RootLayout({
               if (isPwa) {
                 const mainEl = document.getElementById('pwa-main-content');
                 if (mainEl) {
-                  // Reset any existing styles
+                  // Clear previous styles
                   mainEl.style.cssText = '';
                   
-                  // Set proper styles for full height and smooth scrolling
+                  // Core styles for native iOS-like scrolling
                   mainEl.style.position = 'absolute';
                   mainEl.style.top = '0';
                   mainEl.style.left = '0';
@@ -124,20 +124,42 @@ export default function RootLayout({
                   mainEl.style.bottom = '0';
                   mainEl.style.width = '100%';
                   mainEl.style.height = '100%';
-                  mainEl.style.overflow = 'auto';
-                  mainEl.style.WebkitOverflowScrolling = 'touch';
-                  mainEl.style.overscrollBehavior = 'none';
+                  mainEl.style.overflow = 'scroll'; // Change to scroll instead of auto
+                  mainEl.style.WebkitOverflowScrolling = 'touch'; // Critical for momentum scrolling
                   mainEl.style.paddingTop = 'env(safe-area-inset-top)';
-                  mainEl.style.paddingBottom = 'env(safe-area-inset-bottom)';
+                  mainEl.style.paddingBottom = 'calc(env(safe-area-inset-bottom) + 20px)'; // Add extra padding
                   mainEl.style.backgroundColor = '#000000';
                   
-                  // Fix body styling
+                  // Fix body
                   document.body.style.position = 'fixed';
                   document.body.style.top = '0';
                   document.body.style.left = '0';
+                  document.body.style.right = '0';
+                  document.body.style.bottom = '0';
                   document.body.style.width = '100%';
                   document.body.style.height = '100%';
                   document.body.style.overflow = 'hidden';
+                  
+                  // Setup resize listener for viewport changes
+                  const resizeObserver = new ResizeObserver(() => {
+                    mainEl.style.height = '100%';
+                    mainEl.style.paddingBottom = 'calc(env(safe-area-inset-bottom) + 20px)';
+                  });
+                  resizeObserver.observe(document.documentElement);
+                }
+              } else {
+                // For regular browser mode
+                const mainEl = document.getElementById('pwa-main-content');
+                if (mainEl) {
+                  mainEl.style.cssText = '';
+                  mainEl.style.height = 'auto';
+                  mainEl.style.minHeight = '100vh';
+                  mainEl.style.overflow = 'visible';
+                  mainEl.style.width = '100%';
+                  
+                  document.body.style.position = '';
+                  document.body.style.overflow = '';
+                  document.body.style.height = '';
                 }
               }
             }
