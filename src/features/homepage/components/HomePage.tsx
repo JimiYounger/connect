@@ -123,7 +123,7 @@ export function HomePage() {
      (content.loading.carousel || content.loading.navigation || content.loading.dashboard))) && 
     !loadingTimeout;
 
-  // Show loading state if still loading and timeout hasn't occurred
+
   if (isLoading) {
     return (
       <>
