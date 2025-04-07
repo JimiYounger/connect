@@ -233,7 +233,7 @@ export function HomePage() {
       
       <>
         {/* Navigation wrapper with enhanced PWA compatibility */}
-        <div className="navigation-wrapper relative bg-black" id="navigation-wrapper">
+        <div className="navigation-wrapper relative bg-black" id="navigation-wrapper" style={{ marginBottom: '-2px' }}>
           {/* Menu positioned with consistent class and enhanced accessibility */}
           <div 
             className="absolute nav-menu-positioner" 
@@ -252,7 +252,7 @@ export function HomePage() {
             className="absolute nav-logo-positioner" 
             style={{ 
               right: '18px',
-              top: '2px'
+              top: '0px'
             }}
             id="nav-logo-container"
             data-testid="nav-logo-container"
@@ -283,7 +283,7 @@ export function HomePage() {
         </div>
         
         <div className="container mx-auto px-4">
-          <div style={{ paddingTop: '0px' }}>
+          <div style={{ marginTop: '-5px' }}> {/* Negative margin to reduce gap by 5px */}
             <Carousel autoplayInterval={7000} />
           </div>
           

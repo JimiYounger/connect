@@ -67,7 +67,7 @@ html.pwa-mode .nav-menu-positioner {
 
 html.pwa-mode .nav-logo-positioner {
   position: absolute !important;
-  top: 2px !important;
+  top: 0px !important;
   right: 18px !important;
   z-index: 1010 !important;
 }
@@ -253,7 +253,7 @@ html.pwa-mode [contenteditable] {
 
   .nav-logo-positioner {
     position: absolute;
-    top: 2px; /* Mobile top position - reduced for more space */
+    top: 0px; /* Mobile top position - reduced for more space */
     right: 18px;
     pointer-events: auto;
     z-index: 1050;
