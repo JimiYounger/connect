@@ -123,7 +123,7 @@ export function HomePage() {
      (content.loading.carousel || content.loading.navigation || content.loading.dashboard))) && 
     !loadingTimeout;
 
-
+  // Loading State
   if (isLoading) {
     return (
       <>
