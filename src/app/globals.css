@@ -15,7 +15,9 @@ html {
 html.pwa-mode {
   background-color: #000000;
   height: 100%;
-  overflow: auto;
+  position: fixed;
+  width: 100%;
+  overflow: hidden;
 }
 
 body {
@@ -30,8 +32,14 @@ body {
 }
 
 html.pwa-mode body {
-  position: relative;
-  overflow: auto;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 @layer base {
@@ -157,11 +165,13 @@ html.pwa-mode body {
     @apply pt-16;
     padding-top: calc(4rem + env(safe-area-inset-top));
     padding-bottom: env(safe-area-inset-bottom);
-    min-height: calc(100% - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    min-height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    height: auto;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
     position: relative;
+    flex: 1 1 auto;
   }
 }
 

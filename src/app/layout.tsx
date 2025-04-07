@@ -74,10 +74,14 @@ export default function RootLayout({
           __html: `
             // Fix for iOS PWA scrolling issues
             document.addEventListener('touchmove', function(event) {
-              // Prevent pull-to-refresh behavior on PWA
+              // We only want to prevent the default pull-to-refresh
+              // But still allow normal scrolling
               if (window.navigator.standalone) {
-                // Allow scrolling of normal scrollable elements
-                if (!event.target.closest('.scrollable')) {
+                // Get the initial touch position
+                const touchY = event.touches[0].clientY;
+                
+                // Only prevent default if at the top of the page and trying to scroll up further
+                if (window.scrollY <= 0 && touchY > 10) {
                   event.preventDefault();
                 }
               }
@@ -94,6 +98,18 @@ export default function RootLayout({
             };
             window.addEventListener('resize', setAppHeight);
             setAppHeight();
+            
+            // Add classes to main content for PWA scrolling
+            if (window.navigator.standalone) {
+              // Add event listener after DOM is loaded
+              document.addEventListener('DOMContentLoaded', () => {
+                // Find the main content element
+                const mainElement = document.querySelector('main');
+                if (mainElement) {
+                  mainElement.classList.add('pwa-content');
+                }
+              });
+            }
           `
         }} />
         <style>{`
@@ -340,7 +356,7 @@ export default function RootLayout({
         }}
       >
         <Providers>
-          <main className="flex-1 w-full bg-black text-black">
+          <main className="flex-1 w-full bg-black text-black overflow-auto">
             {children}
           </main>
           <Toaster />
