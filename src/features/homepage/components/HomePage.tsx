@@ -240,7 +240,7 @@ export function HomePage() {
       
       <main className="flex-1 relative">
         {/* Navigation with responsive positioning - now part of scrollable content */}
-        <div className="navigation-wrapper relative bg-black" style={{ height: isMobile ? '80px' : '100px' }}>
+        <div className="navigation-wrapper relative bg-black" style={{ height: isMobile ? '60px' : '100px' }}>
           <div className="absolute" style={{ top: navTopPosition, left: '42px' }}>
             <Navigation />
           </div>
@@ -263,7 +263,7 @@ export function HomePage() {
         
         <div className="container mx-auto px-4" style={{ paddingBottom: containerBottomPadding }}>
           {/* Adjust padding to account for scrollable navigation */}
-          <div style={{ paddingTop: '20px' }}>
+          <div style={{ paddingTop: '0px' }}>
             <Carousel autoplayInterval={7000} />
           </div>
           
