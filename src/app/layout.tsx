@@ -5,6 +5,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
 import { Inter } from 'next/font/google'
 import { Providers } from '@/providers/providers'
+import AppHeightHandler from '@/components/AppHeightHandler'
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -212,28 +213,6 @@ export default function RootLayout({
               // Run on orientation change
               window.addEventListener('orientationchange', setupPwaLayout);
             }
-
-            // Viewport height fix for full height - more aggressive updating
-            const setAppHeight = () => {
-              const height = window.innerHeight;
-              document.documentElement.style.setProperty('--app-height', \`\${height}px\`);
-              console.log("Setting app height:", height);
-              
-              // Force layout recalculation
-              document.body.style.height = '100%';
-              document.body.offsetHeight;
-            };
-            
-            window.addEventListener('resize', setAppHeight);
-            window.addEventListener('orientationchange', setAppHeight);
-            document.addEventListener('visibilitychange', () => {
-              if (document.visibilityState === 'visible') {
-                setTimeout(setAppHeight, 100);
-              }
-            });
-            
-            // Initial call
-            setAppHeight();
           `
         }} />
         <script dangerouslySetInnerHTML={{
@@ -472,7 +451,8 @@ export default function RootLayout({
         }}
       >
         <Providers>
-          {/* Removed flex-1 from main, letting CSS handle PWA layout */}
+          {/* Add the AppHeightHandler component here */}
+          <AppHeightHandler />
           <main id="pwa-main-content" className="w-full bg-black text-black"> 
             {children}
           </main>
