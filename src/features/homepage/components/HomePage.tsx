@@ -240,24 +240,26 @@ export function HomePage() {
       </div>
       
       <main className="flex-1 relative">
-        {/* Navigation with responsive positioning */}
-        <div className="absolute" style={{ top: navTopPosition, left: '42px' }}>
-          <Navigation />
-        </div>
-        
-        {/* Logo/Home button in top right corner with responsive positioning */}
-        <div className="absolute" style={{ top: homeIconTopPosition, right: '42px' }}>
-          <Link href="/">
-            <div className="cursor-pointer">
-              <Image 
-                src="/favicon.ico" 
-                alt="Home" 
-                width={48} 
-                height={48}
-                priority
-              />
-            </div>
-          </Link>
+        {/* Navigation with responsive positioning and a dedicated wrapper */}
+        <div className="navigation-wrapper sticky top-0 z-20 bg-black">
+          <div className="absolute" style={{ top: navTopPosition, left: '42px' }}>
+            <Navigation />
+          </div>
+          
+          {/* Logo/Home button in top right corner with responsive positioning */}
+          <div className="absolute" style={{ top: homeIconTopPosition, right: '42px' }}>
+            <Link href="/">
+              <div className="cursor-pointer">
+                <Image 
+                  src="/favicon.ico" 
+                  alt="Home" 
+                  width={48} 
+                  height={48}
+                  priority
+                />
+              </div>
+            </Link>
+          </div>
         </div>
         
         <div className="container mx-auto px-4" style={{ paddingBottom: containerBottomPadding }}>

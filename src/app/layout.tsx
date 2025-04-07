@@ -124,10 +124,10 @@ export default function RootLayout({
                   mainEl.style.bottom = '0';
                   mainEl.style.width = '100%';
                   mainEl.style.height = '100%';
-                  mainEl.style.overflow = 'scroll'; // Change to scroll instead of auto
-                  mainEl.style.WebkitOverflowScrolling = 'touch'; // Critical for momentum scrolling
+                  mainEl.style.overflow = 'scroll';
+                  mainEl.style.webkitOverflowScrolling = 'touch';
                   mainEl.style.paddingTop = 'env(safe-area-inset-top)';
-                  mainEl.style.paddingBottom = 'calc(env(safe-area-inset-bottom) + 20px)'; // Add extra padding
+                  mainEl.style.paddingBottom = 'calc(env(safe-area-inset-bottom) + 20px)';
                   mainEl.style.backgroundColor = '#000000';
                   
                   // Fix body
@@ -146,6 +146,9 @@ export default function RootLayout({
                     mainEl.style.paddingBottom = 'calc(env(safe-area-inset-bottom) + 20px)';
                   });
                   resizeObserver.observe(document.documentElement);
+                  
+                  // Add a special class to the main element when in PWA mode
+                  mainEl.classList.add('pwa-active-content');
                 }
               } else {
                 // For regular browser mode
@@ -160,6 +163,8 @@ export default function RootLayout({
                   document.body.style.position = '';
                   document.body.style.overflow = '';
                   document.body.style.height = '';
+                  
+                  mainEl.classList.remove('pwa-active-content');
                 }
               }
             }
@@ -174,6 +179,9 @@ export default function RootLayout({
               
               // Apply after all resources load
               window.addEventListener('load', enableScrolling);
+              
+              // Apply whenever the window is resized
+              window.addEventListener('resize', enableScrolling);
             }
 
             // Make sure viewport height is correct on iOS
@@ -189,6 +197,30 @@ export default function RootLayout({
           .auth-content { opacity: 1; }
           .loading .auth-loading { display: block; }
           .loading .auth-content { opacity: 0; }
+          
+          /* Fix for navigation sticking when scrolling in PWA mode */
+          .pwa-active-content .navigation-wrapper {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background-color: #000000;
+          }
+          
+          /* Ensure full height of content in PWA mode */
+          html.pwa-mode #pwa-main-content {
+            min-height: 100%;
+            padding-bottom: calc(env(safe-area-inset-bottom) + 60px) !important;
+          }
+          
+          /* Fix for bottom content being cut off */
+          html.pwa-mode .bottom-padding {
+            padding-bottom: calc(env(safe-area-inset-bottom) + 80px);
+          }
+          
+          /* Prevent unwanted touch highlighting in PWA mode */
+          html.pwa-mode * {
+            -webkit-tap-highlight-color: transparent;
+          }
         `}</style>
         <script dangerouslySetInnerHTML={{
           __html: `
@@ -426,7 +458,7 @@ export default function RootLayout({
         }}
       >
         <Providers>
-          <main id="pwa-main-content" className="flex-1 w-full bg-black text-black">
+          <main id="pwa-main-content" className="flex-1 w-full bg-black text-black bottom-padding">
             {children}
           </main>
           <Toaster />

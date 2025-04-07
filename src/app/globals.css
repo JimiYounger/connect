@@ -63,6 +63,51 @@ html.pwa-mode .bottom-elements {
   margin-bottom: calc(env(safe-area-inset-bottom) + 20px);
 }
 
+/* Improved navigation wrapper styling for PWA mode */
+.navigation-wrapper {
+  height: 80px;
+  width: 100%;
+  position: relative;
+}
+
+/* Fix sticky navigation in PWA mode */
+html.pwa-mode .navigation-wrapper {
+  position: sticky !important;
+  top: env(safe-area-inset-top, 0);
+  z-index: 50;
+  background-color: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* Prevent content from being cut off at the bottom */
+.bottom-padding {
+  padding-bottom: env(safe-area-inset-bottom, 20px);
+}
+
+html.pwa-mode .bottom-padding {
+  padding-bottom: calc(env(safe-area-inset-bottom) + 80px);
+}
+
+/* Fix scroll momentum in PWA mode */
+#pwa-main-content {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: none;
+}
+
+/* Fix tap highlighting */
+html.pwa-mode * {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* Allow specific elements to be selectable */
+html.pwa-mode input,
+html.pwa-mode textarea,
+html.pwa-mode [contenteditable] {
+  user-select: text;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

@@ -78,137 +78,139 @@ export function Dashboard() {
     : (MOBILE_GRID.cols * GRID_CELL_SIZE) + ((MOBILE_GRID.cols - 1) * GRID_GAP_MOBILE_HORIZONTAL);
 
   return (
-    <div className="flex justify-center w-full">
-      {/* Desktop Layout */}
-      {!isMobile && (
-        <div 
-          className="ios-widget-grid dashboard-grid"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: `repeat(${DESKTOP_GRID.cols}, ${GRID_CELL_SIZE}px)`,
-            gridAutoRows: `${GRID_CELL_SIZE}px`,
-            gap: `${GRID_GAP}px`,
-            width: `${calculatedGridWidth}px`,
-            maxWidth: '992px',
-          }}
-        >
-          {filteredWidgets.map((widget) => {
-            if (!widget.placement) return null;
-            
-            const position_x = widget.placement.position_x || 0;
-            const position_y = widget.placement.position_y || 0;
-            const width = widget.placement.width || 1;
-            const height = widget.placement.height || 1;
-            
-            const isCircle = widget.shape === 'circle';
-            
-            // Calculate dimensions including gaps
-            const totalWidth = (width * GRID_CELL_SIZE) + ((width - 1) * GRID_GAP);
-            const totalHeight = (height * GRID_CELL_SIZE) + ((height - 1) * GRID_GAP);
-            
-            return (
-              <div 
-                key={widget.id}
-                className="widget-container"
-                style={{
-                  gridColumnStart: position_x + 1,
-                  gridColumnEnd: position_x + width + 1,
-                  gridRowStart: position_y + 1,
-                  gridRowEnd: position_y + height + 1,
-                  borderRadius: isCircle ? '50%' : WIDGET_BORDER_RADIUS,
-                }}
-              >
+    <div className="w-full bottom-padding">
+      <div className="flex justify-center w-full">
+        {/* Desktop Layout */}
+        {!isMobile && (
+          <div 
+            className="ios-widget-grid dashboard-grid"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: `repeat(${DESKTOP_GRID.cols}, ${GRID_CELL_SIZE}px)`,
+              gridAutoRows: `${GRID_CELL_SIZE}px`,
+              gap: `${GRID_GAP}px`,
+              width: `${calculatedGridWidth}px`,
+              maxWidth: '992px',
+            }}
+          >
+            {filteredWidgets.map((widget) => {
+              if (!widget.placement) return null;
+              
+              const position_x = widget.placement.position_x || 0;
+              const position_y = widget.placement.position_y || 0;
+              const width = widget.placement.width || 1;
+              const height = widget.placement.height || 1;
+              
+              const isCircle = widget.shape === 'circle';
+              
+              // Calculate dimensions including gaps
+              const totalWidth = (width * GRID_CELL_SIZE) + ((width - 1) * GRID_GAP);
+              const totalHeight = (height * GRID_CELL_SIZE) + ((height - 1) * GRID_GAP);
+              
+              return (
                 <div 
-                  className="widget-card placed-widget"
+                  key={widget.id}
+                  className="widget-container"
                   style={{
-                    width: isCircle ? Math.min(totalWidth, totalHeight) : totalWidth,
-                    height: isCircle ? Math.min(totalWidth, totalHeight) : totalHeight,
+                    gridColumnStart: position_x + 1,
+                    gridColumnEnd: position_x + width + 1,
+                    gridRowStart: position_y + 1,
+                    gridRowEnd: position_y + height + 1,
                     borderRadius: isCircle ? '50%' : WIDGET_BORDER_RADIUS,
                   }}
                 >
-                  <WidgetRenderer
-                    widget={widget}
-                    configuration={widget.config}
-                    width={isCircle ? Math.min(totalWidth, totalHeight) : totalWidth}
-                    height={isCircle ? Math.min(totalWidth, totalHeight) : totalHeight}
-                    borderRadius={isCircle ? '50%' : WIDGET_BORDER_RADIUS}
-                    className="widget-renderer"
-                  />
+                  <div 
+                    className="widget-card placed-widget"
+                    style={{
+                      width: isCircle ? Math.min(totalWidth, totalHeight) : totalWidth,
+                      height: isCircle ? Math.min(totalWidth, totalHeight) : totalHeight,
+                      borderRadius: isCircle ? '50%' : WIDGET_BORDER_RADIUS,
+                    }}
+                  >
+                    <WidgetRenderer
+                      widget={widget}
+                      configuration={widget.config}
+                      width={isCircle ? Math.min(totalWidth, totalHeight) : totalWidth}
+                      height={isCircle ? Math.min(totalWidth, totalHeight) : totalHeight}
+                      borderRadius={isCircle ? '50%' : WIDGET_BORDER_RADIUS}
+                      className="widget-renderer"
+                    />
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-      
-      {/* Mobile Layout with different horizontal and vertical gaps */}
-      {isMobile && (
-        <div 
-          className="ios-widget-grid dashboard-grid"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: `repeat(${MOBILE_GRID.cols}, ${GRID_CELL_SIZE}px)`,
-            gridAutoRows: `${GRID_CELL_SIZE}px`,
-            columnGap: `${GRID_GAP_MOBILE_HORIZONTAL}px`,
-            rowGap: `${GRID_GAP_MOBILE_VERTICAL}px`,
-            width: `${calculatedGridWidth}px`,
-            maxWidth: '100%',
-          }}
-        >
-          {filteredWidgets.map((widget) => {
-            if (!widget.placement) return null;
-            
-            const position_x = widget.placement.position_x || 0;
-            const position_y = widget.placement.position_y || 0;
-            const width = widget.placement.width || 1;
-            const height = widget.placement.height || 1;
-            
-            const isCircle = widget.shape === 'circle';
-            
-            // Calculate dimensions with specific horizontal and vertical gaps
-            const totalWidth = (width * GRID_CELL_SIZE) + ((width - 1) * GRID_GAP_MOBILE_HORIZONTAL);
-            const totalHeight = (height * GRID_CELL_SIZE) + ((height - 1) * GRID_GAP_MOBILE_VERTICAL);
-            
-            return (
-              <div 
-                key={widget.id}
-                className="widget-container"
-                style={{
-                  gridColumnStart: position_x + 1,
-                  gridColumnEnd: position_x + width + 1,
-                  gridRowStart: position_y + 1,
-                  gridRowEnd: position_y + height + 1,
-                  borderRadius: isCircle ? '50%' : WIDGET_BORDER_RADIUS,
-                  // Add these for circle widgets:
-                  ...(isCircle && {
-                    aspectRatio: '1 / 1',
-                    justifySelf: 'center', // Center in grid cell
-                    alignSelf: 'center',
-                  }),
-                }}
-              >
+              );
+            })}
+          </div>
+        )}
+        
+        {/* Mobile Layout with different horizontal and vertical gaps */}
+        {isMobile && (
+          <div 
+            className="ios-widget-grid dashboard-grid"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: `repeat(${MOBILE_GRID.cols}, ${GRID_CELL_SIZE}px)`,
+              gridAutoRows: `${GRID_CELL_SIZE}px`,
+              columnGap: `${GRID_GAP_MOBILE_HORIZONTAL}px`,
+              rowGap: `${GRID_GAP_MOBILE_VERTICAL}px`,
+              width: `${calculatedGridWidth}px`,
+              maxWidth: '100%',
+            }}
+          >
+            {filteredWidgets.map((widget) => {
+              if (!widget.placement) return null;
+              
+              const position_x = widget.placement.position_x || 0;
+              const position_y = widget.placement.position_y || 0;
+              const width = widget.placement.width || 1;
+              const height = widget.placement.height || 1;
+              
+              const isCircle = widget.shape === 'circle';
+              
+              // Calculate dimensions with specific horizontal and vertical gaps
+              const totalWidth = (width * GRID_CELL_SIZE) + ((width - 1) * GRID_GAP_MOBILE_HORIZONTAL);
+              const totalHeight = (height * GRID_CELL_SIZE) + ((height - 1) * GRID_GAP_MOBILE_VERTICAL);
+              
+              return (
                 <div 
-                  className="widget-card placed-widget"
+                  key={widget.id}
+                  className="widget-container"
                   style={{
-                    width: isCircle ? Math.min(totalWidth, totalHeight) : totalWidth,
-                    height: isCircle ? Math.min(totalWidth, totalHeight) : totalHeight,
+                    gridColumnStart: position_x + 1,
+                    gridColumnEnd: position_x + width + 1,
+                    gridRowStart: position_y + 1,
+                    gridRowEnd: position_y + height + 1,
                     borderRadius: isCircle ? '50%' : WIDGET_BORDER_RADIUS,
+                    // Add these for circle widgets:
+                    ...(isCircle && {
+                      aspectRatio: '1 / 1',
+                      justifySelf: 'center', // Center in grid cell
+                      alignSelf: 'center',
+                    }),
                   }}
                 >
-                  <WidgetRenderer
-                    widget={widget}
-                    configuration={widget.config}
-                    width={isCircle ? Math.min(totalWidth, totalHeight) : totalWidth}
-                    height={isCircle ? Math.min(totalWidth, totalHeight) : totalHeight}
-                    borderRadius={isCircle ? '50%' : WIDGET_BORDER_RADIUS}
-                    className="widget-renderer"
-                  />
+                  <div 
+                    className="widget-card placed-widget"
+                    style={{
+                      width: isCircle ? Math.min(totalWidth, totalHeight) : totalWidth,
+                      height: isCircle ? Math.min(totalWidth, totalHeight) : totalHeight,
+                      borderRadius: isCircle ? '50%' : WIDGET_BORDER_RADIUS,
+                    }}
+                  >
+                    <WidgetRenderer
+                      widget={widget}
+                      configuration={widget.config}
+                      width={isCircle ? Math.min(totalWidth, totalHeight) : totalWidth}
+                      height={isCircle ? Math.min(totalWidth, totalHeight) : totalHeight}
+                      borderRadius={isCircle ? '50%' : WIDGET_BORDER_RADIUS}
+                      className="widget-renderer"
+                    />
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
