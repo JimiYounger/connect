@@ -72,24 +72,71 @@ export default function RootLayout({
         {/* iOS PWA fixes */}
         <script dangerouslySetInnerHTML={{
           __html: `
-            // Fix for iOS PWA scrolling issues
-            document.addEventListener('touchmove', function(event) {
-              // We only want to prevent the default pull-to-refresh
-              // But still allow normal scrolling
-              if (window.navigator.standalone) {
-                // Get the initial touch position
-                const touchY = event.touches[0].clientY;
+            // Complete iOS PWA scrolling fix
+            const isPwa = window.navigator.standalone;
+            
+            // Detect standalone mode (PWA)
+            if (isPwa) {
+              document.documentElement.classList.add('pwa-mode');
+              
+              // Fix iOS Safari viewport issues
+              const viewport = document.querySelector('meta[name="viewport"]');
+              if (viewport) {
+                viewport.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
+              }
+            }
+            
+            // Track touch start position
+            let startY = 0;
+            
+            // Capture the start position on touch
+            document.addEventListener('touchstart', function(e) {
+              startY = e.touches[0].clientY;
+            }, { passive: true });
+            
+            // Handle touch movement to prevent pull-to-refresh only at the top
+            document.addEventListener('touchmove', function(e) {
+              if (isPwa) {
+                const y = e.touches[0].clientY;
+                const mainContent = document.getElementById('pwa-main-content');
+                const scrollTop = mainContent ? mainContent.scrollTop : 0;
                 
-                // Only prevent default if at the top of the page and trying to scroll up further
-                if (window.scrollY <= 0 && touchY > 10) {
-                  event.preventDefault();
+                // Only prevent default for pull-to-refresh at the top
+                if (scrollTop <= 0 && y > startY && (y - startY > 10)) {
+                  e.preventDefault();
                 }
               }
             }, { passive: false });
-
-            // Detect standalone mode (PWA)
-            if (window.navigator.standalone) {
-              document.documentElement.classList.add('pwa-mode');
+            
+            // Fix scrolling for PWA content
+            function enableScrolling() {
+              if (isPwa) {
+                const mainEl = document.getElementById('pwa-main-content');
+                if (mainEl) {
+                  mainEl.style.height = "calc(100vh - env(safe-area-inset-top))";
+                  mainEl.style.overflow = "auto";
+                  mainEl.style.WebkitOverflowScrolling = "touch";
+                  mainEl.classList.add('pwa-content');
+                  
+                  // Create a better scrolling area within the main element
+                  document.body.style.position = "fixed";
+                  document.body.style.width = "100%";
+                  document.body.style.height = "100%";
+                  document.body.style.overflow = "hidden";
+                }
+              }
+            }
+            
+            // Make absolutely sure the PWA scrolling is applied
+            if (isPwa) {
+              // Apply immediately
+              enableScrolling();
+              
+              // Apply after DOM loads
+              document.addEventListener('DOMContentLoaded', enableScrolling);
+              
+              // Apply after all resources load
+              window.addEventListener('load', enableScrolling);
             }
 
             // Make sure viewport height is correct on iOS
@@ -98,18 +145,6 @@ export default function RootLayout({
             };
             window.addEventListener('resize', setAppHeight);
             setAppHeight();
-            
-            // Add classes to main content for PWA scrolling
-            if (window.navigator.standalone) {
-              // Add event listener after DOM is loaded
-              document.addEventListener('DOMContentLoaded', () => {
-                // Find the main content element
-                const mainElement = document.querySelector('main');
-                if (mainElement) {
-                  mainElement.classList.add('pwa-content');
-                }
-              });
-            }
           `
         }} />
         <style>{`
@@ -356,7 +391,7 @@ export default function RootLayout({
         }}
       >
         <Providers>
-          <main className="flex-1 w-full bg-black text-black overflow-auto">
+          <main id="pwa-main-content" className="flex-1 w-full bg-black text-black overflow-auto -webkit-overflow-scrolling-touch">
             {children}
           </main>
           <Toaster />

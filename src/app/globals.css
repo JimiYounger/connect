@@ -12,12 +12,10 @@ html {
   height: var(--app-height);
 }
 
-html.pwa-mode {
+html {
   background-color: #000000;
   height: 100%;
-  position: fixed;
   width: 100%;
-  overflow: hidden;
 }
 
 body {
@@ -29,6 +27,15 @@ body {
   width: 100%;
   overflow-y: auto;
   background-color: #000000;
+  position: relative;
+}
+
+/* Specific PWA styles */
+html.pwa-mode {
+  position: fixed;
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
 }
 
 html.pwa-mode body {
@@ -40,6 +47,8 @@ html.pwa-mode body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  height: 100%;
+  max-height: -webkit-fill-available;
 }
 
 @layer base {
@@ -165,13 +174,18 @@ html.pwa-mode body {
     @apply pt-16;
     padding-top: calc(4rem + env(safe-area-inset-top));
     padding-bottom: env(safe-area-inset-bottom);
-    min-height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-    height: auto;
-    overflow-y: auto;
+    height: calc(100vh - env(safe-area-inset-top));
+    width: 100%;
+    overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
-    position: relative;
-    flex: 1 1 auto;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    flex: 1;
+    z-index: 1;
   }
 }
 
