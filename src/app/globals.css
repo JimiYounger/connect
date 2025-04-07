@@ -60,14 +60,14 @@ html.pwa-mode .navigation-wrapper {
 /* Keep positioners absolute within the navigation-wrapper for consistency with browser version */
 html.pwa-mode .nav-menu-positioner {
   position: absolute !important;
-  top: 18px !important;
+  top: 12px !important;
   left: 18px !important;
   z-index: 1010 !important;
 }
 
 html.pwa-mode .nav-logo-positioner {
   position: absolute !important;
-  top: 5px !important;
+  top: 2px !important;
   right: 18px !important;
   z-index: 1010 !important;
 }
@@ -245,7 +245,7 @@ html.pwa-mode [contenteditable] {
 
   .nav-menu-positioner {
     position: absolute;
-    top: 18px; /* Mobile top position */
+    top: 12px; /* Mobile top position - reduced for more space */
     left: 18px;
     pointer-events: auto;
     z-index: 1050;
@@ -253,7 +253,7 @@ html.pwa-mode [contenteditable] {
 
   .nav-logo-positioner {
     position: absolute;
-    top: 5px; /* Mobile top position */
+    top: 2px; /* Mobile top position - reduced for more space */
     right: 18px;
     pointer-events: auto;
     z-index: 1050;

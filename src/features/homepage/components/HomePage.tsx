@@ -239,7 +239,7 @@ export function HomePage() {
             className="absolute nav-menu-positioner" 
             style={{ 
               left: '18px',
-              top: '18px'
+              top: '12px'
             }}
             id="nav-menu-container"
             data-testid="nav-menu-container"
@@ -252,7 +252,7 @@ export function HomePage() {
             className="absolute nav-logo-positioner" 
             style={{ 
               right: '18px',
-              top: '5px'
+              top: '2px'
             }}
             id="nav-logo-container"
             data-testid="nav-logo-container"
