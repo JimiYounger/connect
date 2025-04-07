@@ -12,7 +12,6 @@ import { useAuth } from '@/features/auth/context/auth-context'
 import { useProfile } from '@/features/users/hooks/useProfile'
 import { useEffect, useState } from 'react'
 import { useMediaQuery } from '@/hooks/use-media-query'
-import { usePwaMode } from '@/hooks/use-pwa'
 
 // Sleek, high-end animation styles
 const premiumAnimationStyles = `
@@ -72,8 +71,7 @@ export function HomePage() {
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const isMobile = useMediaQuery('(max-width: 1023px)');
-  const { isPwa } = usePwaMode();
-  
+
   // Set a timeout to prevent infinite loading screen
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -241,7 +239,7 @@ export function HomePage() {
       
       <>
         {/* Navigation with responsive positioning - now part of scrollable content */}
-        <div className={`navigation-wrapper relative bg-black ${isPwa ? 'safe-top' : ''}`} 
+        <div className={`navigation-wrapper relative bg-black`} 
              style={{ 
                height: isMobile ? '60px' : '70px',
              }}>
