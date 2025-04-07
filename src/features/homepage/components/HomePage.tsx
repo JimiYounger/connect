@@ -223,7 +223,6 @@ export function HomePage() {
   // Responsive positioning for navigation elements
   const navTopPosition = isMobile ? '18px' : '46px';
   const homeIconTopPosition = isMobile ? '5px' : '35px';
-  const carouselTopPadding = isMobile ? '60px' : '80px';
   const containerBottomPadding = isMobile ? '40px' : '0px';
 
   return (
@@ -240,8 +239,8 @@ export function HomePage() {
       </div>
       
       <main className="flex-1 relative">
-        {/* Navigation with responsive positioning and a dedicated wrapper */}
-        <div className="navigation-wrapper sticky top-0 z-20 bg-black">
+        {/* Navigation with responsive positioning - now part of scrollable content */}
+        <div className="navigation-wrapper relative bg-black" style={{ height: isMobile ? '80px' : '100px' }}>
           <div className="absolute" style={{ top: navTopPosition, left: '42px' }}>
             <Navigation />
           </div>
@@ -263,8 +262,8 @@ export function HomePage() {
         </div>
         
         <div className="container mx-auto px-4" style={{ paddingBottom: containerBottomPadding }}>
-          {/* Reduce padding to bring carousel closer to navigation */}
-          <div style={{ paddingTop: carouselTopPadding }}>
+          {/* Adjust padding to account for scrollable navigation */}
+          <div style={{ paddingTop: '20px' }}>
             <Carousel autoplayInterval={7000} />
           </div>
           

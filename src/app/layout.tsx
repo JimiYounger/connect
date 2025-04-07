@@ -94,15 +94,16 @@ export default function RootLayout({
               startY = e.touches[0].clientY;
             }, { passive: true });
             
-            // Handle touch movement to prevent pull-to-refresh only at the top
+            // Handle touch movement - allow pulling down from top for refresh
             document.addEventListener('touchmove', function(e) {
               if (isPwa) {
                 const y = e.touches[0].clientY;
                 const mainContent = document.getElementById('pwa-main-content');
                 const scrollTop = mainContent ? mainContent.scrollTop : 0;
                 
-                // Only prevent default when at the top of content and pulling down
-                if (scrollTop <= 0 && y > startY) {
+                // Only prevent default when at the top of content and pulling down excessively
+                // This allows for natural pull-to-refresh behavior but prevents extreme overscrolling
+                if (scrollTop <= 0 && y > startY + 100) {
                   e.preventDefault();
                 }
               }
@@ -149,6 +150,43 @@ export default function RootLayout({
                   
                   // Add a special class to the main element when in PWA mode
                   mainEl.classList.add('pwa-active-content');
+                  
+                  // Enable pull to refresh functionality
+                  let refreshTimeout;
+                  mainEl.addEventListener('scroll', () => {
+                    if (mainEl.scrollTop < -60) {
+                      // Add a visual indicator for refresh
+                      if (!document.getElementById('pull-to-refresh-indicator')) {
+                        const indicator = document.createElement('div');
+                        indicator.id = 'pull-to-refresh-indicator';
+                        indicator.style.position = 'absolute';
+                        indicator.style.top = '10px';
+                        indicator.style.left = '50%';
+                        indicator.style.transform = 'translateX(-50%)';
+                        indicator.style.color = 'white';
+                        indicator.style.fontSize = '12px';
+                        indicator.style.opacity = '0.8';
+                        indicator.style.zIndex = '1000';
+                        indicator.textContent = 'Release to refresh';
+                        mainEl.appendChild(indicator);
+                        
+                        // Clear any existing timeout
+                        if (refreshTimeout) clearTimeout(refreshTimeout);
+                        
+                        // Set a new timeout to reload the page if they keep pulling
+                        refreshTimeout = setTimeout(() => {
+                          window.location.reload();
+                        }, 800);
+                      }
+                    } else {
+                      // Remove the indicator when they stop pulling
+                      const indicator = document.getElementById('pull-to-refresh-indicator');
+                      if (indicator) {
+                        indicator.remove();
+                        if (refreshTimeout) clearTimeout(refreshTimeout);
+                      }
+                    }
+                  });
                 }
               } else {
                 // For regular browser mode
@@ -198,13 +236,7 @@ export default function RootLayout({
           .loading .auth-loading { display: block; }
           .loading .auth-content { opacity: 0; }
           
-          /* Fix for navigation sticking when scrolling in PWA mode */
-          .pwa-active-content .navigation-wrapper {
-            position: sticky;
-            top: 0;
-            z-index: 20;
-            background-color: #000000;
-          }
+          /* Removed sticky navigation styles */
           
           /* Ensure full height of content in PWA mode */
           html.pwa-mode #pwa-main-content {
@@ -220,6 +252,16 @@ export default function RootLayout({
           /* Prevent unwanted touch highlighting in PWA mode */
           html.pwa-mode * {
             -webkit-tap-highlight-color: transparent;
+          }
+          
+          /* Pull to refresh indicator styling */
+          #pull-to-refresh-indicator {
+            animation: pulse 1s infinite alternate;
+          }
+          
+          @keyframes pulse {
+            from { opacity: 0.5; }
+            to { opacity: 1; }
           }
         `}</style>
         <script dangerouslySetInnerHTML={{
