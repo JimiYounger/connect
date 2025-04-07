@@ -79,7 +79,7 @@ export default function RootLayout({
             if (isPwa) {
               document.documentElement.classList.add('pwa-mode');
               
-              // Fix iOS Safari viewport issues
+              // Fix iOS Safari viewport issues - ensure viewport-fit=cover is included
               const viewport = document.querySelector('meta[name="viewport"]');
               if (viewport) {
                 viewport.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
@@ -96,32 +96,23 @@ export default function RootLayout({
             
             // Handle touch movement - allow pulling down from top for refresh
             document.addEventListener('touchmove', function(e) {
-              // Removed complex logic, relying on browser default + overscroll-behavior in CSS
-            }, { passive: true }); // Changed to passive: true as we aren't preventing default often
+              // Relies on browser default + overscroll-behavior in CSS
+            }, { passive: true });
             
-            // Simplified function - relies on CSS for layout
+            // PWA Layout setup
             function setupPwaLayout() {
               if (isPwa) {
                 const mainEl = document.getElementById('pwa-main-content');
                 if (mainEl) {
-                  // Add class for potential specific styling needs
+                  // Add class for specific styling needs
                   mainEl.classList.add('pwa-active-content'); 
                   
-                  // Remove direct style manipulation - CSS handles layout
-                  // mainEl.style.cssText = ''; 
-                  // ... removed style settings ...
-
-                  // Let CSS handle body styles via .pwa-mode body
-                  // document.body.style.position = 'fixed';
-                  // ... removed style settings ...
-
-                  // Pull-to-refresh indicator logic remains (optional)
+                  // Pull-to-refresh indicator logic
                   let refreshTimeout;
                   mainEl.addEventListener('scroll', () => {
                     if (mainEl.scrollTop < -60 && !document.getElementById('pull-to-refresh-indicator')) {
                       const indicator = document.createElement('div');
                       indicator.id = 'pull-to-refresh-indicator';
-                      // ... indicator styling ...
                       indicator.textContent = 'Release to refresh';
                       mainEl.appendChild(indicator);
                       
@@ -134,16 +125,8 @@ export default function RootLayout({
                         if (refreshTimeout) clearTimeout(refreshTimeout);
                       }
                     }
-                  }, { passive: true }); // Passive: true is safe here
-
+                  }, { passive: true });
                 }
-              } else {
-                // Clean up if not PWA (optional, depends on desired non-PWA behavior)
-                const mainEl = document.getElementById('pwa-main-content');
-                if (mainEl) {
-                  mainEl.classList.remove('pwa-active-content');
-                }
-                // Body styles revert via CSS cascade (no .pwa-mode class)
               }
             }
             
@@ -152,10 +135,10 @@ export default function RootLayout({
               setupPwaLayout();
               document.addEventListener('DOMContentLoaded', setupPwaLayout);
               window.addEventListener('load', setupPwaLayout);
-              window.addEventListener('resize', setupPwaLayout); // Keep resize handling if needed for JS logic
+              window.addEventListener('resize', setupPwaLayout);
             }
 
-            // Viewport height fix (keep this)
+            // Viewport height fix for full height
             const setAppHeight = () => {
               document.documentElement.style.setProperty('--app-height', \`\${window.innerHeight}px\`);
             };

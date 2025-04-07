@@ -31,6 +31,7 @@ html.pwa-mode {
   height: var(--app-height); 
   overflow: hidden;
   position: fixed; /* Prevent bouncing */
+  width: 100%;
 }
 
 html.pwa-mode body {
@@ -38,42 +39,42 @@ html.pwa-mode body {
   height: 100%; 
   overflow: hidden;
   position: fixed; /* Prevent bouncing */
+  width: 100%;
   margin: 0;
   padding: 0;
   min-height: 0; /* Override min-height from default */
   -webkit-overflow-scrolling: auto; /* Disable body scrolling */
 }
 
-/* NEW: Adjustments for Fixed Navigation in PWA Mode */
+/* Adjustments for Fixed Navigation in PWA Mode */
 html.pwa-mode .navigation-wrapper {
-  position: fixed !important; /* Stick to the viewport FORCEFULLY */
+  position: fixed !important; /* Stick to the viewport */
   top: 0;
   left: 0;
   right: 0;
-  z-index: 1000 !important; /* Ensure it's on top FORCEFULLY */
-  padding-top: env(safe-area-inset-top, 0); /* Respect top notch */
-  background-color: #000000; /* Ensure background consistent with body */
-  /* Height is set via existing media query in @layer components */
-  pointer-events: auto; /* Allow clicks on the wrapper itself */
+  z-index: 1000 !important; /* Ensure it's on top */
+  padding-top: env(safe-area-inset-top, 0) !important; /* Critical: Respect top notch */
+  background-color: #000000;
+  pointer-events: auto;
 }
 
-/* Ensure child elements AND POSITIONERS within nav wrapper also handle pointer events */
+/* Ensure child elements within nav wrapper also handle pointer events */
 html.pwa-mode .navigation-wrapper > *,
 html.pwa-mode .navigation-wrapper .nav-menu-positioner,
 html.pwa-mode .navigation-wrapper .nav-logo-positioner {
   pointer-events: auto;
 }
 
-/* Ensure the actual interactive elements allow clicks */
-html.pwa-mode .navigation-wrapper button,
-html.pwa-mode .navigation-wrapper a {
-  pointer-events: auto;
+/* Adjust the positioners to account for the safe area when in PWA mode */
+html.pwa-mode .nav-menu-positioner,
+html.pwa-mode .nav-logo-positioner {
+  top: 18px !important; /* Position relative to the nav-wrapper which already has padding-top for safe area */
 }
 
-/* MODIFIED: Adjust main content to start below the fixed header */
+/* Adjust main content to start below the fixed header */
 html.pwa-mode #pwa-main-content {
   position: absolute;
-  top: 0; /* Let padding handle the offset */
+  top: 0;
   left: 0;
   right: 0;
   bottom: 0;
@@ -88,21 +89,13 @@ html.pwa-mode #pwa-main-content {
   background-color: #000000; /* Ensure background consistency */
 }
 
-/* NEW: Media query to adjust padding-top for desktop PWA nav height (70px) */
+/* Media query to adjust padding-top for desktop PWA nav height (70px) */
 @media (min-width: 1024px) {
   html.pwa-mode #pwa-main-content {
     /* Desktop nav height */
     padding-top: calc(env(safe-area-inset-top, 0px) + 70px);
   }
 }
-
-/* Remove conflicting PWA specific styles from earlier attempts */
-/* html.pwa-mode .bottom-elements { margin-bottom: calc(env(safe-area-inset-bottom) + 20px); } */ /* Replaced by #pwa-main-content padding */
-/* html.pwa-mode .bottom-padding { padding-bottom: calc(env(safe-area-inset-bottom) + 20px); } */ /* Replaced by #pwa-main-content padding */
-/* html.pwa-mode .navigation-wrapper { padding-top: env(safe-area-inset-top, 20px); position: relative; background-color: #000000; } */ /* Let content inside handle padding if needed */
-
-/* PWA active content container (optional styling if needed) */
-/* .pwa-active-content { ... } */
 
 /* Fix tap highlighting in PWA */
 html.pwa-mode * {

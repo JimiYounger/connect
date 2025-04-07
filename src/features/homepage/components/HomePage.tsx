@@ -232,14 +232,14 @@ export function HomePage() {
       </div>
       
       <>
-        {/* Removed inline height style, added class */}
-        <div className={`navigation-wrapper relative bg-black`}>
-          {/* Added class 'nav-menu-positioner', removed inline top style */}
+        {/* Navigation wrapper with proper positioning for PWA mode */}
+        <div className="navigation-wrapper relative bg-black">
+          {/* Menu positioned with consistent class */}
           <div className="absolute nav-menu-positioner" style={{ left: '42px' }}>
             <Navigation />
           </div>
           
-          {/* Added class 'nav-logo-positioner', removed inline top style */}
+          {/* Logo positioned with consistent class */}
           <div className="absolute nav-logo-positioner" style={{ right: '42px' }}>
             <Link href="/">
               <div className="cursor-pointer">
@@ -260,7 +260,7 @@ export function HomePage() {
             <Carousel autoplayInterval={7000} />
           </div>
           
-          {/* Dashboard section with significantly reduced spacing (1/6 of GRID_GAP) */}
+          {/* Dashboard section with reduced spacing */}
           <div style={{ marginTop: `${GRID_GAP / 6}px` }}>
             <div className="w-full">
               <Dashboard />
