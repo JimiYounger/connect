@@ -113,18 +113,31 @@ export default function RootLayout({
               if (isPwa) {
                 const mainEl = document.getElementById('pwa-main-content');
                 if (mainEl) {
-                  mainEl.style.height = "100%";
-                  mainEl.style.minHeight = "100vh";
-                  mainEl.style.overflow = "auto";
-                  mainEl.style.WebkitOverflowScrolling = "touch";
-                  mainEl.style.overscrollBehavior = "none";
-                  mainEl.classList.add('pwa-content');
+                  // Reset any existing styles
+                  mainEl.style.cssText = '';
                   
-                  // Create a better scrolling area within the main element
-                  document.body.style.position = "fixed";
-                  document.body.style.width = "100%";
-                  document.body.style.height = "100%";
-                  document.body.style.overflow = "hidden";
+                  // Set proper styles for full height and smooth scrolling
+                  mainEl.style.position = 'absolute';
+                  mainEl.style.top = '0';
+                  mainEl.style.left = '0';
+                  mainEl.style.right = '0';
+                  mainEl.style.bottom = '0';
+                  mainEl.style.width = '100%';
+                  mainEl.style.height = '100%';
+                  mainEl.style.overflow = 'auto';
+                  mainEl.style.WebkitOverflowScrolling = 'touch';
+                  mainEl.style.overscrollBehavior = 'none';
+                  mainEl.style.paddingTop = 'env(safe-area-inset-top)';
+                  mainEl.style.paddingBottom = 'env(safe-area-inset-bottom)';
+                  mainEl.style.backgroundColor = '#000000';
+                  
+                  // Fix body styling
+                  document.body.style.position = 'fixed';
+                  document.body.style.top = '0';
+                  document.body.style.left = '0';
+                  document.body.style.width = '100%';
+                  document.body.style.height = '100%';
+                  document.body.style.overflow = 'hidden';
                 }
               }
             }
@@ -386,14 +399,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col ${inter.className}`}
         style={{
-          paddingTop: 'env(safe-area-inset-top)',
-          paddingBottom: 'env(safe-area-inset-bottom)',
-          paddingLeft: 'env(safe-area-inset-left)',
-          paddingRight: 'env(safe-area-inset-right)'
+          backgroundColor: '#000000',
+          overflow: 'hidden'
         }}
       >
         <Providers>
-          <main id="pwa-main-content" className="flex-1 w-full bg-black text-black overflow-auto -webkit-overflow-scrolling-touch">
+          <main id="pwa-main-content" className="flex-1 w-full bg-black text-black">
             {children}
           </main>
           <Toaster />
