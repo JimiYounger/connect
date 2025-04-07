@@ -245,30 +245,34 @@ html.pwa-mode [contenteditable] {
   /* Navigation Wrapper Base Styles (Desktop First) */
   .navigation-wrapper {
     height: 70px; /* Desktop height */
+    position: relative;
+    width: 100%;
+    padding: 0 12px;
+    max-width: 100%;
+    display: flex;
+    align-items: center;
   }
 
   .nav-menu-positioner {
+    position: absolute;
     top: 18px; /* Mobile top position */
-    pointer-events: auto; /* Redundant maybe, but ensure */
+    left: 18px;
+    pointer-events: auto;
+    z-index: 1050;
   }
 
   .nav-logo-positioner {
+    position: absolute;
     top: 5px; /* Mobile top position */
-    pointer-events: auto; /* Redundant maybe, but ensure */
+    right: 18px;
+    pointer-events: auto;
+    z-index: 1050;
   }
 
   /* Navigation Wrapper Mobile Styles */
   @media (max-width: 1023px) {
     .navigation-wrapper {
       height: 60px; /* Mobile height */
-    }
-
-    .nav-menu-positioner {
-      top: 18px; /* Mobile top position */
-    }
-
-    .nav-logo-positioner {
-      top: 5px; /* Mobile top position */
     }
   }
 }

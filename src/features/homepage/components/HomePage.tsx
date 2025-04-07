@@ -237,7 +237,10 @@ export function HomePage() {
           {/* Menu positioned with consistent class and enhanced accessibility */}
           <div 
             className="absolute nav-menu-positioner" 
-            style={{ left: '42px' }}
+            style={{ 
+              left: '18px',
+              top: '18px' // Ensure consistent top positioning
+            }}
             id="nav-menu-container"
           >
             <Navigation />
@@ -246,7 +249,10 @@ export function HomePage() {
           {/* Logo positioned with consistent class and enhanced touch handling */}
           <div 
             className="absolute nav-logo-positioner" 
-            style={{ right: '42px' }}
+            style={{ 
+              right: '18px',
+              top: '5px' // Ensure consistent top positioning
+            }}
             id="nav-logo-container"
           >
             <Link href="/">
