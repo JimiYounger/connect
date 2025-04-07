@@ -248,3 +248,46 @@ html.pwa-mode [contenteditable] {
     @apply bg-background text-foreground;
   }
 }
+
+/* Full screen PWA styles */
+html.pwa-mode {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  position: fixed;
+}
+
+html.pwa-mode body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  position: fixed;
+  margin: 0;
+  padding: 0;
+}
+
+/* Fix top navigation padding in PWA mode */
+html.pwa-mode .navigation-wrapper {
+  padding-top: env(safe-area-inset-top, 20px);
+  position: relative;
+  background-color: #000000;
+}
+
+/* Ensure main content goes edge to edge */
+html.pwa-mode #pwa-main-content {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  padding-top: env(safe-area-inset-top, 0);
+  min-height: 100%;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 60px) !important;
+}
+
+/* PWA active content container */
+.pwa-active-content {
+  padding-top: env(safe-area-inset-top, 0);
+}
+
+/* Fix bottom padding */
+html.pwa-mode .bottom-padding {
+  padding-bottom: calc(env(safe-area-inset-bottom) + 80px);
+}

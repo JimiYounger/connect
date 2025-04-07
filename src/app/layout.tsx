@@ -127,7 +127,7 @@ export default function RootLayout({
                   mainEl.style.height = '100%';
                   mainEl.style.overflow = 'scroll';
                   mainEl.style.webkitOverflowScrolling = 'touch';
-                  mainEl.style.paddingTop = 'env(safe-area-inset-top)';
+                  mainEl.style.paddingTop = 'env(safe-area-inset-top, 0)';
                   mainEl.style.paddingBottom = 'calc(env(safe-area-inset-bottom) + 20px)';
                   mainEl.style.backgroundColor = '#000000';
                   

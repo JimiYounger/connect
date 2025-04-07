@@ -240,7 +240,11 @@ export function HomePage() {
       
       <main className="flex-1 relative">
         {/* Navigation with responsive positioning - now part of scrollable content */}
-        <div className="navigation-wrapper relative bg-black" style={{ height: isMobile ? '60px' : '100px' }}>
+        <div className="navigation-wrapper relative bg-black" 
+             style={{ 
+               height: isMobile ? '80px' : '100px',
+               paddingTop: 'env(safe-area-inset-top)'
+             }}>
           <div className="absolute" style={{ top: navTopPosition, left: '42px' }}>
             <Navigation />
           </div>
