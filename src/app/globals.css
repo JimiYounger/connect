@@ -46,20 +46,27 @@ html.pwa-mode body {
 
 /* NEW: Adjustments for Fixed Navigation in PWA Mode */
 html.pwa-mode .navigation-wrapper {
-  position: fixed; /* Stick to the viewport */
+  position: fixed !important; /* Stick to the viewport FORCEFULLY */
   top: 0;
   left: 0;
   right: 0;
-  z-index: 1000; /* Ensure it's on top */
+  z-index: 1000 !important; /* Ensure it's on top FORCEFULLY */
   padding-top: env(safe-area-inset-top, 0); /* Respect top notch */
   background-color: #000000; /* Ensure background consistent with body */
   /* Height is set via existing media query in @layer components */
-  /* Ensure click events pass through if needed, though direct elements should capture */
-  pointer-events: auto; 
+  pointer-events: auto; /* Allow clicks on the wrapper itself */
 }
 
-/* Ensure child elements within nav wrapper also handle pointer events */
-html.pwa-mode .navigation-wrapper > * {
+/* Ensure child elements AND POSITIONERS within nav wrapper also handle pointer events */
+html.pwa-mode .navigation-wrapper > *,
+html.pwa-mode .navigation-wrapper .nav-menu-positioner,
+html.pwa-mode .navigation-wrapper .nav-logo-positioner {
+  pointer-events: auto;
+}
+
+/* Ensure the actual interactive elements allow clicks */
+html.pwa-mode .navigation-wrapper button,
+html.pwa-mode .navigation-wrapper a {
   pointer-events: auto;
 }
 
@@ -230,13 +237,13 @@ html.pwa-mode [contenteditable] {
   }
 
   .nav-menu-positioner {
-    top: 46px; /* Desktop top position */
+    top: 18px; /* Mobile top position */
+    pointer-events: auto; /* Redundant maybe, but ensure */
   }
 
   .nav-logo-positioner {
     top: 5px; /* Mobile top position */
-    /* NEW: Ensure pointer events are enabled */
-    pointer-events: auto;
+    pointer-events: auto; /* Redundant maybe, but ensure */
   }
 
   /* Navigation Wrapper Mobile Styles */
