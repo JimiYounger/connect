@@ -2,108 +2,85 @@
 @tailwind components;
 @tailwind utilities;
 
+/* --- Base Setup --- */
 :root {
-  --app-height: 100vh;
+  --app-height: 100vh; /* Fallback */
 }
 
 html {
-  height: -webkit-fill-available;
-  height: var(--app-height);
-}
-
-html {
-  background-color: #000000;
-  height: 100%;
+  height: 100%; /* Use 100% for consistency */
   width: 100%;
+  background-color: #000000;
 }
 
 body {
   font-family: Arial, Helvetica, sans-serif;
   height: 100%;
-  min-height: 100vh;
-  min-height: -webkit-fill-available;
-  -webkit-overflow-scrolling: touch;
   width: 100%;
-  overflow-y: auto;
+  overflow-y: auto; /* Default scroll */
   background-color: #000000;
-  position: relative;
+  position: relative; /* Default positioning */
+  min-height: var(--app-height); /* Use dynamic height */
 }
 
-/* Specific PWA styles */
+
+/* --- PWA Mode Specific Styles --- */
+
 html.pwa-mode {
-  height: 100%;
-  width: 100%;
+  /* Ensure html takes full viewport height and prevents scrolling */
+  height: var(--app-height); 
   overflow: hidden;
-  position: fixed;
+  position: fixed; /* Prevent bouncing */
 }
 
 html.pwa-mode body {
-  height: 100%;
-  width: 100%;
+  /* Body also takes full height and prevents scrolling */
+  height: 100%; 
   overflow: hidden;
-  position: fixed;
+  position: fixed; /* Prevent bouncing */
   margin: 0;
   padding: 0;
+  min-height: 0; /* Override min-height from default */
+  -webkit-overflow-scrolling: auto; /* Disable body scrolling */
 }
 
-/* For regular browser mode */
-body:not(.pwa-mode) #pwa-main-content {
-  overflow: auto;
-  height: auto;
-  min-height: 100vh;
-}
-
-.pwa-content {
-  -webkit-overflow-scrolling: touch !important;
-  overflow-y: scroll !important;
-}
-
-/* Additional margin for bottom elements in PWA mode */
-html.pwa-mode .bottom-elements {
-  margin-bottom: calc(env(safe-area-inset-bottom) + 20px);
-}
-
-/* Improved navigation wrapper styling */
-.navigation-wrapper {
-  height: 80px;
+/* The main scrollable container in PWA mode */
+html.pwa-mode #pwa-main-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   width: 100%;
-  position: relative;
+  height: 100%; /* Fill the fixed body */
+  overflow-y: scroll; /* Enable scrolling ONLY for this container */
+  -webkit-overflow-scrolling: touch; /* Smooth iOS scrolling */
+  overscroll-behavior-y: contain; /* Allow pull-to-refresh, prevent body scroll */
+  padding-top: env(safe-area-inset-top, 0); /* Respect top notch */
+  padding-bottom: env(safe-area-inset-bottom, 0); /* Respect bottom home bar */
+  background-color: #000000; /* Ensure background consistency */
 }
 
-/* Remove sticky positioning for navigation in PWA mode */
-html.pwa-mode .navigation-wrapper {
-  position: relative;
-  background-color: #000000;
-}
+/* Remove conflicting PWA specific styles from earlier attempts */
+/* html.pwa-mode .bottom-elements { margin-bottom: calc(env(safe-area-inset-bottom) + 20px); } */ /* Replaced by #pwa-main-content padding */
+/* html.pwa-mode .bottom-padding { padding-bottom: calc(env(safe-area-inset-bottom) + 20px); } */ /* Replaced by #pwa-main-content padding */
+/* html.pwa-mode .navigation-wrapper { padding-top: env(safe-area-inset-top, 20px); position: relative; background-color: #000000; } */ /* Let content inside handle padding if needed */
 
-/* Prevent content from being cut off at the bottom */
-.bottom-padding {
-  padding-bottom: env(safe-area-inset-bottom, 20px);
-}
+/* PWA active content container (optional styling if needed) */
+/* .pwa-active-content { ... } */
 
-html.pwa-mode .bottom-padding {
-  padding-bottom: calc(env(safe-area-inset-bottom) + 20px);
-}
-
-/* Enable pull-to-refresh in PWA mode */
-#pwa-main-content {
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain; /* Changed from 'none' to 'contain' to allow pull-to-refresh */
-}
-
-/* Fix tap highlighting */
+/* Fix tap highlighting in PWA */
 html.pwa-mode * {
   -webkit-tap-highlight-color: transparent;
   user-select: none;
 }
-
-/* Allow specific elements to be selectable */
 html.pwa-mode input,
 html.pwa-mode textarea,
 html.pwa-mode [contenteditable] {
   user-select: text;
 }
 
+/* --- Tailwind Layers --- */
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -166,6 +143,9 @@ html.pwa-mode [contenteditable] {
   }
   body {
     @apply bg-background text-foreground;
+    /* Ensure dark mode base colors apply */
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
   }
 }
 
@@ -194,12 +174,12 @@ html.pwa-mode [contenteditable] {
     @apply text-muted-foreground;
   }
   
-  /* Fixed header styling */
+  /* Sticky positioning (may need adjustments depending on usage within PWA) */
   .sticky {
     position: -webkit-sticky;
     position: sticky;
-    top: 0;
-    top: env(safe-area-inset-top, 0);
+    top: 0; /* Adjust if needed based on safe area */
+    /* top: env(safe-area-inset-top, 0); */ /* Example: Use if sticky element is at the very top */
     z-index: 50;
     -webkit-transform: translateZ(0);
     transform: translateZ(0);
@@ -207,7 +187,7 @@ html.pwa-mode [contenteditable] {
     backface-visibility: hidden;
   }
   
-  /* PWA specific helpers */
+  /* Safe area helpers (can be used inside #pwa-main-content) */
   .safe-top {
     padding-top: env(safe-area-inset-top);
   }
@@ -215,29 +195,10 @@ html.pwa-mode [contenteditable] {
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);
   }
-  
-  .pwa-header {
-    @apply fixed top-0 left-0 right-0 z-50 bg-black text-white;
-    height: calc(4rem + env(safe-area-inset-top));
-    padding-top: env(safe-area-inset-top);
-    background-color: #000000;
-  }
-  
-  .pwa-content {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-    height: 100%;
-    width: 100%;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: none;
-    background-color: #000000;
-  }
+
+  /* Removed PWA specific header/content styles here - consolidated above */
+  /* .pwa-header { ... } */
+  /* .pwa-content { ... } */
 }
 
 @layer base {
@@ -245,54 +206,16 @@ html.pwa-mode [contenteditable] {
     @apply border-border outline-ring/50;
   }
   body {
+    /* Already defined above, ensure consistency */
     @apply bg-background text-foreground;
   }
 }
 
-/* Full screen PWA styles */
-html.pwa-mode {
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
-  position: fixed;
-}
-
-html.pwa-mode body {
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
-  position: fixed;
-  margin: 0;
-  padding: 0;
-}
-
-/* Fix top navigation padding in PWA mode */
-html.pwa-mode .navigation-wrapper {
-  padding-top: env(safe-area-inset-top, 20px);
-  position: relative;
-  background-color: #000000;
-}
-
-/* Ensure main content goes edge to edge */
-html.pwa-mode #pwa-main-content {
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
-  padding-top: env(safe-area-inset-top, 0);
-  min-height: 100%;
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-/* PWA active content container */
-.pwa-active-content {
-  padding-top: env(safe-area-inset-top, 0);
-}
-
-/* Fix bottom padding */
-html.pwa-mode .bottom-padding {
-  padding-bottom: calc(env(safe-area-inset-bottom) + 20px);
-}
-
-/* Bottom navigation in PWA needs proper spacing */
-.dashboard-grid {
-  margin-bottom: 0;
-}
+/* Remove redundant PWA rules from the end */
+/* html.pwa-mode { ... } */
+/* html.pwa-mode body { ... } */
+/* html.pwa-mode .navigation-wrapper { ... } */
+/* html.pwa-mode #pwa-main-content { ... } */
+/* .pwa-active-content { ... } */
+/* html.pwa-mode .bottom-padding { ... } */
+/* .dashboard-grid { ... } */

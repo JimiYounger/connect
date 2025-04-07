@@ -12,6 +12,7 @@ import { useAuth } from '@/features/auth/context/auth-context'
 import { useProfile } from '@/features/users/hooks/useProfile'
 import { useEffect, useState } from 'react'
 import { useMediaQuery } from '@/hooks/use-media-query'
+import { usePwaMode } from '@/hooks/use-pwa'
 
 // Sleek, high-end animation styles
 const premiumAnimationStyles = `
@@ -71,6 +72,7 @@ export function HomePage() {
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const isMobile = useMediaQuery('(max-width: 1023px)');
+  const { isPwa } = usePwaMode();
   
   // Set a timeout to prevent infinite loading screen
   useEffect(() => {
@@ -126,7 +128,7 @@ export function HomePage() {
     return (
       <>
         <style jsx global>{premiumAnimationStyles}</style>
-        <div className="flex flex-col min-h-screen bg-black text-white items-center justify-center overflow-hidden">
+        <div className="flex flex-col h-full bg-black text-white items-center justify-center overflow-hidden">
           {/* Minimal, high-end loading UI */}
           <div className="relative w-full max-w-md px-8">
             {/* Brand mark - simple, bold, minimal */}
@@ -201,7 +203,7 @@ export function HomePage() {
   // Show error state if there are errors
   if (content.errors.length > 0) {
     return (
-      <div className="flex flex-col min-h-screen bg-black text-white items-center justify-center">
+      <div className="flex flex-col h-full bg-black text-white items-center justify-center">
         <div className="text-xl text-red-500">Error loading content</div>
         <div className="mt-4">
           {content.errors.map((error, index) => (
@@ -223,10 +225,9 @@ export function HomePage() {
   // Responsive positioning for navigation elements
   const navTopPosition = isMobile ? '18px' : '46px';
   const homeIconTopPosition = isMobile ? '5px' : '35px';
-  const containerBottomPadding = isMobile ? '40px' : '0px';
 
   return (
-    <div className="flex flex-col min-h-screen bg-black text-white">
+    <div className="flex flex-col h-full bg-black text-white">
       {/* Preload the connect.png image */}
       <div className="hidden">
         <Image 
@@ -238,12 +239,11 @@ export function HomePage() {
         />
       </div>
       
-      <main className="flex-1 relative">
+      <>
         {/* Navigation with responsive positioning - now part of scrollable content */}
-        <div className="navigation-wrapper relative bg-black" 
+        <div className={`navigation-wrapper relative bg-black ${isPwa ? 'safe-top' : ''}`} 
              style={{ 
                height: isMobile ? '60px' : '70px',
-               paddingTop: 'env(safe-area-inset-top)'
              }}>
           <div className="absolute" style={{ top: navTopPosition, left: '42px' }}>
             <Navigation />
@@ -265,20 +265,19 @@ export function HomePage() {
           </div>
         </div>
         
-        <div className="container mx-auto px-4" style={{ paddingBottom: containerBottomPadding }}>
-          {/* Adjust padding to account for scrollable navigation */}
+        <div className="container mx-auto px-4">
           <div style={{ paddingTop: '0px' }}>
             <Carousel autoplayInterval={7000} />
           </div>
           
           {/* Dashboard section with significantly reduced spacing (1/6 of GRID_GAP) */}
           <div style={{ marginTop: `${GRID_GAP / 6}px` }}>
-            <div className="w-full bottom-padding" style={{ paddingBottom: isMobile ? '20px' : '0' }}>
+            <div className="w-full">
               <Dashboard />
             </div>
           </div>
         </div>
-      </main>
+      </>
     </div>
   )
 }

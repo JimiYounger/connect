@@ -73,7 +73,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{
           __html: `
             // Complete iOS PWA scrolling fix
-            const isPwa = window.navigator.standalone;
+            const isPwa = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
             
             // Detect standalone mode (PWA)
             if (isPwa) {
@@ -96,133 +96,66 @@ export default function RootLayout({
             
             // Handle touch movement - allow pulling down from top for refresh
             document.addEventListener('touchmove', function(e) {
-              if (isPwa) {
-                const y = e.touches[0].clientY;
-                const mainContent = document.getElementById('pwa-main-content');
-                const scrollTop = mainContent ? mainContent.scrollTop : 0;
-                
-                // Only prevent default when at the top of content and pulling down excessively
-                // This allows for natural pull-to-refresh behavior but prevents extreme overscrolling
-                if (scrollTop <= 0 && y > startY + 100) {
-                  e.preventDefault();
-                }
-              }
-            }, { passive: false });
+              // Removed complex logic, relying on browser default + overscroll-behavior in CSS
+            }, { passive: true }); // Changed to passive: true as we aren't preventing default often
             
-            // Fix scrolling for PWA content
-            function enableScrolling() {
+            // Simplified function - relies on CSS for layout
+            function setupPwaLayout() {
               if (isPwa) {
                 const mainEl = document.getElementById('pwa-main-content');
                 if (mainEl) {
-                  // Clear previous styles
-                  mainEl.style.cssText = '';
+                  // Add class for potential specific styling needs
+                  mainEl.classList.add('pwa-active-content'); 
                   
-                  // Core styles for native iOS-like scrolling
-                  mainEl.style.position = 'absolute';
-                  mainEl.style.top = '0';
-                  mainEl.style.left = '0';
-                  mainEl.style.right = '0';
-                  mainEl.style.bottom = '0';
-                  mainEl.style.width = '100%';
-                  mainEl.style.height = '100%';
-                  mainEl.style.overflow = 'scroll';
-                  mainEl.style.webkitOverflowScrolling = 'touch';
-                  mainEl.style.paddingTop = 'env(safe-area-inset-top, 0)';
-                  mainEl.style.paddingBottom = 'calc(env(safe-area-inset-bottom) + 20px)';
-                  mainEl.style.backgroundColor = '#000000';
-                  
-                  // Fix body
-                  document.body.style.position = 'fixed';
-                  document.body.style.top = '0';
-                  document.body.style.left = '0';
-                  document.body.style.right = '0';
-                  document.body.style.bottom = '0';
-                  document.body.style.width = '100%';
-                  document.body.style.height = '100%';
-                  document.body.style.overflow = 'hidden';
-                  
-                  // Setup resize listener for viewport changes
-                  const resizeObserver = new ResizeObserver(() => {
-                    mainEl.style.height = '100%';
-                    mainEl.style.paddingBottom = 'calc(env(safe-area-inset-bottom) + 20px)';
-                  });
-                  resizeObserver.observe(document.documentElement);
-                  
-                  // Add a special class to the main element when in PWA mode
-                  mainEl.classList.add('pwa-active-content');
-                  
-                  // Enable pull to refresh functionality
+                  // Remove direct style manipulation - CSS handles layout
+                  // mainEl.style.cssText = ''; 
+                  // ... removed style settings ...
+
+                  // Let CSS handle body styles via .pwa-mode body
+                  // document.body.style.position = 'fixed';
+                  // ... removed style settings ...
+
+                  // Pull-to-refresh indicator logic remains (optional)
                   let refreshTimeout;
                   mainEl.addEventListener('scroll', () => {
-                    if (mainEl.scrollTop < -60) {
-                      // Add a visual indicator for refresh
-                      if (!document.getElementById('pull-to-refresh-indicator')) {
-                        const indicator = document.createElement('div');
-                        indicator.id = 'pull-to-refresh-indicator';
-                        indicator.style.position = 'absolute';
-                        indicator.style.top = '10px';
-                        indicator.style.left = '50%';
-                        indicator.style.transform = 'translateX(-50%)';
-                        indicator.style.color = 'white';
-                        indicator.style.fontSize = '12px';
-                        indicator.style.opacity = '0.8';
-                        indicator.style.zIndex = '1000';
-                        indicator.textContent = 'Release to refresh';
-                        mainEl.appendChild(indicator);
-                        
-                        // Clear any existing timeout
-                        if (refreshTimeout) clearTimeout(refreshTimeout);
-                        
-                        // Set a new timeout to reload the page if they keep pulling
-                        refreshTimeout = setTimeout(() => {
-                          window.location.reload();
-                        }, 800);
-                      }
-                    } else {
-                      // Remove the indicator when they stop pulling
+                    if (mainEl.scrollTop < -60 && !document.getElementById('pull-to-refresh-indicator')) {
+                      const indicator = document.createElement('div');
+                      indicator.id = 'pull-to-refresh-indicator';
+                      // ... indicator styling ...
+                      indicator.textContent = 'Release to refresh';
+                      mainEl.appendChild(indicator);
+                      
+                      if (refreshTimeout) clearTimeout(refreshTimeout);
+                      refreshTimeout = setTimeout(() => window.location.reload(), 800);
+                    } else if (mainEl.scrollTop >= -60) {
                       const indicator = document.getElementById('pull-to-refresh-indicator');
                       if (indicator) {
                         indicator.remove();
                         if (refreshTimeout) clearTimeout(refreshTimeout);
                       }
                     }
-                  });
+                  }, { passive: true }); // Passive: true is safe here
+
                 }
               } else {
-                // For regular browser mode
+                // Clean up if not PWA (optional, depends on desired non-PWA behavior)
                 const mainEl = document.getElementById('pwa-main-content');
                 if (mainEl) {
-                  mainEl.style.cssText = '';
-                  mainEl.style.height = 'auto';
-                  mainEl.style.minHeight = '100vh';
-                  mainEl.style.overflow = 'visible';
-                  mainEl.style.width = '100%';
-                  
-                  document.body.style.position = '';
-                  document.body.style.overflow = '';
-                  document.body.style.height = '';
-                  
                   mainEl.classList.remove('pwa-active-content');
                 }
+                // Body styles revert via CSS cascade (no .pwa-mode class)
               }
             }
             
-            // Make absolutely sure the PWA scrolling is applied
+            // Apply PWA setup
             if (isPwa) {
-              // Apply immediately
-              enableScrolling();
-              
-              // Apply after DOM loads
-              document.addEventListener('DOMContentLoaded', enableScrolling);
-              
-              // Apply after all resources load
-              window.addEventListener('load', enableScrolling);
-              
-              // Apply whenever the window is resized
-              window.addEventListener('resize', enableScrolling);
+              setupPwaLayout();
+              document.addEventListener('DOMContentLoaded', setupPwaLayout);
+              window.addEventListener('load', setupPwaLayout);
+              window.addEventListener('resize', setupPwaLayout); // Keep resize handling if needed for JS logic
             }
 
-            // Make sure viewport height is correct on iOS
+            // Viewport height fix (keep this)
             const setAppHeight = () => {
               document.documentElement.style.setProperty('--app-height', \`\${window.innerHeight}px\`);
             };
@@ -230,40 +163,6 @@ export default function RootLayout({
             setAppHeight();
           `
         }} />
-        <style>{`
-          .auth-loading { display: none; }
-          .auth-content { opacity: 1; }
-          .loading .auth-loading { display: block; }
-          .loading .auth-content { opacity: 0; }
-          
-          /* Removed sticky navigation styles */
-          
-          /* Ensure full height of content in PWA mode */
-          html.pwa-mode #pwa-main-content {
-            min-height: 100%;
-            padding-bottom: calc(env(safe-area-inset-bottom) + 60px) !important;
-          }
-          
-          /* Fix for bottom content being cut off */
-          html.pwa-mode .bottom-padding {
-            padding-bottom: calc(env(safe-area-inset-bottom) + 80px);
-          }
-          
-          /* Prevent unwanted touch highlighting in PWA mode */
-          html.pwa-mode * {
-            -webkit-tap-highlight-color: transparent;
-          }
-          
-          /* Pull to refresh indicator styling */
-          #pull-to-refresh-indicator {
-            animation: pulse 1s infinite alternate;
-          }
-          
-          @keyframes pulse {
-            from { opacity: 0.5; }
-            to { opacity: 1; }
-          }
-        `}</style>
         <script dangerouslySetInnerHTML={{
           __html: `
             (function() {
@@ -496,11 +395,12 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col ${inter.className}`}
         style={{
           backgroundColor: '#000000',
-          overflow: 'hidden'
+          // overflow: 'hidden' // Let CSS handle this based on pwa-mode
         }}
       >
         <Providers>
-          <main id="pwa-main-content" className="flex-1 w-full bg-black text-black bottom-padding">
+          {/* Removed flex-1 from main, letting CSS handle PWA layout */}
+          <main id="pwa-main-content" className="w-full bg-black text-black"> 
             {children}
           </main>
           <Toaster />
