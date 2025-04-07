@@ -74,9 +74,11 @@ export default function RootLayout({
           __html: `
             // Complete iOS PWA scrolling fix
             const isPwa = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+            let wasPwaBeforePause = false;
             
             // Detect standalone mode (PWA)
             if (isPwa) {
+              console.log("PWA mode detected - applying PWA layout");
               document.documentElement.classList.add('pwa-mode');
               
               // Fix iOS Safari viewport issues - ensure viewport-fit=cover is included
@@ -84,6 +86,9 @@ export default function RootLayout({
               if (viewport) {
                 viewport.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
               }
+              
+              // Store that we were in PWA mode
+              sessionStorage.setItem('was_pwa_mode', 'true');
             }
             
             // Track touch start position
@@ -94,18 +99,61 @@ export default function RootLayout({
               startY = e.touches[0].clientY;
             }, { passive: true });
             
-            // Handle touch movement - allow pulling down from top for refresh
-            document.addEventListener('touchmove', function(e) {
-              // Relies on browser default + overscroll-behavior in CSS
-            }, { passive: true });
-            
-            // PWA Layout setup
+            // Enhanced PWA Layout setup with focus on navigation accessibility
             function setupPwaLayout() {
-              if (isPwa) {
+              const isPwaActive = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+              wasPwaBeforePause = sessionStorage.getItem('was_pwa_mode') === 'true';
+              
+              // Apply PWA mode if currently in PWA or was in PWA before pause
+              if (isPwaActive || wasPwaBeforePause) {
+                console.log("Setting up PWA layout", { isPwaActive, wasPwaBeforePause });
+                document.documentElement.classList.add('pwa-mode');
+                
                 const mainEl = document.getElementById('pwa-main-content');
                 if (mainEl) {
-                  // Add class for specific styling needs
-                  mainEl.classList.add('pwa-active-content'); 
+                  mainEl.classList.add('pwa-active-content');
+                  
+                  // Fix iOS scrolling and interaction issues
+                  mainEl.style.webkitOverflowScrolling = 'touch';
+                  
+                  // Make navigation interactive - reinforce event handling
+                  const navWrapper = document.querySelector('.navigation-wrapper');
+                  if (navWrapper) {
+                    // Remove and reapply event listeners on resume to fix iOS bugs
+                    const reinitializeNavigation = () => {
+                      const navButtons = navWrapper.querySelectorAll('a, button');
+                      navButtons.forEach(el => {
+                        // Clone and replace to remove stale event listeners
+                        const newEl = el.cloneNode(true);
+                        el.parentNode.replaceChild(newEl, el);
+                        
+                        // Add explicit touch handler
+                        newEl.addEventListener('touchstart', (e) => {
+                          // Prevent default only if needed
+                          e.stopPropagation();
+                        }, { passive: false });
+                        
+                        newEl.addEventListener('touchend', (e) => {
+                          e.stopPropagation();
+                          // Delay the click to ensure iOS registers it
+                          setTimeout(() => {
+                            newEl.click();
+                          }, 10);
+                        }, { passive: false });
+                      });
+                    };
+                    
+                    // Initialize immediately and on visibility change
+                    reinitializeNavigation();
+                    
+                    // Handle app resume to refix navigation issues
+                    document.addEventListener('visibilitychange', () => {
+                      if (document.visibilityState === 'visible') {
+                        console.log("App resumed - reinitializing navigation");
+                        reinitializeNavigation();
+                      }
+                    });
+                  }
                   
                   // Pull-to-refresh indicator logic
                   let refreshTimeout;
@@ -113,6 +161,15 @@ export default function RootLayout({
                     if (mainEl.scrollTop < -60 && !document.getElementById('pull-to-refresh-indicator')) {
                       const indicator = document.createElement('div');
                       indicator.id = 'pull-to-refresh-indicator';
+                      indicator.style.position = 'absolute';
+                      indicator.style.top = '80px';
+                      indicator.style.left = '0';
+                      indicator.style.right = '0';
+                      indicator.style.textAlign = 'center';
+                      indicator.style.color = 'white';
+                      indicator.style.padding = '10px';
+                      indicator.style.zIndex = '1050';
+                      indicator.style.backgroundColor = 'rgba(0,0,0,0.7)';
                       indicator.textContent = 'Release to refresh';
                       mainEl.appendChild(indicator);
                       
@@ -130,19 +187,52 @@ export default function RootLayout({
               }
             }
             
-            // Apply PWA setup
-            if (isPwa) {
+            // Apply PWA setup with multiple trigger points
+            if (isPwa || sessionStorage.getItem('was_pwa_mode') === 'true') {
+              // Run immediately
               setupPwaLayout();
+              
+              // Run again after DOM is loaded
               document.addEventListener('DOMContentLoaded', setupPwaLayout);
+              
+              // Run after everything is loaded
               window.addEventListener('load', setupPwaLayout);
+              
+              // Run when window is resized
               window.addEventListener('resize', setupPwaLayout);
+              
+              // Run when app resumes from background
+              document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                  console.log("Visibility changed to visible - reapplying PWA layout");
+                  setupPwaLayout();
+                }
+              });
+              
+              // Run on orientation change
+              window.addEventListener('orientationchange', setupPwaLayout);
             }
 
-            // Viewport height fix for full height
+            // Viewport height fix for full height - more aggressive updating
             const setAppHeight = () => {
-              document.documentElement.style.setProperty('--app-height', \`\${window.innerHeight}px\`);
+              const height = window.innerHeight;
+              document.documentElement.style.setProperty('--app-height', \`\${height}px\`);
+              console.log("Setting app height:", height);
+              
+              // Force layout recalculation
+              document.body.style.height = '100%';
+              document.body.offsetHeight;
             };
+            
             window.addEventListener('resize', setAppHeight);
+            window.addEventListener('orientationchange', setAppHeight);
+            document.addEventListener('visibilitychange', () => {
+              if (document.visibilityState === 'visible') {
+                setTimeout(setAppHeight, 100);
+              }
+            });
+            
+            // Initial call
             setAppHeight();
           `
         }} />

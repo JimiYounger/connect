@@ -232,17 +232,32 @@ export function HomePage() {
       </div>
       
       <>
-        {/* Navigation wrapper with proper positioning for PWA mode */}
-        <div className="navigation-wrapper relative bg-black">
-          {/* Menu positioned with consistent class */}
-          <div className="absolute nav-menu-positioner" style={{ left: '42px' }}>
+        {/* Navigation wrapper with enhanced PWA compatibility */}
+        <div className="navigation-wrapper relative bg-black" id="navigation-wrapper">
+          {/* Menu positioned with consistent class and enhanced accessibility */}
+          <div 
+            className="absolute nav-menu-positioner" 
+            style={{ left: '42px' }}
+            id="nav-menu-container"
+          >
             <Navigation />
           </div>
           
-          {/* Logo positioned with consistent class */}
-          <div className="absolute nav-logo-positioner" style={{ right: '42px' }}>
+          {/* Logo positioned with consistent class and enhanced touch handling */}
+          <div 
+            className="absolute nav-logo-positioner" 
+            style={{ right: '42px' }}
+            id="nav-logo-container"
+          >
             <Link href="/">
-              <div className="cursor-pointer">
+              <div 
+                className="cursor-pointer"
+                style={{ 
+                  padding: '10px', // Larger touch target
+                  margin: '-10px', // Offset the padding to keep visual size
+                  zIndex: 1050, // High z-index to ensure accessibility 
+                }}
+              >
                 <Image 
                   src="/favicon.ico" 
                   alt="Home" 
