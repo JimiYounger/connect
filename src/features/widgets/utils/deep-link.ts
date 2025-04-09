@@ -144,16 +144,10 @@ export const openDeepLink = async (
     window.open(config.webFallbackUrl, '_blank');
     return;
   }
-  
-  // If not on mobile or in an environment where deep links won't work, use web fallback
-  if (!isMobile() || !canUseNativeDeepLinks()) {
-    logDeepLinkDebug(config, "Not in compatible environment for deep links, using web fallback");
-    window.open(config.webFallbackUrl, '_blank');
-    return;
-  }
 
+  // Always log the attempt for debugging
   logDeepLinkDebug(config, "Attempting to use deep link");
-
+  
   return new Promise((resolve) => {
     // Store current time to check if we navigated away
     const start = Date.now();
@@ -175,44 +169,55 @@ export const openDeepLink = async (
 
     // Determine which deep link to use based on platform
     if (isIOS() && config.iosScheme) {
+      // Use the direct URI scheme for iOS
       deepLinkUrl = config.iosScheme;
     } else if (isAndroid() && config.androidPackage) {
-      deepLinkUrl = `intent://#Intent;scheme=https;package=${config.androidPackage};end`;
+      // Generate intent URL for Android
+      deepLinkUrl = `intent://#Intent;package=${config.androidPackage};scheme=https;end`;
     }
 
-    // If we have a deep link URL, try to open it
-    if (deepLinkUrl) {
-      try {
-        logDeepLinkDebug(config, `Using deep link URL: ${deepLinkUrl}`);
-        
-        // Different techniques for different platforms
-        if (isIOS()) {
-          // Create iframe for iOS (more reliable than window.location)
-          const iframe = document.createElement('iframe');
-          iframe.style.display = 'none';
-          iframe.src = deepLinkUrl;
-          document.body.appendChild(iframe);
-          setTimeout(() => {
-            document.body.removeChild(iframe);
-          }, 100);
-          
-          // Also try direct location change as a backup
-          setTimeout(() => {
-            window.location.href = deepLinkUrl as string;
-          }, 50);
-        } else {
-          // For Android, we use window.location
-          window.location.href = deepLinkUrl;
-        }
-      } catch (error) {
-        console.error("Error opening deep link:", error);
-        window.open(config.webFallbackUrl, '_blank');
-        clearTimeout(fallbackTimeout);
-        resolve();
-      }
-    } else {
-      // No deep link available, use web fallback
+    if (!deepLinkUrl) {
+      // No deep link URL available, use web fallback
       logDeepLinkDebug(config, "No deep link URL available, using web fallback");
+      window.open(config.webFallbackUrl, '_blank');
+      clearTimeout(fallbackTimeout);
+      resolve();
+      return;
+    }
+
+    try {
+      logDeepLinkDebug(config, `Using deep link URL: ${deepLinkUrl}`);
+
+      // The key is direct user interaction
+      // Create and trigger a clickable element to launch the deep link
+      const a = document.createElement('a');
+      a.href = deepLinkUrl;
+      a.style.display = 'none';
+      a.setAttribute('target', '_blank'); // Important for iOS
+      a.setAttribute('rel', 'noopener noreferrer');
+      document.body.appendChild(a);
+      
+      // Click the element to trigger the deep link with user interaction
+      a.click();
+      
+      // For iOS, we also try the iframe method
+      if (isIOS()) {
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = deepLinkUrl;
+        document.body.appendChild(iframe);
+        
+        // Clean up after short delay
+        setTimeout(() => {
+          document.body.removeChild(iframe);
+          document.body.removeChild(a);
+        }, 100);
+      } else {
+        // Clean up the element after clicking
+        document.body.removeChild(a);
+      }
+    } catch (error) {
+      console.error("Error opening deep link:", error);
       window.open(config.webFallbackUrl, '_blank');
       clearTimeout(fallbackTimeout);
       resolve();
@@ -234,4 +239,16 @@ export const openDeepLink = async (
       document.removeEventListener('visibilitychange', visibilityChangeHandler);
     }, timeout + 1000);
   });
+};
+
+/**
+ * Creates a direct app store link for an app
+ * @param appId The app ID in the stores 
+ * @returns Object with app store links
+ */
+export const getAppStoreLinks = (appId: string) => {
+  return {
+    ios: `https://apps.apple.com/app/id${appId}`,
+    android: `https://play.google.com/store/apps/details?id=${appId}`
+  };
 };
