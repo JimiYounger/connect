@@ -89,6 +89,8 @@ export interface WidgetConfigData {
     iosScheme?: string;
     androidPackage?: string;
     webFallbackUrl: string;
+    iosAppStoreId?: string;    // For App Store fallback
+    androidAppStoreId?: string; // For Play Store fallback
   };
   
   // Custom settings (type dependent)

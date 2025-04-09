@@ -6,7 +6,7 @@ import { processDynamicUrl } from './widget-renderer';
 import { useAuth } from '@/features/auth/context/auth-context';
 import { useProfile } from '@/features/users/hooks/useProfile';
 import { WidgetService } from '../services/widget-service';
-import { isMobile, openDeepLink } from '../utils/deep-link';
+import { isMobile, openDeepLink, isIOS, isAndroid, getAppStoreLinks } from '../utils/deep-link';
 
 const widgetService = new WidgetService();
 
@@ -47,10 +47,22 @@ export const RedirectWidget: React.FC<RedirectWidgetProps> = ({
     const deepLinkConfig = configuration?.deepLink;
     
     if (deepLinkConfig?.enabled && isMobile()) {
-      // Use deep linking with the processed URL as fallback
+      // Determine the appropriate fallback URL
+      let fallbackUrl = processDynamicUrl(deepLinkConfig.webFallbackUrl || processedUrl, profile);
+      
+      // If app store IDs are provided, use them as fallbacks instead of web URL
+      if (isIOS() && deepLinkConfig.iosAppStoreId) {
+        const storeLinks = getAppStoreLinks(deepLinkConfig.iosAppStoreId);
+        fallbackUrl = storeLinks.ios;
+      } else if (isAndroid() && deepLinkConfig.androidAppStoreId) {
+        const storeLinks = getAppStoreLinks(deepLinkConfig.androidAppStoreId);
+        fallbackUrl = storeLinks.android;
+      }
+      
+      // Use deep linking with the determined fallback URL
       await openDeepLink({
         ...deepLinkConfig,
-        webFallbackUrl: processDynamicUrl(deepLinkConfig.webFallbackUrl || processedUrl, profile)
+        webFallbackUrl: fallbackUrl
       });
     } else {
       // Standard web redirect

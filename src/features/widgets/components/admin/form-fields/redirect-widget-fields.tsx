@@ -291,6 +291,53 @@ export function RedirectWidgetFields() {
                 </FormItem>
               )}
             />
+            
+            <div className="pt-4 border-t mt-4">
+              <h4 className="text-sm font-medium mb-2">App Store IDs (Optional)</h4>
+              <p className="text-sm text-muted-foreground mb-4">
+                If provided, users without the app will be directed to the app store instead of the web fallback
+              </p>
+              
+              <FormField
+                control={control}
+                name="config.deepLink.iosAppStoreId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>iOS App Store ID</FormLabel>
+                    <FormControl>
+                      <SafeInput 
+                        placeholder="123456789" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      The numeric App Store ID (e.g., &quot;389801252&quot; for Gmail)
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={control}
+                name="config.deepLink.androidAppStoreId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Android Package ID</FormLabel>
+                    <FormControl>
+                      <SafeInput 
+                        placeholder="com.example.app" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      The Android package ID for Google Play Store (usually same as package name)
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
           </div>
         )}
       </div>
