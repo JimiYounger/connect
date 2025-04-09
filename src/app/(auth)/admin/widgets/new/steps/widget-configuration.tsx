@@ -23,7 +23,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label as _Label } from '@/components/ui/label';
 import { Slider as _Slider } from '@/components/ui/slider';
 import { WidgetType } from '@/features/widgets/types';
-import { DynamicUrlBuilder } from '@/features/widgets/components/admin/form-fields/dynamic-url-builder';
+import { RedirectWidgetFields } from '@/features/widgets/components/admin/form-fields/redirect-widget-fields';
 
 interface WidgetConfigurationProps {
   type: WidgetType;
@@ -57,6 +57,22 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
       setValue('config.description', _config.description || '');
       setValue('config.settings.openInNewTab', true);
       setValue('config.settings.trackClicks', true);
+      
+      // Important: Initialize the full deep link structure before setting individual fields
+      if (!_config.deepLink) {
+        setValue('config.deepLink', {
+          enabled: false,
+          iosScheme: '',
+          androidPackage: '',
+          webFallbackUrl: _config.redirectUrl || ''
+        });
+      } else {
+        // Ensure all deep link fields have values
+        setValue('config.deepLink.enabled', _config.deepLink.enabled || false);
+        setValue('config.deepLink.iosScheme', _config.deepLink.iosScheme || '');
+        setValue('config.deepLink.androidPackage', _config.deepLink.androidPackage || '');
+        setValue('config.deepLink.webFallbackUrl', _config.deepLink.webFallbackUrl || _config.redirectUrl || '');
+      }
     } else if (type === WidgetType.DATA_VISUALIZATION) {
       setValue('config.dataSource', _config.dataSource || '');
       setValue('config.chartType', _config.chartType || '');
@@ -72,59 +88,7 @@ export function WidgetConfiguration({ type }: WidgetConfigurationProps) {
   const renderTypeSpecificFields = () => {
     switch (type) {
       case WidgetType.REDIRECT:
-        return (
-          <>
-            <FormField
-              control={control}
-              name="config.redirectUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Dynamic Redirect URL</FormLabel>
-                  <FormControl>
-                    <DynamicUrlBuilder
-                      value={field.value || ''}
-                      onChange={(value: string) => {
-                        field.onChange(value);
-                        setValue('config.redirectUrl', value);
-                      }}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    The URL where users will be redirected. You can insert dynamic user fields that will be replaced with each user&apos;s data.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={control}
-              name="config.description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Link Description</FormLabel>
-                  <FormControl>
-                    <SafeTextarea 
-                      placeholder="Describe where this link will take users" 
-                      className="min-h-[80px]"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Provide context for the link destination
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <div className="mt-4 p-3 bg-gray-50 rounded-md">
-              <p className="text-sm text-muted-foreground">
-                Links will automatically open in a new tab and track clicks for analytics.
-              </p>
-            </div>
-          </>
-        );
+        return <RedirectWidgetFields />;
         
       case WidgetType.DATA_VISUALIZATION:
         return (

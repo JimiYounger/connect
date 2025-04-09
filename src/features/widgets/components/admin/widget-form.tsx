@@ -45,6 +45,12 @@ export interface WidgetFormValues {
     
     // Redirect widget specific
     redirectUrl?: string;
+    deepLink?: {
+      enabled: boolean;
+      iosScheme?: string;
+      androidPackage?: string;
+      webFallbackUrl: string;
+    };
     
     // Data visualization specific
     dataSource?: string;
@@ -131,6 +137,12 @@ const widgetFormSchema = z.discriminatedUnion('widget_type', [
       subtitle: z.string().optional(),
       description: z.string().optional(),
       redirectUrl: z.string().url('Must be a valid URL'),
+      deepLink: z.object({
+        enabled: z.boolean().default(false),
+        iosScheme: z.string().optional(),
+        androidPackage: z.string().optional(),
+        webFallbackUrl: z.string().optional()
+      }).optional(),
       settings: z.record(z.any()).optional(),
     }),
     styles: z.object({
@@ -229,7 +241,14 @@ export function WidgetForm({ initialData, onSubmit, onCancel, mode }: WidgetForm
       size_ratio: '1:1',
       shape: WidgetShape.SQUARE,
       is_public: false,
-      config: {},
+      config: {
+        deepLink: {
+          enabled: false,
+          iosScheme: '',
+          androidPackage: '',
+          webFallbackUrl: ''
+        }
+      },
       styles: {
         backgroundColor: '#ffffff',
         titleColor: '#000000',

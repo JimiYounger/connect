@@ -12,10 +12,66 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { DynamicUrlBuilder } from './dynamic-url-builder';
+import { Switch } from '@/components/ui/switch';
+import { useState, useEffect } from 'react';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
+import { APP_PRESETS, AppPreset } from '../../../utils/deep-link';
+
+// Defensive input that handles undefined values
+const SafeInput = ({ value, onChange, ...props }: any) => (
+  <Input 
+    value={value || ''} 
+    onChange={onChange}
+    {...props} 
+  />
+);
 
 export function RedirectWidgetFields() {
-  const { control, setValue } = useFormContext();
+  const { control, setValue, watch, getValues } = useFormContext();
   
+  // Initialize deep link configuration
+  useEffect(() => {
+    // Pre-initialize all deep link fields to prevent controlled/uncontrolled issues
+    if (!getValues('config.deepLink')) {
+      setValue('config.deepLink', {
+        enabled: false,
+        iosScheme: '',
+        androidPackage: '',
+        webFallbackUrl: getValues('config.redirectUrl') || ''
+      });
+    }
+  }, [setValue, getValues]);
+  
+  // Use the state to track enabled status separately from form value
+  const [deepLinkEnabled, setDeepLinkEnabled] = useState(false);
+  
+  // Sync our state with form value when it changes
+  useEffect(() => {
+    const subscription = watch((value, { name }) => {
+      if (name === 'config.deepLink.enabled') {
+        setDeepLinkEnabled(!!value.config?.deepLink?.enabled);
+      }
+    });
+    
+    // Initialize from current value
+    setDeepLinkEnabled(!!getValues('config.deepLink.enabled'));
+    
+    return () => subscription.unsubscribe();
+  }, [watch, getValues]);
+  
+  // Handle app preset selection
+  const handlePresetChange = (preset: AppPreset) => {
+    const presetData = APP_PRESETS[preset];
+    setValue('config.deepLink.iosScheme', presetData.iosScheme);
+    setValue('config.deepLink.androidPackage', presetData.androidPackage);
+  };
+
   return (
     <div className="space-y-6">
       <FormField
@@ -25,7 +81,7 @@ export function RedirectWidgetFields() {
           <FormItem>
             <FormLabel>Display Title</FormLabel>
             <FormControl>
-              <Input 
+              <SafeInput 
                 placeholder="Widget title (shown to users)" 
                 {...field} 
               />
@@ -45,7 +101,7 @@ export function RedirectWidgetFields() {
           <FormItem>
             <FormLabel>Subtitle (optional)</FormLabel>
             <FormControl>
-              <Input 
+              <SafeInput 
                 placeholder="Brief subtitle or tagline" 
                 {...field} 
               />
@@ -68,6 +124,7 @@ export function RedirectWidgetFields() {
               <Textarea 
                 placeholder="More detailed description" 
                 {...field} 
+                value={field.value || ''}
                 className="min-h-[100px]"
               />
             </FormControl>
@@ -91,6 +148,10 @@ export function RedirectWidgetFields() {
                 onChange={(value) => {
                   field.onChange(value);
                   setValue('config.redirectUrl', value);
+                  // Also update web fallback URL when redirect URL changes
+                  if (!getValues('config.deepLink.webFallbackUrl')) {
+                    setValue('config.deepLink.webFallbackUrl', value);
+                  }
                 }}
               />
             </FormControl>
@@ -102,11 +163,144 @@ export function RedirectWidgetFields() {
         )}
       />
       
+      {/* Deep Linking Section */}
+      <div className="border rounded-lg p-4 space-y-4 mt-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-md font-medium">Mobile Deep Linking</h3>
+            <p className="text-sm text-muted-foreground">
+              Open specific mobile apps when users click this widget on a mobile device
+            </p>
+          </div>
+          <FormField
+            control={control}
+            name="config.deepLink.enabled"
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <Switch
+                    checked={!!field.value}
+                    onCheckedChange={(checked) => {
+                      field.onChange(checked);
+                      setDeepLinkEnabled(checked);
+                      
+                      // Initialize web fallback URL if not set
+                      if (checked && !getValues('config.deepLink.webFallbackUrl')) {
+                        setValue('config.deepLink.webFallbackUrl', getValues('config.redirectUrl') || '');
+                      }
+                    }}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+        </div>
+        
+        {deepLinkEnabled && (
+          <div className="space-y-4">
+            <FormField
+              control={control}
+              name="config.deepLink.preset"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Common App Presets</FormLabel>
+                  <Select
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      handlePresetChange(value as AppPreset);
+                    }}
+                    value={field.value || undefined}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a common app..." />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {Object.entries(APP_PRESETS).map(([key, preset]) => (
+                        <SelectItem key={key} value={key}>
+                          {preset.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Choose from common apps or configure custom deep links below
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          
+            <FormField
+              control={control}
+              name="config.deepLink.iosScheme"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>iOS URL Scheme</FormLabel>
+                  <FormControl>
+                    <SafeInput 
+                      placeholder="exampleapp://" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    URL scheme for iOS devices (e.g., &quot;salesforce://&quot;)
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={control}
+              name="config.deepLink.androidPackage"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Android Package Name</FormLabel>
+                  <FormControl>
+                    <SafeInput 
+                      placeholder="com.example.app" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Package name for Android devices (e.g., &quot;com.salesforce.chatter&quot;)
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={control}
+              name="config.deepLink.webFallbackUrl"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Web Fallback URL</FormLabel>
+                  <FormControl>
+                    <SafeInput 
+                      placeholder="https://example.com" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    URL to open if the app is not installed (defaults to the main redirect URL)
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        )}
+      </div>
+      
       <div className="mt-4 p-3 bg-gray-50 rounded-md">
         <p className="text-sm text-muted-foreground">
           Links will automatically open in a new tab and track clicks for analytics.
+          {deepLinkEnabled && " On mobile devices, the app will be opened if installed."}
         </p>
       </div>
     </div>
   );
-} 
+}
