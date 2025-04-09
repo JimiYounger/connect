@@ -9,6 +9,18 @@
   "background_color": "#000000",
   "theme_color": "#000000",
   "display_override": ["window-controls-overlay"],
+  "protocol_handlers": [
+    {
+      "protocol": "web+connect",
+      "url": "/?deeplink=%s"
+    }
+  ],
+  "related_applications": [
+    {
+      "platform": "webapp",
+      "url": "https://plpconnect.com/manifest.json"
+    }
+  ],
   "icons": [
     {
       "src": "/connect.png",
