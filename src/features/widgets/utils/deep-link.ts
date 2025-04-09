@@ -83,15 +83,76 @@ export const isMobile = (): boolean => {
  * @param timeout Timeout in ms before falling back to web URL (default: 2000ms)
  * @returns Promise that resolves when navigation occurs
  */
+// Add type definition for Safari's navigator extension
+interface SafariNavigator extends Navigator {
+  standalone?: boolean;
+}
+
+/**
+ * Check if running in a PWA context
+ */
+export const isPWA = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia('(display-mode: standalone)').matches || 
+         // Use type assertion to handle Safari's standalone property
+         (window.navigator as SafariNavigator).standalone === true;
+};
+
+/**
+ * Check if running in Safari
+ */
+export const isSafari = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const ua = window.navigator.userAgent;
+  return ua.includes('Safari') && !ua.includes('Chrome') && !ua.includes('Android');
+};
+
+/**
+ * Check if deep linking is likely to work in the current environment
+ */
+export const canUseNativeDeepLinks = (): boolean => {
+  // Deep links have limitations in:
+  // 1. PWAs on iOS
+  // 2. Safari browser
+  if (isPWA() && isIOS()) return false;
+  if (isSafari()) return false;
+  
+  return true;
+};
+
+/**
+ * Log deep linking debug info to console
+ */
+const logDeepLinkDebug = (config: DeepLinkConfig, message: string): void => {
+  console.info(
+    `[Deep Link Debug] ${message}\n`,
+    `- Environment: ${isPWA() ? 'PWA' : 'Browser'}\n`,
+    `- Platform: ${isIOS() ? 'iOS' : isAndroid() ? 'Android' : 'Desktop'}\n`,
+    `- Safari: ${isSafari() ? 'Yes' : 'No'}\n`,
+    `- Can use native deep links: ${canUseNativeDeepLinks() ? 'Yes' : 'No'}\n`,
+    `- Config:`, config
+  );
+};
+
 export const openDeepLink = async (
   config: DeepLinkConfig,
   timeout: number = 2000
 ): Promise<void> => {
-  if (!config.enabled || !isMobile()) {
-    // If deep linking is disabled or not on mobile, use web fallback directly
+  // If deep linking is disabled, just use web fallback
+  if (!config.enabled) {
+    logDeepLinkDebug(config, "Deep linking disabled, using web fallback");
     window.open(config.webFallbackUrl, '_blank');
     return;
   }
+  
+  // If not on mobile or in an environment where deep links won't work, use web fallback
+  if (!isMobile() || !canUseNativeDeepLinks()) {
+    logDeepLinkDebug(config, "Not in compatible environment for deep links, using web fallback");
+    window.open(config.webFallbackUrl, '_blank');
+    return;
+  }
+
+  logDeepLinkDebug(config, "Attempting to use deep link");
 
   return new Promise((resolve) => {
     // Store current time to check if we navigated away
@@ -104,6 +165,8 @@ export const openDeepLink = async (
       if (document.hidden || Date.now() - start > timeout + 500) {
         return;
       }
+      
+      logDeepLinkDebug(config, "Timeout - app not opened, using web fallback");
       
       // If we're still here after timeout, app wasn't opened
       window.open(config.webFallbackUrl, '_blank');
@@ -119,21 +182,37 @@ export const openDeepLink = async (
 
     // If we have a deep link URL, try to open it
     if (deepLinkUrl) {
-      // Create iframe for iOS (more reliable than window.location)
-      if (isIOS()) {
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.src = deepLinkUrl;
-        document.body.appendChild(iframe);
-        setTimeout(() => {
-          document.body.removeChild(iframe);
-        }, 100);
-      } else {
-        // For Android, we use window.location
-        window.location.href = deepLinkUrl;
+      try {
+        logDeepLinkDebug(config, `Using deep link URL: ${deepLinkUrl}`);
+        
+        // Different techniques for different platforms
+        if (isIOS()) {
+          // Create iframe for iOS (more reliable than window.location)
+          const iframe = document.createElement('iframe');
+          iframe.style.display = 'none';
+          iframe.src = deepLinkUrl;
+          document.body.appendChild(iframe);
+          setTimeout(() => {
+            document.body.removeChild(iframe);
+          }, 100);
+          
+          // Also try direct location change as a backup
+          setTimeout(() => {
+            window.location.href = deepLinkUrl as string;
+          }, 50);
+        } else {
+          // For Android, we use window.location
+          window.location.href = deepLinkUrl;
+        }
+      } catch (error) {
+        console.error("Error opening deep link:", error);
+        window.open(config.webFallbackUrl, '_blank');
+        clearTimeout(fallbackTimeout);
+        resolve();
       }
     } else {
       // No deep link available, use web fallback
+      logDeepLinkDebug(config, "No deep link URL available, using web fallback");
       window.open(config.webFallbackUrl, '_blank');
       clearTimeout(fallbackTimeout);
       resolve();
@@ -142,6 +221,7 @@ export const openDeepLink = async (
     // Handle visibility change (app opened successfully)
     const visibilityChangeHandler = () => {
       if (document.hidden) {
+        logDeepLinkDebug(config, "Visibility changed - app likely opened");
         clearTimeout(fallbackTimeout);
         resolve();
       }
