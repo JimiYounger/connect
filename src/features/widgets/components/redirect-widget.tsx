@@ -6,6 +6,7 @@ import { processDynamicUrl } from './widget-renderer';
 import { useAuth } from '@/features/auth/context/auth-context';
 import { useProfile } from '@/features/users/hooks/useProfile';
 import { WidgetService } from '../services/widget-service';
+import { isMobile, openDeepLink } from '../utils/deep-link';
 
 const widgetService = new WidgetService();
 
@@ -28,14 +29,11 @@ export const RedirectWidget: React.FC<RedirectWidgetProps> = ({
   const thumbnailUrl = widget.thumbnail_url;
   const isCircle = widget.shape === 'circle';
   
-  const handleRedirectClick = () => {
+  const handleRedirectClick = async () => {
     if (!configuration?.redirectUrl) return;
     
     // Process the URL with user data
     const processedUrl = processDynamicUrl(configuration.redirectUrl, profile);
-    
-    // Open the URL in a new tab
-    window.open(processedUrl, '_blank');
     
     // Track the click if needed
     if (widget.id && userId) {
@@ -43,6 +41,20 @@ export const RedirectWidget: React.FC<RedirectWidgetProps> = ({
       if (onInteraction) {
         onInteraction('click');
       }
+    }
+    
+    // Check for deep link configuration
+    const deepLinkConfig = configuration?.deepLink;
+    
+    if (deepLinkConfig?.enabled && isMobile()) {
+      // Use deep linking with the processed URL as fallback
+      await openDeepLink({
+        ...deepLinkConfig,
+        webFallbackUrl: processDynamicUrl(deepLinkConfig.webFallbackUrl || processedUrl, profile)
+      });
+    } else {
+      // Standard web redirect
+      window.open(processedUrl, '_blank');
     }
   };
   
@@ -109,4 +121,4 @@ export default RedirectWidget;
 import { widgetRegistry } from '../registry';
 import { WidgetType } from '../types';
 
-widgetRegistry.register(WidgetType.REDIRECT, RedirectWidget); 
+widgetRegistry.register(WidgetType.REDIRECT, RedirectWidget);

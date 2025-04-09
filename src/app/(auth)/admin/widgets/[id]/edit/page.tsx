@@ -235,7 +235,28 @@ export default function EditWidgetPage() {
           // Load config and styles from the most recent configuration if available
           ...(configurationsData && configurationsData.length > 0 
             ? {
-                config: configurationsData[0].config || {},
+                config: (() => {
+                  const config = configurationsData[0].config || {};
+                  
+                  // Ensure the deepLink structure exists for redirect widgets
+                  if (widgetData.widget_type === WidgetType.REDIRECT) {
+                    // Safely type the config as a record
+                    const typedConfig = config as Record<string, any>;
+                    
+                    if (!typedConfig.deepLink) {
+                      return {
+                        ...typedConfig,
+                        deepLink: {
+                          enabled: false,
+                          iosScheme: '',
+                          androidPackage: '',
+                          webFallbackUrl: typedConfig.redirectUrl || ''
+                        }
+                      };
+                    }
+                  }
+                  return config;
+                })(),
                 // Now update the styles extraction code with proper type safety
                 styles: (() => {
                   if (!configurationsData || configurationsData.length === 0 || !configurationsData[0].config) {

@@ -83,6 +83,14 @@ export interface WidgetConfigData {
   dataSource?: string;
   refreshInterval?: number;
   
+  // Deep linking configuration for redirect widgets
+  deepLink?: {
+    enabled: boolean;
+    iosScheme?: string;
+    androidPackage?: string;
+    webFallbackUrl: string;
+  };
+  
   // Custom settings (type dependent)
   settings?: Record<string, unknown>;
   
@@ -134,6 +142,12 @@ export interface BaseWidgetProps {
 export interface RedirectWidgetProps extends BaseWidgetProps {
   configuration: WidgetConfigData & {
     redirectUrl: string;
+    deepLink?: {
+      enabled: boolean;
+      iosScheme?: string;
+      androidPackage?: string;
+      webFallbackUrl: string;
+    };
   };
 }
 
