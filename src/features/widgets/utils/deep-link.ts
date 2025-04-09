@@ -83,13 +83,19 @@ export const isMobile = (): boolean => {
  * @param timeout Timeout in ms before falling back to web URL (default: 2000ms)
  * @returns Promise that resolves when navigation occurs
  */
+// Add type definition for Safari's navigator extension
+interface SafariNavigator extends Navigator {
+  standalone?: boolean;
+}
+
 /**
  * Check if running in a PWA context
  */
 export const isPWA = (): boolean => {
   if (typeof window === 'undefined') return false;
   return window.matchMedia('(display-mode: standalone)').matches || 
-         window.navigator.standalone === true;
+         // Use type assertion to handle Safari's standalone property
+         (window.navigator as SafariNavigator).standalone === true;
 };
 
 /**
