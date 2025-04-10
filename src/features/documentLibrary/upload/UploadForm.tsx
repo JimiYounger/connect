@@ -242,16 +242,35 @@ export function UploadForm({ categories, allTags, userId }: UploadFormProps) {
       // If all documents are valid, upload them
       if (validDocuments.length === documentForms.length) {
         try {
-          await handleUploadDocuments(validDocuments, userId)
+          const uploadResults = await handleUploadDocuments(validDocuments, userId)
           
-          // Clear the form after successful upload
+          const { successful, failed } = uploadResults
+          
+          // Clear the form after upload
           clearAll()
           
-          // Show success toast notification
-          toast({ 
-            title: "Upload Complete", 
-            description: "Documents were successfully uploaded." 
-          })
+          // Show appropriate toast notification based on results
+          if (successful.length > 0 && failed.length === 0) {
+            // All uploads succeeded
+            toast({ 
+              title: "Upload Complete", 
+              description: `${successful.length} documents were successfully uploaded.` 
+            })
+          } else if (successful.length > 0 && failed.length > 0) {
+            // Some uploads succeeded, some failed
+            toast({ 
+              title: "Partial Upload", 
+              description: `${successful.length} documents uploaded, ${failed.length} failed.`,
+              variant: "default"
+            })
+          } else {
+            // All uploads failed
+            toast({ 
+              title: "Upload Failed", 
+              description: "All document uploads failed. Check console for details.", 
+              variant: "destructive" 
+            })
+          }
         } catch (uploadError) {
           console.error('Error uploading documents:', uploadError)
           
