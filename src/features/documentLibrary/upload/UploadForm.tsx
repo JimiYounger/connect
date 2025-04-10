@@ -205,6 +205,7 @@ export function UploadForm({ categories, allTags, userId }: UploadFormProps) {
         const title = formData.get('title') as string
         const description = formData.get('description') as string
         const categoryId = formData.get('categoryId') as string
+        console.log('Form categoryId value:', categoryId, 'type:', typeof categoryId)
         const versionLabel = formData.get('versionLabel') as string
         
         // Get selected tags from the form state
@@ -225,6 +226,8 @@ export function UploadForm({ categories, allTags, userId }: UploadFormProps) {
           file: formEntry.file
         }
         
+        console.log('Document data before validation:', documentData)
+        
         // Validate with Zod schema
         const result = DocumentUploadSchema.safeParse(documentData)
         
@@ -242,6 +245,10 @@ export function UploadForm({ categories, allTags, userId }: UploadFormProps) {
       // If all documents are valid, upload them
       if (validDocuments.length === documentForms.length) {
         try {
+          console.log('Final valid documents before upload:', JSON.stringify(validDocuments, (key, value) => 
+            key === 'file' ? '[File Object]' : value
+          ))
+          console.log('🔑 UploadForm passing userId to handleUploadDocuments:', userId, 'type:', typeof userId)
           const uploadResults = await handleUploadDocuments(validDocuments, userId)
           
           const { successful, failed } = uploadResults

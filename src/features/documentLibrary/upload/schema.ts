@@ -1,5 +1,4 @@
 import { z } from "zod";
-import type { RoleAssignments } from "@/features/carousel/types";
 
 // Schema for document upload validation
 export const DocumentUploadSchema = z.object({
@@ -14,6 +13,7 @@ export const DocumentUploadSchema = z.object({
     areas: z.array(z.string()).optional(),
     regions: z.array(z.string()).optional(),
   }).optional(),
+  // Content field removed - will be populated later with actual document text
   file: z.instanceof(File),
 });
 

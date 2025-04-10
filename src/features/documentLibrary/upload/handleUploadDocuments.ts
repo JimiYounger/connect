@@ -1,5 +1,8 @@
+// my-app/src/features/documentLibrary/upload/handleUploadDocuments.ts
+
 import { createClient } from '@/lib/supabase'
 import { DocumentUploadInput } from './schema'
+import { insertDocumentWithRelations } from './insertDocumentWithRelations'
 
 /**
  * Generates a storage path for a document file
@@ -17,6 +20,7 @@ type UploadResult = {
   success: boolean;
   file: string;
   error?: any;
+  documentId?: string;
 }
 
 type UploadSummary = {
@@ -55,153 +59,95 @@ export async function handleUploadDocuments(
       throw new Error('Storage bucket error: ' + (storageError as Error).message)
     }
   
-  try {
-    // Process all document uploads in parallel for better performance
-    const results = await Promise.all(
-      documents.map(async (document) => {
-        try {
-          const filePath = getStoragePath(userId, document.file.name)
-          
-          // 1. Upload the file to storage
-          const { error: uploadError } = await supabase
-            .storage
-            .from('documents')
-            .upload(filePath, document.file, {
-              cacheControl: '3600',
-              upsert: false
-            })
-            
-          if (uploadError) {
-            throw new Error(`Error uploading file: ${uploadError.message}`)
-          }
-          
-          // 2. Get the public URL for the file
-          const { data: urlData } = supabase
-            .storage
-            .from('documents')
-            .getPublicUrl(filePath)
-            
-          const fileUrl = urlData.publicUrl
-          
-          console.log('File uploaded successfully:', filePath)
-          console.log('Public URL:', fileUrl)
-          
-          // 3. Insert record using raw SQL to avoid TypeScript errors with table definition
-          // Try to detect table existence in a more compatible way
-          console.log('Checking for document_library table')
+    try {
+      // Process all document uploads in parallel for better performance
+      const results = await Promise.all(
+        documents.map(async (document) => {
           try {
-            const { data: tableData, error: tableCheckError } = await supabase
-              .from('document_library' as any)
-              .select('count(*)', { count: 'exact', head: true })
-              
-            console.log('Table check result:', tableData)
-            if (tableCheckError) {
-              console.error('Table may not exist:', tableCheckError.message)
-            }
-          } catch (tableError) {
-            console.error('Error checking table:', tableError)
-          }
-          
-          // Since the document_library table might not exist,
-          // we'll store metadata in localStorage temporarily as a fallback
-          console.log('Attempting to store document metadata')
-          
-          // Create a metadata object for this document
-          const documentMetadata = {
-            title: document.title,
-            description: document.description || null,
-            categoryId: document.categoryId,
-            tags: document.tags || [],
-            versionLabel: document.versionLabel || null,
-            visibility: document.visibility || null,
-            fileUrl: fileUrl,
-            uploadedBy: userId,
-            uploadedAt: new Date().toISOString(),
-            filePath: filePath,
-            fileType: document.file.type,
-            fileSize: document.file.size
-          }
-          
-          try {
-            // First try the database insertion if it exists
-            const insertResult = await supabase
-              .from('document_library' as any)
-              .insert({
-                title: document.title,
-                description: document.description || null,
-                category_id: document.categoryId,
-                file_url: fileUrl,
-                uploaded_by: userId
+            const filePath = getStoragePath(userId, document.file.name)
+            
+            // 1. Upload the file to storage
+            const { error: uploadError } = await supabase
+              .storage
+              .from('documents')
+              .upload(filePath, document.file, {
+                cacheControl: '3600',
+                upsert: false
               })
               
-            const { data: insertData, error: insertError } = insertResult
-            
-            if (insertError) {
-              console.warn('Database insertion failed, using localStorage fallback:', insertError.message)
-              
-              // Store in localStorage as fallback
-              const storedDocs = JSON.parse(localStorage.getItem('uploadedDocuments') || '[]')
-              storedDocs.push(documentMetadata)
-              localStorage.setItem('uploadedDocuments', JSON.stringify(storedDocs))
-              
-              console.log('Document metadata stored in localStorage')
-            } else {
-              console.log('Document metadata stored in database successfully')
+            if (uploadError) {
+              throw new Error(`Error uploading file: ${uploadError.message}`)
             }
-          } catch (dbError) {
-            console.warn('Database error, using localStorage fallback:', dbError)
             
-            // Store in localStorage as fallback
-            const storedDocs = JSON.parse(localStorage.getItem('uploadedDocuments') || '[]')
-            storedDocs.push(documentMetadata)
-            localStorage.setItem('uploadedDocuments', JSON.stringify(storedDocs))
+            // 2. Get the public URL for the file
+            const { data: urlData } = supabase
+              .storage
+              .from('documents')
+              .getPublicUrl(filePath)
+              
+            const fileUrl = urlData.publicUrl
             
-            console.log('Document metadata stored in localStorage')
+            console.log('File uploaded successfully:', filePath)
+            console.log('Public URL:', fileUrl)
+            
+            // 3. Insert document metadata and relationships using our specialized function
+            const insertResult = await insertDocumentWithRelations({
+              document,
+              fileUrl,
+              filePath,
+              userId
+            })
+            
+            if (!insertResult.success) {
+              throw new Error(`Failed to insert document metadata: ${insertResult.error}`)
+            }
+            
+            console.log('Document metadata stored in database successfully with ID:', insertResult.documentId)
+            
+            // Return success with document ID
+            return {
+              success: true,
+              file: document.file.name,
+              documentId: insertResult.documentId
+            }
+            
+          } catch (docError) {
+            console.error('Error processing document:', document.title, docError)
+            // Don't throw here - try to continue with other files if possible
+            return {
+              success: false,
+              file: document.file.name,
+              error: docError
+            }
           }
-          
-        } catch (docError) {
-          console.error('Error processing document:', document.title, docError)
-          // Don't throw here - try to continue with other files if possible
-          return {
-            success: false,
-            file: document.file.name,
-            error: docError
-          }
-        }
-        
-        // If we got here, the document was processed successfully
-        return {
-          success: true,
-          file: document.file.name
-        }
-      })
-    )
-    
-    // Process the results to see what succeeded and what failed
-    const successfulUploads = results.filter(r => r.success)
-    const failedUploads = results.filter(r => !r.success)
-    
-    console.log(`Upload summary: ${successfulUploads.length} succeeded, ${failedUploads.length} failed`)
-    
-    if (failedUploads.length > 0) {
-      console.warn('Failed uploads:', failedUploads.map(f => f.file))
+        })
+      )
       
-      // Only throw if ALL uploads failed
-      if (successfulUploads.length === 0) {
-        throw new Error('All document uploads failed')
+      // Process the results to see what succeeded and what failed
+      const successfulUploads = results.filter(r => r.success)
+      const failedUploads = results.filter(r => !r.success)
+      
+      console.log(`Upload summary: ${successfulUploads.length} succeeded, ${failedUploads.length} failed`)
+      
+      if (failedUploads.length > 0) {
+        console.warn('Failed uploads:', failedUploads.map(f => f.file))
+        
+        // Only throw if ALL uploads failed
+        if (successfulUploads.length === 0) {
+          throw new Error('All document uploads failed')
+        }
       }
+      
+      // Return the results so the caller can handle successes and failures
+      return {
+        successful: successfulUploads,
+        failed: failedUploads
+      }
+      
+    } catch (error) {
+      console.error('Document upload operation failed:', error)
+      throw new Error('Failed to upload one or more documents')
     }
-    
-    // Return the results so the caller can handle successes and failures
-    return {
-      successful: successfulUploads,
-      failed: failedUploads
-    }
-    
-  } catch (error) {
-    console.error('Document upload operation failed:', error)
-    throw new Error('Failed to upload one or more documents')
-  }
   } catch (error) {
     console.error('Storage bucket error:', error)
     throw error
