@@ -12,13 +12,11 @@ export type DocumentForm = {
 
 export function useUploadFormManager() {
   const [documentForms, setDocumentForms] = useState<DocumentForm[]>([])
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.length) return
     
     const newFiles = Array.from(e.target.files)
-    setSelectedFiles(prev => [...prev, ...newFiles])
     
     // Create a form entry for each new file
     const newFormEntries = newFiles.map(file => ({
@@ -34,11 +32,6 @@ export function useUploadFormManager() {
 
   const removeFile = (id: string) => {
     setDocumentForms(prev => prev.filter(form => form.id !== id))
-    // Also remove from selectedFiles array
-    const formEntry = documentForms.find(form => form.id === id)
-    if (formEntry) {
-      setSelectedFiles(prev => prev.filter(file => file !== formEntry.file))
-    }
   }
   
   const updateFormData = (id: string, update: Partial<DocumentFormData>) => {
@@ -51,7 +44,6 @@ export function useUploadFormManager() {
   
   const clearAll = () => {
     setDocumentForms([])
-    setSelectedFiles([])
   }
   
   return {
