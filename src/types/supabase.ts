@@ -434,6 +434,32 @@ export type Database = {
       }
       document_visibility: {
         Row: {
+          conditions: Json
+          document_id: string | null
+          id: string
+        }
+        Insert: {
+          conditions?: Json
+          document_id?: string | null
+          id?: string
+        }
+        Update: {
+          conditions?: Json
+          document_id?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_visibility_document_id_fkey1"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_visibility_legacy: {
+        Row: {
           area: string | null
           document_id: string | null
           id: string

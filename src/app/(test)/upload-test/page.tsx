@@ -5,6 +5,8 @@ import { UploadForm } from '@/features/documentLibrary/upload/UploadForm'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 
+// The useRoleFilters hook now has built-in mock data support for test environments
+
 // Use proper UUIDs for category IDs to match database schema requirements
 const mockCategories = [
   { id: '584600b9-7254-4a5c-b2db-db9dd84e9d0e', name: 'Guides' },
@@ -77,6 +79,7 @@ export default function UploadTestPage() {
             Warning: No valid user IDs found in database!
           </p>
         )}
+        <p className="mt-2">Note: Using mock role filters for the visibility selector.</p>
       </div>
       
       <UploadForm 

@@ -391,14 +391,18 @@ export function UploadForm({ categories, allTags, userId }: UploadFormProps) {
                       <Label>Visibility</Label>
                       <div className="border rounded-md overflow-hidden">
                         <RoleSelector
-                          value={{
+                          value={formEntry.data.visibility || {
                             roleTypes: [],
                             teams: [],
                             areas: [],
                             regions: []
                           }}
                           onChange={(value) => {
-                            // Store visibility as a hidden field that will be submitted with the form
+                            console.log('RoleSelector onChange called with:', value)
+                            // Update form data state
+                            updateFormData(formEntry.id, { visibility: value })
+                            
+                            // Also update hidden field for form submission
                             const hiddenField = document.getElementById(`visibility-${formEntry.id}`) as HTMLInputElement
                             if (hiddenField) {
                               hiddenField.value = JSON.stringify(value)
@@ -409,7 +413,7 @@ export function UploadForm({ categories, allTags, userId }: UploadFormProps) {
                           type="hidden" 
                           id={`visibility-${formEntry.id}`} 
                           name="visibility" 
-                          value="{}" 
+                          value={JSON.stringify(formEntry.data.visibility || {})} 
                         />
                       </div>
                     </div>

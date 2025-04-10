@@ -135,59 +135,42 @@ export async function insertDocumentWithRelations(input: InsertInput): Promise<I
     
     console.log('✅ Document updated with version ID:', updateData)
     
-    // 3. Insert visibility settings (if provided)
+    // 3. Insert visibility settings using the new JSONB conditions column
     if (document.visibility) {
-      const visibilityEntries = []
+      // Create a single structured conditions object for visibility
+      const conditions: Record<string, any> = {}
       
-      // Add role types
+      // Take the first role type (we only support one role type at a time)
       if (document.visibility.roleTypes?.length) {
-        for (const roleType of document.visibility.roleTypes) {
-          visibilityEntries.push({
-            document_id: documentId,
-            role_type: roleType
-          })
-        }
+        conditions.role_type = document.visibility.roleTypes[0]
       }
       
-      // Add teams
+      // Add arrays for other location-based filters
       if (document.visibility.teams?.length) {
-        for (const team of document.visibility.teams) {
-          visibilityEntries.push({
-            document_id: documentId,
-            team
-          })
-        }
+        conditions.teams = document.visibility.teams
       }
       
-      // Add areas
       if (document.visibility.areas?.length) {
-        for (const area of document.visibility.areas) {
-          visibilityEntries.push({
-            document_id: documentId,
-            area
-          })
-        }
+        conditions.areas = document.visibility.areas
       }
       
-      // Add regions
       if (document.visibility.regions?.length) {
-        for (const region of document.visibility.regions) {
-          visibilityEntries.push({
-            document_id: documentId,
-            region
-          })
-        }
+        conditions.regions = document.visibility.regions
       }
       
-      // Insert all visibility entries if there are any
-      if (visibilityEntries.length > 0) {
-        const { error: visibilityError } = await supabase
-          .from('document_visibility')
-          .insert(visibilityEntries)
-        
-        if (visibilityError) {
-          throw new Error(`Failed to insert document visibility: ${visibilityError.message}`)
-        }
+      // Log the conditions object for debugging
+      console.log('📊 Document visibility conditions:', conditions)
+      
+      // Insert a single visibility record with the conditions JSON
+      const { error: visibilityError } = await supabase
+        .from('document_visibility')
+        .insert({
+          document_id: documentId,
+          conditions: conditions
+        })
+      
+      if (visibilityError) {
+        throw new Error(`Failed to insert document visibility: ${visibilityError.message}`)
       }
     }
     

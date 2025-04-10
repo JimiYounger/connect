@@ -1,9 +1,11 @@
 // my-app/src/features/documentLibrary/upload/useUploadFormManager.ts
 
 import { useState, ChangeEvent } from 'react'
+import type { RoleAssignments } from '@/features/carousel/types'
 
 type DocumentFormData = {
   selectedTags: string[]
+  visibility: RoleAssignments
 }
 
 export type DocumentForm = {
@@ -25,7 +27,13 @@ export function useUploadFormManager() {
       id: `${file.name}-${Date.now()}`,
       file,
       data: {
-        selectedTags: []
+        selectedTags: [],
+        visibility: {
+          roleTypes: [],
+          teams: [],
+          areas: [],
+          regions: []
+        }
       }
     }))
     
