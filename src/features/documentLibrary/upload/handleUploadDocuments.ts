@@ -24,6 +24,23 @@ export async function handleUploadDocuments(
 ): Promise<void> {
   const supabase = createClient()
   
+  // Check if the documents bucket exists and is accessible
+  try {
+    const { data: buckets, error: bucketError } = await supabase.storage.listBuckets()
+    console.log('Available storage buckets:', buckets?.map(b => b.name))
+    
+    if (bucketError) {
+      console.error('Error listing buckets:', bucketError)
+      throw new Error(`Storage bucket access error: ${bucketError.message}`)
+    }
+    
+    // Check if the documents bucket exists
+    const documentsBucketExists = buckets?.find(b => b.name === 'documents')
+    if (!documentsBucketExists) {
+      console.error('Error: documents storage bucket not found')
+      throw new Error('The documents storage bucket does not exist')
+    }
+  
   try {
     // Process all document uploads in parallel for better performance
     await Promise.all(
@@ -52,26 +69,41 @@ export async function handleUploadDocuments(
             
           const fileUrl = urlData.publicUrl
           
+          console.log('File uploaded successfully:', filePath)
+          console.log('Public URL:', fileUrl)
+          
           // 3. Insert record using raw SQL to avoid TypeScript errors with table definition
-          const { error: insertError } = await supabase
+          // Check if the document_library table exists
+          const { data: tables, error: tablesError } = await supabase.rpc('list_tables')
+          console.log('Available tables:', tables)
+          if (tablesError) {
+            console.error('Error listing tables:', tablesError)
+          }
+          
+          console.log('Attempting to insert record into document_library table')
+          // Try different approaches to insert the data
+          
+          // First approach: Using the standard API with minimal fields
+          const insertResult = await supabase
             .from('document_library' as any)
             .insert({
               title: document.title,
               description: document.description || null,
               category_id: document.categoryId,
-              tags: document.tags || [],
-              version_label: document.versionLabel || null,
-              visibility: document.visibility || null,
               file_url: fileUrl,
-              uploaded_by: userId,
-              uploaded_at: new Date().toISOString(),
-              file_path: filePath, // Store the path for potential future operations
-              file_type: document.file.type,
-              file_size: document.file.size
+              uploaded_by: userId
             })
             
+          // If that didn't work, we would try a different approach with fallbacks
+          // For now, we'll continue with our debugging
+            
+          const { data: insertData, error: insertError } = insertResult
+          
+          console.log('Insert result:', insertData)
+          
           if (insertError) {
             // If document metadata insertion fails, we should clean up the uploaded file
+            console.error('Insert error:', insertError)
             await supabase.storage.from('documents').remove([filePath])
             throw new Error(`Error saving document metadata: ${insertError.message}`)
           }
@@ -88,5 +120,9 @@ export async function handleUploadDocuments(
   } catch (error) {
     console.error('Document upload operation failed:', error)
     throw new Error('Failed to upload one or more documents')
+  }
+  } catch (error) {
+    console.error('Storage bucket error:', error)
+    throw error
   }
 }

@@ -9,7 +9,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { FormLabel } from '@/components/ui/form'
+// Don't use FormLabel component since we're not using react-hook-form
+// import { FormLabel } from '@/components/ui/form'
+import { Label } from '@/components/ui/label'
 import { toast } from '@/hooks/use-toast'
 import { useDebounce } from '@/hooks/use-debounce'
 import { RoleSelector } from '@/features/carousel/components/RoleSelector'
@@ -320,17 +322,17 @@ export function UploadForm({ categories, allTags, userId }: UploadFormProps) {
                   
                   <CardContent className="grid gap-4">
                     <div className="grid gap-2">
-                      <FormLabel htmlFor={`title-${formEntry.id}`}>Title <span className="text-red-500">*</span></FormLabel>
+                      <Label htmlFor={`title-${formEntry.id}`}>Title <span className="text-red-500">*</span></Label>
                       <Input id={`title-${formEntry.id}`} name="title" placeholder="Document title" required />
                     </div>
                     
                     <div className="grid gap-2">
-                      <FormLabel htmlFor={`description-${formEntry.id}`}>Description</FormLabel>
+                      <Label htmlFor={`description-${formEntry.id}`}>Description</Label>
                       <Textarea id={`description-${formEntry.id}`} name="description" placeholder="Add a description..." />
                     </div>
                     
                     <div className="grid gap-2">
-                      <FormLabel htmlFor={`category-${formEntry.id}`}>Category <span className="text-red-500">*</span></FormLabel>
+                      <Label htmlFor={`category-${formEntry.id}`}>Category <span className="text-red-500">*</span></Label>
                       <Select name="categoryId" required>
                         <SelectTrigger id={`category-${formEntry.id}`}>
                           <SelectValue placeholder="Select a category" />
@@ -346,7 +348,7 @@ export function UploadForm({ categories, allTags, userId }: UploadFormProps) {
                     </div>
                     
                     <div className="grid gap-2">
-                      <FormLabel>Tags</FormLabel>
+                      <Label>Tags</Label>
                       <TagSelector 
                         availableTags={allTags}
                         selectedTags={formEntry.data.selectedTags}
@@ -355,12 +357,12 @@ export function UploadForm({ categories, allTags, userId }: UploadFormProps) {
                     </div>
                     
                     <div className="grid gap-2">
-                      <FormLabel htmlFor={`version-${formEntry.id}`}>Version Label</FormLabel>
+                      <Label htmlFor={`version-${formEntry.id}`}>Version Label</Label>
                       <Input id={`version-${formEntry.id}`} name="versionLabel" placeholder="v1.0" />
                     </div>
                     
                     <div className="grid gap-2">
-                      <FormLabel>Visibility</FormLabel>
+                      <Label>Visibility</Label>
                       <div className="border rounded-md overflow-hidden">
                         <RoleSelector
                           value={{
