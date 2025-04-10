@@ -1,8 +1,7 @@
 'use client'
 
-import { useRef } from 'react'
-import { useState } from 'react'
-import { X, Check, Upload, File, AlertTriangle, Plus, Search, Tag } from 'lucide-react'
+import { useRef, useState, useCallback } from 'react'
+import { X, Check, Upload, File as FileIcon, AlertTriangle, Plus, Search, Tag } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,9 +10,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { FormLabel } from '@/components/ui/form'
+import { toast } from '@/hooks/use-toast'
+import { useDebounce } from '@/hooks/use-debounce'
 import { RoleSelector } from '@/features/carousel/components/RoleSelector'
 import { DocumentUploadSchema, DocumentUploadInput } from './schema'
 import { useUploadFormManager } from './useUploadFormManager'
+import { handleUploadDocuments } from './handleUploadDocuments'
 
 // Multi-select tag component with search and creation
 function TagSelector({ 
@@ -29,20 +31,23 @@ function TagSelector({
   const [isOpen, setIsOpen] = useState(false)
   const [newTagInput, setNewTagInput] = useState('')
   
+  // Use the imported useDebounce hook
+  const debouncedSearchQuery = useDebounce(searchQuery, 300)
+  
   const filteredTags = availableTags.filter(tag => 
-    tag.toLowerCase().includes(searchQuery.toLowerCase()) && 
+    tag.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) && 
     !selectedTags.includes(tag)
   )
   
-  const handleToggleTag = (tag: string) => {
+  const handleToggleTag = useCallback((tag: string) => {
     if (selectedTags.includes(tag)) {
       onChange(selectedTags.filter(t => t !== tag))
     } else {
       onChange([...selectedTags, tag])
     }
-  }
+  }, [selectedTags, onChange])
   
-  const handleCreateTag = () => {
+  const handleCreateTag = useCallback(() => {
     if (!newTagInput.trim()) return
     
     const newTag = newTagInput.trim()
@@ -51,14 +56,14 @@ function TagSelector({
     if (!selectedTags.includes(newTag) && !availableTags.includes(newTag)) {
       onChange([...selectedTags, newTag])
     }
-  }
+  }, [newTagInput, selectedTags, availableTags, onChange, setNewTagInput])
   
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && newTagInput) {
       e.preventDefault()
       handleCreateTag()
     }
-  }
+  }, [newTagInput, handleCreateTag])
   
   return (
     <div className="w-full">
@@ -168,10 +173,10 @@ function TagSelector({
 export type UploadFormProps = {
   categories: { id: string; name: string }[]
   allTags: string[]
-  onSubmit: (documents: DocumentUploadInput[]) => void
+  userId: string
 }
 
-export function UploadForm({ categories, allTags, onSubmit }: UploadFormProps) {
+export function UploadForm({ categories, allTags, userId }: UploadFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { 
     documentForms, 
@@ -181,7 +186,7 @@ export function UploadForm({ categories, allTags, onSubmit }: UploadFormProps) {
     clearAll 
   } = useUploadFormManager()
   
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     try {
       // Create an array to collect valid document data
       const validDocuments: DocumentUploadInput[] = []
@@ -232,18 +237,44 @@ export function UploadForm({ categories, allTags, onSubmit }: UploadFormProps) {
         }
       }
       
-      // If all documents are valid, submit them
+      // If all documents are valid, upload them
       if (validDocuments.length === documentForms.length) {
-        onSubmit(validDocuments)
+        try {
+          await handleUploadDocuments(validDocuments, userId)
+          
+          // Clear the form after successful upload
+          clearAll()
+          
+          // Show success toast notification
+          toast({ 
+            title: "Upload Complete", 
+            description: "Documents were successfully uploaded." 
+          })
+        } catch (uploadError) {
+          console.error('Error uploading documents:', uploadError)
+          
+          // Show error toast notification
+          toast({ 
+            title: "Upload Failed", 
+            description: "Something went wrong during upload.", 
+            variant: "destructive" 
+          })
+        }
       }
     } catch (error) {
-      console.error('Error submitting documents:', error)
+      console.error('Error processing document forms:', error)
+      
+      toast({ 
+        title: "Form Error", 
+        description: "An error occurred while processing the form.", 
+        variant: "destructive" 
+      })
     }
-  }
+  }, [documentForms, userId, clearAll])
   
-  const triggerFileInput = () => {
+  const triggerFileInput = useCallback(() => {
     fileInputRef.current?.click()
-  }
+  }, [fileInputRef])
   
   return (
     <div className="w-full max-w-4xl mx-auto">
@@ -272,7 +303,7 @@ export function UploadForm({ categories, allTags, onSubmit }: UploadFormProps) {
                   <CardHeader className="pb-3">
                     <div className="flex justify-between items-center">
                       <CardTitle className="flex items-center">
-                        <File className="mr-2 h-5 w-5" />
+                        <FileIcon className="mr-2 h-5 w-5" aria-hidden="true" />
                         <span className="text-base truncate max-w-[280px]">{formEntry.file.name}</span>
                       </CardTitle>
                       <Button
