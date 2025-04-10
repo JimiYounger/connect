@@ -26,19 +26,21 @@ export async function handleUploadDocuments(
   
   // Check if the documents bucket exists and is accessible
   try {
-    const { data: buckets, error: bucketError } = await supabase.storage.listBuckets()
-    console.log('Available storage buckets:', buckets?.map(b => b.name))
-    
-    if (bucketError) {
-      console.error('Error listing buckets:', bucketError)
-      throw new Error(`Storage bucket access error: ${bucketError.message}`)
-    }
-    
-    // Check if the documents bucket exists
-    const documentsBucketExists = buckets?.find(b => b.name === 'documents')
-    if (!documentsBucketExists) {
-      console.error('Error: documents storage bucket not found')
-      throw new Error('The documents storage bucket does not exist')
+    // Check for the documents bucket
+    try {
+      const { data: bucketFiles, error: bucketError } = await supabase.storage
+        .from('documents')
+        .list()
+      
+      if (bucketError) {
+        console.error('Error accessing documents bucket:', bucketError.message)
+        throw new Error(`Storage bucket access error: ${bucketError.message}`)
+      }
+      
+      console.log('Documents bucket is accessible, contains files:', bucketFiles?.length || 0)
+    } catch (storageError) {
+      console.error('Error checking storage bucket:', storageError)
+      throw new Error('Storage bucket error: ' + (storageError as Error).message)
     }
   
   try {
@@ -73,11 +75,19 @@ export async function handleUploadDocuments(
           console.log('Public URL:', fileUrl)
           
           // 3. Insert record using raw SQL to avoid TypeScript errors with table definition
-          // Check if the document_library table exists
-          const { data: tables, error: tablesError } = await supabase.rpc('list_tables')
-          console.log('Available tables:', tables)
-          if (tablesError) {
-            console.error('Error listing tables:', tablesError)
+          // Try to detect table existence in a more compatible way
+          console.log('Checking for document_library table')
+          try {
+            const { data: tableData, error: tableCheckError } = await supabase
+              .from('document_library' as any)
+              .select('count(*)', { count: 'exact', head: true })
+              
+            console.log('Table check result:', tableData)
+            if (tableCheckError) {
+              console.error('Table may not exist:', tableCheckError.message)
+            }
+          } catch (tableError) {
+            console.error('Error checking table:', tableError)
           }
           
           console.log('Attempting to insert record into document_library table')
