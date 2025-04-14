@@ -26,6 +26,10 @@ export async function POST(req: Request) {
 
     // Calculate offset for pagination
     const offset = (page - 1) * limit
+    
+    // Track IDs from filtering for counting
+    let matchingContentIds: string[] | undefined
+    let matchingTagIds: string[] | undefined
 
     // Get the authenticated user
     const supabase = await createClient()
@@ -111,8 +115,8 @@ export async function POST(req: Request) {
       
       // Apply document ID filter based on content matches
       if (contentMatches && contentMatches.length > 0) {
-        const matchingIds = contentMatches.map(match => match.document_id)
-        query = query.in('id', matchingIds)
+        matchingContentIds = contentMatches.map(match => match.document_id)
+        query = query.in('id', matchingContentIds)
       } else {
         // If no content matches, return empty result
         return NextResponse.json({
@@ -142,12 +146,12 @@ export async function POST(req: Request) {
         }
         
         // Find documents that have all the required tags
-        const matchingDocIds = Object.entries(docTagCounts)
+        matchingTagIds = Object.entries(docTagCounts)
           .filter(([_, count]) => count >= tags.length)
           .map(([docId]) => docId)
         
-        if (matchingDocIds.length > 0) {
-          query = query.in('id', matchingDocIds)
+        if (matchingTagIds.length > 0) {
+          query = query.in('id', matchingTagIds)
         } else {
           // If no tag matches, return empty result
           return NextResponse.json({
@@ -166,8 +170,59 @@ export async function POST(req: Request) {
       }
     }
     
-    // Get the total count for pagination
-    const { count, error: countError } = await query.count()
+    // Create a separate count query with the same filters
+    let countQuery = supabase
+      .from('documents')
+      .select('*', { count: 'exact', head: true })
+
+    // Apply the same filters as the main query
+    if (categoryId) {
+      countQuery = countQuery.eq('category_id', categoryId)
+    }
+    
+    if (uploadedBy && userProfile.role_type === 'admin') {
+      countQuery = countQuery.eq('uploaded_by', uploadedBy)
+    }
+    
+    // For ID-based filters (from content and tag searches)
+    if (searchQuery && searchQuery.trim() !== '') {
+      // Only apply the filter if we have matching content IDs
+      const contentIds = matchingContentIds || []
+      if (contentIds.length > 0) {
+        countQuery = countQuery.in('id', contentIds)
+      } else {
+        // No matching content, return zero count
+        return NextResponse.json({
+          success: true,
+          data: [],
+          total: 0,
+          page,
+          limit,
+          totalPages: 0
+        })
+      }
+    }
+    
+    if (tags && tags.length > 0) {
+      // Only apply the filter if we have matching tag IDs
+      const tagIds = matchingTagIds || []
+      if (tagIds.length > 0) {
+        countQuery = countQuery.in('id', tagIds)
+      } else {
+        // No matching tags, return zero count
+        return NextResponse.json({
+          success: true,
+          data: [],
+          total: 0,
+          page,
+          limit,
+          totalPages: 0
+        })
+      }
+    }
+    
+    // Execute the count query
+    const { count, error: countError } = await countQuery
     
     if (countError) {
       console.error('Error getting document count:', countError)
@@ -176,6 +231,9 @@ export async function POST(req: Request) {
         { status: 500 }
       )
     }
+    
+    // Use the count (will be null if no rows match)
+    const total = count || 0
     
     // Apply pagination
     query = query
@@ -243,10 +301,10 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       data: processedData,
-      total: count,
+      total: total,
       page,
       limit,
-      totalPages: Math.ceil((count || 0) / limit)
+      totalPages: Math.ceil(total / limit)
     })
     
   } catch (error) {
