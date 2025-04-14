@@ -127,27 +127,44 @@ export async function GET(
         timestamp: Date.now(),
       })
 
-    // Instead of constructing the URL manually, let's use the Supabase client
-    // to get a signed URL that will grant temporary access to the file
+    // For direct downloads, we'll download the file from Supabase and stream it back
+    // with appropriate headers to force download rather than display
     
-    const { data: signedUrlData, error: signedUrlError } = await supabase
-      .storage
-      .from('documents')
-      .createSignedUrl(currentVersion.file_path, 60 * 60) // 1 hour expiry
-    
-    if (signedUrlError || !signedUrlData?.signedUrl) {
-      console.error('Error creating signed URL:', signedUrlError)
+    try {
+      // Get the file data directly
+      const { data: fileData, error: fileError } = await supabase
+        .storage
+        .from('documents')
+        .download(currentVersion.file_path)
+      
+      if (fileError || !fileData) {
+        console.error('Error downloading file from storage:', fileError)
+        return NextResponse.json(
+          { success: false, error: 'Could not retrieve document file' },
+          { status: 500 }
+        )
+      }
+      
+      // Get filename from the path
+      const filename = currentVersion.file_path.split('/').pop() || 'document'
+      
+      // Create response with appropriate headers for download
+      const headers = new Headers()
+      headers.set('Content-Disposition', `attachment; filename="${filename}"`)
+      headers.set('Content-Type', currentVersion.file_type || 'application/octet-stream')
+      
+      // Return the file as a downloadable attachment
+      return new NextResponse(fileData, {
+        status: 200,
+        headers
+      })
+    } catch (downloadError) {
+      console.error('Error processing download:', downloadError)
       return NextResponse.json(
-        { success: false, error: 'Could not generate access URL for document' },
+        { success: false, error: 'Error processing download' },
         { status: 500 }
       )
     }
-    
-    // Add download=true parameter to the signed URL to trigger browser download
-    const downloadUrl = `${signedUrlData.signedUrl}&download=true`
-    
-    // Redirect to the signed URL with download parameter
-    return NextResponse.redirect(downloadUrl)
   } catch (error) {
     console.error('Error downloading document:', error)
     return NextResponse.json(
