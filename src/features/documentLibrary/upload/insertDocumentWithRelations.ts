@@ -43,7 +43,51 @@ export async function insertDocumentWithRelations(input: InsertInput): Promise<I
     
     if (userProfileError) {
       console.error('❌ Error checking user profile:', userProfileError.message)
-      // Continue execution - we'll see the FK constraint error if user doesn't exist
+      
+      // If user profile not found, try to create a basic one
+      if (userProfileError.message.includes('no rows')) {
+        console.log('🔄 Attempting to create a basic user profile for userId:', userId)
+        
+        // Get current user data using the auth API
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        
+        if (userError || !user) {
+          console.error('❌ Error fetching user data for profile creation:', userError?.message || 'No user data found')
+          throw new Error('Failed to get user data for profile creation')
+        }
+        
+        const userEmail = user.email
+        
+        if (!userEmail) {
+          console.error('❌ User has no email address for profile creation')
+          throw new Error('User email not available for profile creation')
+        }
+        
+        // Create a basic user profile with minimal information
+        const { data: newProfile, error: insertError } = await supabase
+          .from('user_profiles')
+          .insert({
+            id: userId,
+            email: userEmail,
+            first_name: 'User', // Placeholder
+            last_name: user.user_metadata?.name || userEmail.split('@')[0] || 'User',
+            airtable_record_id: 'pending-sync', // Required field
+            role_type: 'Setter', // Default role type
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            last_airtable_sync: new Date().toISOString()
+          })
+          .select('id, email')
+          .single()
+        
+        if (insertError) {
+          console.error('❌ Failed to create user profile:', insertError.message)
+          throw new Error(`Failed to create user profile: ${insertError.message}`)
+        }
+        
+        console.log('✅ Created basic user profile:', newProfile)
+        // Don't return here, just continue with the process
+      }
     }
     
     if (!userProfile) {
@@ -53,6 +97,7 @@ export async function insertDocumentWithRelations(input: InsertInput): Promise<I
     }
   } catch (profileCheckError) {
     console.error('❌ Exception checking user profile:', profileCheckError)
+    throw new Error(`Profile check error: ${profileCheckError instanceof Error ? profileCheckError.message : 'Unknown error'}`)
   }
   
   // NOTE: This helper was prepared for future use but is not currently used
@@ -62,12 +107,28 @@ export async function insertDocumentWithRelations(input: InsertInput): Promise<I
     return parts.length > 1 ? parts.pop()?.toLowerCase() || '' : ''
   }
   
+  // Get the actual user profile ID based on the auth user ID
+  const { data: userProfileData, error: userProfileLookupError } = await supabase
+    .from('user_profiles')
+    .select('id')
+    .eq('user_id', userId)
+    .single()
+    
+  if (userProfileLookupError || !userProfileData) {
+    console.error('❌ Fatal error: Could not find user profile for auth user:', userId, userProfileLookupError?.message || 'No profile found')
+    throw new Error(`Cannot proceed with document upload: No user profile found for this account`)
+  }
+  
+  // Use the actual profile ID for document insertion
+  const profileId = userProfileData.id
+  console.log('✅ Found user profile ID:', profileId, 'for auth user ID:', userId)
+  
   try {
     // Log the document data we're about to insert
     console.log('📝 Attempting to insert document with:', {
       title: document.title,
       category_id: document.categoryId,
-      uploaded_by: userId
+      uploaded_by: profileId  // Log the profile ID we're using
     })
     
     // 1. Insert document record
@@ -77,7 +138,7 @@ export async function insertDocumentWithRelations(input: InsertInput): Promise<I
         title: document.title,
         description: document.description || null,
         category_id: document.categoryId,
-        uploaded_by: userId,
+        uploaded_by: profileId, // Use profile ID instead of auth user ID
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
         // Content field will be filled later with actual document text
@@ -87,7 +148,7 @@ export async function insertDocumentWithRelations(input: InsertInput): Promise<I
     
     if (documentError) {
       console.error('❌ Document insert error details:', documentError)
-      throw new Error(`Failed to insert document: ${documentError.message}`)
+      throw new Error(`Failed to insert document: ${documentError.message || 'Unknown error'}`)
     }
     
     if (!documentData) {
@@ -110,7 +171,7 @@ export async function insertDocumentWithRelations(input: InsertInput): Promise<I
       .single()
     
     if (versionError) {
-      throw new Error(`Failed to insert document version: ${versionError.message}`)
+      throw new Error(`Failed to insert document version: ${versionError.message || 'Unknown error'}`)
     }
     
     if (!versionData) {
@@ -131,31 +192,31 @@ export async function insertDocumentWithRelations(input: InsertInput): Promise<I
     
     if (updateError) {
       console.error('❌ Error updating document with version ID:', updateError)
-      throw new Error(`Failed to update document with version ID: ${updateError.message}`)
+      throw new Error(`Failed to update document with version ID: ${updateError.message || 'Unknown error'}`)
     }
     
     console.log('✅ Document updated with version ID:', updateData)
     
     // 3. Insert visibility settings using the new JSONB conditions column
-    if (document.visibility) {
+    if (document.visibility && typeof document.visibility === 'object') {
       // Create a single structured conditions object for visibility
       const conditions: Record<string, any> = {}
       
       // Take the first role type (we only support one role type at a time)
-      if (document.visibility.roleTypes?.length) {
+      if (document.visibility.roleTypes && Array.isArray(document.visibility.roleTypes) && document.visibility.roleTypes.length) {
         conditions.role_type = document.visibility.roleTypes[0]
       }
       
       // Add arrays for other location-based filters
-      if (document.visibility.teams?.length) {
+      if (document.visibility.teams && Array.isArray(document.visibility.teams) && document.visibility.teams.length) {
         conditions.teams = document.visibility.teams
       }
       
-      if (document.visibility.areas?.length) {
+      if (document.visibility.areas && Array.isArray(document.visibility.areas) && document.visibility.areas.length) {
         conditions.areas = document.visibility.areas
       }
       
-      if (document.visibility.regions?.length) {
+      if (document.visibility.regions && Array.isArray(document.visibility.regions) && document.visibility.regions.length) {
         conditions.regions = document.visibility.regions
       }
       
@@ -171,12 +232,12 @@ export async function insertDocumentWithRelations(input: InsertInput): Promise<I
         })
       
       if (visibilityError) {
-        throw new Error(`Failed to insert document visibility: ${visibilityError.message}`)
+        throw new Error(`Failed to insert document visibility: ${visibilityError.message || 'Unknown error'}`)
       }
     }
     
     // 4. Handle tags if provided
-    if (document.tags && document.tags.length > 0) {
+    if (document.tags && Array.isArray(document.tags) && document.tags.length > 0) {
       // First, try to find existing tags to avoid duplicates
       const { data: existingTags, error: tagsQueryError } = await supabase
         .from('document_tags')
@@ -184,7 +245,7 @@ export async function insertDocumentWithRelations(input: InsertInput): Promise<I
         .in('name', document.tags)
       
       if (tagsQueryError) {
-        throw new Error(`Failed to query existing tags: ${tagsQueryError.message}`)
+        throw new Error(`Failed to query existing tags: ${tagsQueryError.message || 'Unknown error'}`)
       }
       
       // Map existing tags by name for easy lookup
@@ -205,7 +266,7 @@ export async function insertDocumentWithRelations(input: InsertInput): Promise<I
           .select('id, name')
         
         if (newTagsError) {
-          throw new Error(`Failed to insert new tags: ${newTagsError.message}`)
+          throw new Error(`Failed to insert new tags: ${newTagsError.message || 'Unknown error'}`)
         }
         
         // Add newly created tags to our map
@@ -225,7 +286,7 @@ export async function insertDocumentWithRelations(input: InsertInput): Promise<I
         .insert(tagAssignments)
       
       if (tagAssignmentError) {
-        throw new Error(`Failed to insert tag assignments: ${tagAssignmentError.message}`)
+        throw new Error(`Failed to insert tag assignments: ${tagAssignmentError.message || 'Unknown error'}`)
       }
     }
     
@@ -235,7 +296,7 @@ export async function insertDocumentWithRelations(input: InsertInput): Promise<I
       documentId
     }
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error in insertDocumentWithRelations:', error)
     return {
       success: false,

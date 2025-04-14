@@ -42,39 +42,97 @@ export async function POST(req: Request) {
       )
     }
 
-    // Download the file
-    console.log(`Downloading file: ${fileUrl}`)
-    const fileResponse = await fetch(fileUrl)
+    console.log(`Processing file: ${fileUrl} with extension: ${fileExtension}`)
     
-    if (!fileResponse.ok) {
+    // Download the file using Supabase client to get around CORS issues
+    let fileData: Blob | null = null;
+    
+    try {
+      // Get Supabase client
+      const supabase = await createClient()
+      
+      // Extract path from URL - we need to convert from public URL to storage path
+      // URL format: https://[project].supabase.co/storage/v1/object/public/documents/[path]
+      console.log('Extracting storage path from URL')
+      const urlPath = new URL(fileUrl).pathname
+      const segments = urlPath.split('/public/documents/')
+      
+      if (segments.length < 2) {
+        console.error('Invalid URL format, cannot extract path:', urlPath)
+        return NextResponse.json(
+          { success: false, error: `Invalid file URL format: Cannot extract path from ${fileUrl}` },
+          { status: 400 }
+        )
+      }
+      
+      const storagePath = segments[1]
+      console.log(`Extracted storage path: ${storagePath}`)
+      
+      // Download with the client
+      console.log(`Downloading file from Supabase storage: ${storagePath}`)
+      const { data, error: downloadError } = await supabase
+        .storage
+        .from('documents')
+        .download(storagePath)
+      
+      if (downloadError || !data) {
+        console.error('Error downloading from Supabase storage:', downloadError)
+        return NextResponse.json(
+          { success: false, error: `Failed to download file: ${downloadError?.message || 'No file data returned'}` },
+          { status: 500 }
+        )
+      }
+      
+      // Store the blob data
+      fileData = data
+      console.log('File successfully downloaded from Supabase storage')
+      
+    } catch (downloadError) {
+      console.error('Exception in file download process:', downloadError)
       return NextResponse.json(
-        { success: false, error: `Failed to download file: ${fileResponse.statusText}` },
+        { success: false, error: `Failed to download file: ${downloadError instanceof Error ? downloadError.message : 'Unknown error'}` },
         { status: 500 }
       )
     }
 
-    // Defensive check for empty response body
-    if (!fileResponse.body) {
+    // Make sure we got the file data
+    if (!fileData) {
+      console.error('No file data received after download')
       return NextResponse.json({
         success: false,
-        error: 'File download returned empty body'
+        error: 'Download completed but no file data was received'
       }, { status: 500 })
     }
 
     // Extract text based on file type
     let extractedText = ''
     
-    // Process file based on extension
-    if (fileExtension === 'pdf') {
-      extractedText = await parsePdf(fileResponse)
-    } else if (fileExtension === 'docx') {
-      extractedText = await parseDocx(fileResponse)
-    } else if (['jpg', 'jpeg', 'png'].includes(fileExtension)) {
-      extractedText = await parseImage(fileResponse)
-    } else {
+    try {
+      // Process file based on extension
+      console.log(`Parsing file with extension: ${fileExtension}`)
+      
+      if (fileExtension === 'pdf') {
+        // Convert Blob to ArrayBuffer for pdf-parse
+        const arrayBuffer = await fileData.arrayBuffer()
+        extractedText = await parsePdfFromArrayBuffer(arrayBuffer)
+      } else if (fileExtension === 'docx') {
+        const arrayBuffer = await fileData.arrayBuffer()
+        extractedText = await parseDocxFromArrayBuffer(arrayBuffer)
+      } else if (['jpg', 'jpeg', 'png'].includes(fileExtension)) {
+        extractedText = await parseImageFromBlob(fileData)
+      } else {
+        return NextResponse.json(
+          { success: false, error: `Unsupported file type: ${fileExtension}` },
+          { status: 400 }
+        )
+      }
+      
+      console.log(`Successfully extracted text (${extractedText.length} characters)`)
+    } catch (parseError) {
+      console.error('Error parsing file:', parseError)
       return NextResponse.json(
-        { success: false, error: `Unsupported file type: ${fileExtension}` },
-        { status: 400 }
+        { success: false, error: `Failed to parse file: ${parseError instanceof Error ? parseError.message : 'Unknown error'}` },
+        { status: 500 }
       )
     }
 
@@ -250,29 +308,32 @@ function splitIntoChunks(text: string, targetTokens: number = 500): string[] {
 }
 
 /**
- * Parse PDF document and extract text
+ * Parse PDF document and extract text from ArrayBuffer
  */
-async function parsePdf(fileResponse: Response): Promise<string> {
-  const buffer = await fileResponse.arrayBuffer()
+async function parsePdfFromArrayBuffer(buffer: ArrayBuffer): Promise<string> {
+  console.log('Parsing PDF document from ArrayBuffer')
   const data = new Uint8Array(buffer)
   const result = await pdfParse(data)
   return result.text
 }
 
 /**
- * Parse DOCX document and extract text
+ * Parse DOCX document and extract text from ArrayBuffer
  */
-async function parseDocx(fileResponse: Response): Promise<string> {
-  const buffer = await fileResponse.arrayBuffer()
+async function parseDocxFromArrayBuffer(buffer: ArrayBuffer): Promise<string> {
+  console.log('Parsing DOCX document from ArrayBuffer')
   const result = await mammoth.extractRawText({ arrayBuffer: buffer })
   return result.value
 }
 
 /**
- * Parse image using OCR and extract text
+ * Parse image using OCR and extract text from Blob
  */
-async function parseImage(fileResponse: Response): Promise<string> {
-  const imageBuffer = await fileResponse.arrayBuffer()
+async function parseImageFromBlob(imageBlob: Blob): Promise<string> {
+  console.log('Parsing image using OCR')
+  
+  // Convert Blob to ArrayBuffer
+  const imageBuffer = await imageBlob.arrayBuffer()
   
   // Set up timeout for OCR operations (2 minutes)
   const controller = new AbortController()
@@ -280,6 +341,7 @@ async function parseImage(fileResponse: Response): Promise<string> {
   
   try {
     // Fixed Tesseract.js implementation based on proper API
+    console.log('Initializing Tesseract worker')
     const worker = await createWorker('eng')
     
     try {
@@ -288,9 +350,12 @@ async function parseImage(fileResponse: Response): Promise<string> {
       const base64 = Buffer.from(imageBytes).toString('base64')
       const imageData = `data:image/jpeg;base64,${base64}`
       
+      console.log('Starting OCR recognition')
       const { data } = await worker.recognize(imageData)
+      console.log('OCR completed successfully')
       return data.text
     } finally {
+      console.log('Terminating Tesseract worker')
       await worker.terminate()
     }
   } catch (error) {

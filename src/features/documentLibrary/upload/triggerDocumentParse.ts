@@ -34,6 +34,7 @@ export async function triggerDocumentParse(
     
     // This direct fetch call could be replaced with a background job implementation
     // such as Upstash QStash in the future
+    console.log('Making parse request for document:', documentId, 'with URL:', fileUrl);
     const parseResponse = await fetch('/api/document-library/parse', {
       method: 'POST',
       headers: {
@@ -45,17 +46,37 @@ export async function triggerDocumentParse(
       })
     });
     
+    console.log('Parse response status:', parseResponse.status, parseResponse.statusText);
+    
     if (parseResponse.ok) {
-      console.log('Document parsing initiated successfully');
+      // Try to log the successful response for debugging
+      try {
+        const responseData = await parseResponse.json();
+        console.log('Document parsing response:', responseData);
+      } catch (e) {
+        console.log('Document parsing initiated successfully (no json response)');
+      }
       return { success: true };
     } else {
       // Attempt to extract detailed error message
       let errorDetail: string;
+      let fullResponse: any = {};
+      
       try {
-        const errorResponse = await parseResponse.json();
-        errorDetail = errorResponse.error || `HTTP ${parseResponse.status}`;
-      } catch {
+        fullResponse = await parseResponse.json();
+        console.error('Full error response:', fullResponse);
+        errorDetail = fullResponse.error || `HTTP ${parseResponse.status}`;
+      } catch (e) {
+        console.error('Could not parse error response as JSON:', e);
         errorDetail = `HTTP ${parseResponse.status}`;
+        
+        // Try to get text content if JSON parsing failed
+        try {
+          const textContent = await parseResponse.text();
+          console.error('Error response text:', textContent);
+        } catch {
+          console.error('Could not get error response as text');
+        }
       }
       
       console.warn(
