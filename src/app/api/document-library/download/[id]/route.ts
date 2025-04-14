@@ -81,16 +81,28 @@ export async function GET(
         .eq('document_id', documentId)
         .single()
 
-      if (visibilityData) {
-        const conditions = visibilityData.conditions
+      if (visibilityData && visibilityData.conditions) {
+        // Type assertion to treat conditions as a Record with string keys and any values
+        const conditions = visibilityData.conditions as Record<string, any>;
+        
+        // Helper function to safely check array length
+        const hasItems = (arr: any[] | undefined | null): boolean => 
+          Array.isArray(arr) && arr.length > 0;
+        
+        const hasRoleRestrictions = hasItems(conditions.roleTypes);
+        const roleMatches = hasRoleRestrictions ? 
+          (Array.isArray(conditions.roleTypes) && conditions.roleTypes.includes(userProfile.role_type)) : 
+          false;
+          
+        const hasNoOtherRestrictions = 
+          !hasItems(conditions.teams) && 
+          !hasItems(conditions.areas) && 
+          !hasItems(conditions.regions);
+          
         const hasAccess = 
-          !conditions.roleTypes?.length || // No role restrictions
-          conditions.roleTypes.includes(userProfile.role_type) || // User's role matches
-          (
-            !conditions.teams?.length && 
-            !conditions.areas?.length && 
-            !conditions.regions?.length
-          ) // No team/area/region restrictions
+          !hasRoleRestrictions || // No role restrictions
+          roleMatches || // User's role matches
+          hasNoOtherRestrictions; // No team/area/region restrictions
 
         if (!hasAccess) {
           return NextResponse.json(
