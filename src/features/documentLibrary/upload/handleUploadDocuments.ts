@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase'
 import { DocumentUploadInput } from './schema'
 import { insertDocumentWithRelations } from './insertDocumentWithRelations'
+import { triggerDocumentParse } from './triggerDocumentParse'
 
 /**
  * Generates a storage path for a document file
@@ -105,35 +106,16 @@ export async function handleUploadDocuments(
             console.log('Document metadata stored in database successfully with ID:', insertResult.documentId)
             
             // 4. Trigger document parsing API to extract and chunk content
-            try {
-              console.log('Triggering document parsing for document ID:', insertResult.documentId)
-              const parseResponse = await fetch('/api/document-library/parse', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                  fileUrl: urlData.publicUrl,
-                  documentId: insertResult.documentId
-                })
-              })
-              
-              if (parseResponse.ok) {
-                console.log('Document parsing initiated successfully')
-              } else {
-                // Don't throw error, just log it
-                const parseError = await parseResponse.text()
-                console.warn(
-                  `Document parsing API returned an error (${parseResponse.status}): ${parseError}. ` +
-                  'Document was uploaded successfully but content extraction may have failed.'
-                )
-              }
-            } catch (parseError) {
-              // Log parse error but don't fail the upload
-              console.error('Error triggering document parsing:', parseError)
+            const parseResult = await triggerDocumentParse({
+              documentId: insertResult.documentId,
+              fileUrl: urlData.publicUrl
+            })
+            
+            if (!parseResult.success) {
+              // The helper already logs the error, just add a summary log
               console.warn(
-                'Document was uploaded successfully but automatic content extraction failed. ' +
-                'Manual parsing may be required.'
+                'Document parsing was triggered but encountered an issue. ' +
+                'Upload process will continue regardless.'
               )
             }
             
