@@ -176,9 +176,10 @@ export type UploadFormProps = {
   categories: { id: string; name: string }[]
   allTags: string[]
   userId: string
+  onUploadSuccess?: () => void
 }
 
-export function UploadForm({ categories, allTags, userId }: UploadFormProps) {
+export function UploadForm({ categories, allTags, userId, onUploadSuccess }: UploadFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { 
     documentForms, 
@@ -263,6 +264,10 @@ export function UploadForm({ categories, allTags, userId }: UploadFormProps) {
               title: "Upload Complete", 
               description: `${successful.length} documents were successfully uploaded.` 
             })
+            // Call the success callback if provided
+            if (onUploadSuccess) {
+              onUploadSuccess();
+            }
           } else if (successful.length > 0 && failed.length > 0) {
             // Some uploads succeeded, some failed
             toast({ 
@@ -270,6 +275,10 @@ export function UploadForm({ categories, allTags, userId }: UploadFormProps) {
               description: `${successful.length} documents uploaded, ${failed.length} failed.`,
               variant: "default"
             })
+            // Call the success callback if provided since some uploads succeeded
+            if (onUploadSuccess) {
+              onUploadSuccess();
+            }
           } else {
             // All uploads failed
             toast({ 
@@ -298,7 +307,7 @@ export function UploadForm({ categories, allTags, userId }: UploadFormProps) {
         variant: "destructive" 
       })
     }
-  }, [documentForms, userId, clearAll])
+  }, [documentForms, userId, clearAll, onUploadSuccess])
   
   const triggerFileInput = useCallback(() => {
     fileInputRef.current?.click()

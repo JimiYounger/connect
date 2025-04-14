@@ -67,42 +67,22 @@ export function UploadModal({ onUploadSuccess }: UploadModalProps) {
 
   const allTags = tagData.map(tag => tag.name)
 
-  // Monitor toast events to detect upload success
-  useEffect(() => {
-    // Create a MutationObserver to watch for toast elements being added to the DOM
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-          // Check for toast with "Upload Complete" or "Partial Upload" text
-          const toasts = document.querySelectorAll('[role="status"]')
-          toasts.forEach(toastElement => {
-            if (toastElement.textContent?.includes('Upload Complete') || 
-                toastElement.textContent?.includes('Partial Upload')) {
-              // Close modal
-              setIsOpen(false)
-              
-              // Trigger callback to refresh documents
-              setTimeout(() => {
-                onUploadSuccess()
-                // Add custom success toast
-                toast({
-                  title: "Success",
-                  description: "Document uploaded successfully.",
-                  variant: "default"
-                })
-              }, 500)
-            }
-          })
-        }
-      })
+  const handleUploadSuccess = () => {
+    // Close modal
+    setIsOpen(false)
+    
+    // Trigger callback to refresh documents immediately
+    onUploadSuccess()
+    
+    // Add success toast
+    toast({
+      title: "Success",
+      description: "Document uploaded successfully.",
+      variant: "default"
     })
-    
-    // Start observing the document body for changes
-    observer.observe(document.body, { childList: true, subtree: true })
-    
-    // Clean up observer
-    return () => observer.disconnect()
-  }, [onUploadSuccess, toast])
+  }
+  
+  // Pass the success handler to the UploadForm
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -120,7 +100,8 @@ export function UploadModal({ onUploadSuccess }: UploadModalProps) {
           <UploadForm 
             categories={categories} 
             allTags={allTags} 
-            userId={userId} 
+            userId={userId}
+            onUploadSuccess={handleUploadSuccess}
           />
         )}
       </DialogContent>

@@ -12,8 +12,10 @@ const queryClient = new QueryClient()
 
 // Main component to load and display documents with data
 function DocumentLibraryContent() {
-  // Create a reference object we can pass to DocumentViewer
-  const refetchRef = useMemo(() => ({ refetch: () => {} }), [])
+  // Create a reference object we can pass to DocumentViewer to enable refetching
+  const refetchRef = useMemo(() => ({ 
+    refetch: () => {} // This will be set by the DocumentViewer component
+  }), [])
 
   // Fetch categories
   const { data: categories = [], isLoading: categoriesLoading } = useQuery({

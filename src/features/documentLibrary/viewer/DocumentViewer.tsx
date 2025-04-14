@@ -2,10 +2,9 @@
 
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useDocuments } from './useDocuments'
 import { DocumentFilters, Document, DocumentTag } from './types'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -25,7 +24,8 @@ export function DocumentViewer({
   initialFilters = {},
   categories = [],
   availableTags = [],
-  isAdmin = false
+  isAdmin = false,
+  onRefetchNeeded
 }: DocumentViewerProps) {
   // We're keeping isAdmin param for future use
   const _ = isAdmin;
@@ -42,6 +42,16 @@ export function DocumentViewer({
     error,
     refetch
   } = useDocuments(filters)
+  
+  // If refetchRef is provided, update it to point to our refetch function
+  useEffect(() => {
+    if (onRefetchNeeded) {
+      onRefetchNeeded.refetch = refetch;
+      console.log('DocumentViewer: Set refetch function in shared reference');
+    }
+  }, [onRefetchNeeded, refetch])
+  
+  
   
   // Update filter handlers
   const handleCategoryChange = useCallback((value: string) => {
@@ -94,95 +104,169 @@ export function DocumentViewer({
   }, [])
   
   // Render functions
-  const renderDocumentCard = (document: Document) => (
-    <Card key={document.id} className="mb-4 overflow-hidden hover:shadow-md transition-shadow">
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-start">
+  const renderDocumentListItem = (document: Document) => (
+    <div className="grid grid-cols-12 gap-3 p-3 border-b hover:bg-accent/5 transition-colors group relative">
+      {/* Document title and category */}
+      <div className="col-span-4 flex flex-col justify-center relative">
+        <div className="flex items-center">
+          <div className="mr-2 text-muted-foreground">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+              <polyline points="14 2 14 8 20 8"/>
+            </svg>
+          </div>
           <div>
-            <CardTitle className="text-lg font-medium">{document.title}</CardTitle>
+            <h3 className="font-medium truncate group-hover:underline cursor-pointer">
+              {document.title}
+            </h3>
             {document.category && (
-              <CardDescription className="text-sm">
-                Category: {document.category.name}
-              </CardDescription>
+              <div className="text-xs text-muted-foreground">
+                {document.category.name}
+              </div>
             )}
           </div>
-          <div className="text-xs text-muted-foreground">
-            Updated {formatDistanceToNow(new Date(document.updatedAt))} ago
-          </div>
         </div>
-      </CardHeader>
-      
-      <CardContent className="pb-2">
+        
+        {/* Description tooltip on hover */}
         {document.description && (
-          <p className="text-sm text-muted-foreground mb-3">{document.description}</p>
-        )}
-        
-        {document.contentPreview && (
-          <div className="text-sm bg-muted p-3 rounded-md mb-3 max-h-24 overflow-hidden">
-            {document.contentPreview}
+          <div className="opacity-0 group-hover:opacity-100 absolute z-10 bg-popover text-popover-foreground border rounded-md p-3 shadow-md 
+                        top-full left-0 mt-1 w-64 transition-opacity duration-200 pointer-events-none">
+            <p className="text-sm">{document.description}</p>
           </div>
         )}
-        
-        {document.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-2">
-            {document.tags.map(tag => (
-              <Badge 
-                key={tag.id} 
-                variant="outline" 
-                className="cursor-pointer hover:bg-secondary"
-                onClick={() => handleTagSelect(tag.id)}
-              >
-                {tag.name}
-              </Badge>
-            ))}
-          </div>
-        )}
-      </CardContent>
+      </div>
       
-      <CardFooter className="flex justify-between pt-2 text-xs text-muted-foreground">
+      {/* Tags */}
+      <div className="col-span-3 flex items-center flex-wrap gap-1">
+        {document.tags.slice(0, 3).map(tag => (
+          <Badge 
+            key={tag.id} 
+            variant="outline" 
+            className="cursor-pointer hover:bg-secondary text-xs"
+            onClick={() => handleTagSelect(tag.id)}
+          >
+            {tag.name}
+          </Badge>
+        ))}
+        {document.tags.length > 3 && (
+          <Badge variant="outline" className="text-xs">+{document.tags.length - 3}</Badge>
+        )}
+      </div>
+      
+      {/* Upload date */}
+      <div className="col-span-2 flex items-center text-xs text-muted-foreground">
         <div>
-          {document.uploadedBy ? (
-            <span>Uploaded by {document.uploadedBy.first_name} {document.uploadedBy.last_name}</span>
-          ) : (
-            <span>Unknown uploader</span>
+          <div>{formatDistanceToNow(new Date(document.updatedAt))} ago</div>
+          {document.uploadedBy && (
+            <div>by {document.uploadedBy.first_name} {document.uploadedBy.last_name}</div>
           )}
         </div>
-        <div>
-          {document.chunksCount} chunks
-        </div>
-      </CardFooter>
-    </Card>
+      </div>
+      
+      {/* Actions */}
+      <div className="col-span-3 flex items-center justify-end gap-2">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="h-8 w-8 p-0"
+          asChild
+          title="Edit document"
+        >
+          <a href={`/admin/document-library/edit/${document.id}`}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+              <path d="m15 5 4 4"/>
+            </svg>
+            <span className="sr-only">Edit</span>
+          </a>
+        </Button>
+        
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="h-8 w-8 p-0"
+          title="View document"
+          onClick={() => {
+            const form = window.document.createElement('form');
+            form.method = 'GET';
+            form.action = `/api/document-library/view/${document.id}`;
+            form.target = '_blank';
+            window.document.body.appendChild(form);
+            form.submit();
+            window.document.body.removeChild(form);
+          }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          <span className="sr-only">View</span>
+        </Button>
+        
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="h-8 w-8 p-0"
+          title="Download document"
+          onClick={() => {
+            const form = window.document.createElement('form');
+            form.method = 'GET';
+            form.action = `/api/document-library/download/${document.id}`;
+            form.target = '_blank';
+            window.document.body.appendChild(form);
+            form.submit();
+            window.document.body.removeChild(form);
+          }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" x2="12" y1="15" y2="3"/>
+          </svg>
+          <span className="sr-only">Download</span>
+        </Button>
+      </div>
+    </div>
   )
   
-  const renderSkeletonCard = () => (
-    <Card className="mb-4 overflow-hidden">
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-start">
-          <div>
-            <Skeleton className="h-5 w-48 mb-2" />
-            <Skeleton className="h-4 w-32" />
-          </div>
-          <Skeleton className="h-4 w-24" />
+  const renderSkeletonListItem = () => (
+    <div className="grid grid-cols-12 gap-3 p-3 border-b">
+      {/* Document title and category */}
+      <div className="col-span-4 flex items-center">
+        <div className="mr-2 opacity-30">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
         </div>
-      </CardHeader>
-      
-      <CardContent className="pb-2">
-        <Skeleton className="h-4 w-full mb-2" />
-        <Skeleton className="h-4 w-3/4 mb-2" />
-        <Skeleton className="h-16 w-full mb-3" />
-        
-        <div className="flex gap-1 mt-2">
-          <Skeleton className="h-5 w-16" />
-          <Skeleton className="h-5 w-12" />
-          <Skeleton className="h-5 w-20" />
+        <div>
+          <Skeleton className="h-5 w-36" />
+          <Skeleton className="h-3 w-24 mt-1" />
         </div>
-      </CardContent>
+      </div>
       
-      <CardFooter className="flex justify-between pt-2">
-        <Skeleton className="h-4 w-32" />
-        <Skeleton className="h-4 w-16" />
-      </CardFooter>
-    </Card>
+      {/* Tags */}
+      <div className="col-span-3 flex items-center gap-1">
+        <Skeleton className="h-5 w-16" />
+        <Skeleton className="h-5 w-20" />
+        <Skeleton className="h-5 w-12" />
+      </div>
+      
+      {/* Upload date */}
+      <div className="col-span-2 flex items-center">
+        <div>
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="h-3 w-16 mt-1" />
+        </div>
+      </div>
+      
+      {/* Actions */}
+      <div className="col-span-3 flex items-center justify-end gap-2">
+        <Skeleton className="h-8 w-8 rounded-full" />
+        <Skeleton className="h-8 w-8 rounded-full" />
+        <Skeleton className="h-8 w-8 rounded-full" />
+      </div>
+    </div>
   )
 
   return (
@@ -272,16 +356,24 @@ export function DocumentViewer({
         </div>
       </div>
       
-      {/* Document List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+      {/* Document List Table View */}
+      <div className="w-full bg-card border rounded-md overflow-hidden">
+        {/* Table Header */}
+        <div className="grid grid-cols-12 gap-3 bg-muted p-3 border-b font-medium text-sm">
+          <div className="col-span-4">Document</div>
+          <div className="col-span-3">Tags</div>
+          <div className="col-span-2">Uploaded</div>
+          <div className="col-span-3 text-right">Actions</div>
+        </div>
+        
         {isLoading ? (
           // Loading skeletons
-          Array.from({ length: 6 }).map((_, i) => (
-            <div key={i}>{renderSkeletonCard()}</div>
+          Array.from({ length: 5 }).map((_, i) => (
+            <div key={i}>{renderSkeletonListItem()}</div>
           ))
         ) : isError ? (
           // Error state
-          <div className="col-span-full text-center py-8">
+          <div className="w-full text-center py-8">
             <div className="text-red-500 mb-2">Error loading documents</div>
             <p className="text-sm text-muted-foreground mb-4">
               {error instanceof Error ? error.message : 'Unknown error occurred'}
@@ -290,7 +382,7 @@ export function DocumentViewer({
           </div>
         ) : documents.length === 0 ? (
           // Empty state
-          <div className="col-span-full text-center py-8">
+          <div className="w-full text-center py-8">
             <h3 className="text-lg font-medium mb-2">No documents found</h3>
             <p className="text-sm text-muted-foreground mb-4">
               Try adjusting your filters or uploading new documents
@@ -298,12 +390,8 @@ export function DocumentViewer({
             <Button onClick={resetFilters} variant="outline">Reset Filters</Button>
           </div>
         ) : (
-          // Document cards
-          documents.map(doc => (
-            <div key={doc.id}>
-              {renderDocumentCard(doc)}
-            </div>
-          ))
+          // Document list items
+          documents.map(doc => renderDocumentListItem(doc))
         )}
       </div>
       
