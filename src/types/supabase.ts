@@ -349,6 +349,70 @@ export type Database = {
         }
         Relationships: []
       }
+      document_chunks: {
+        Row: {
+          chunk_index: number
+          content: string
+          created_at: string | null
+          document_id: string | null
+          embedding: string | null
+          id: string
+        }
+        Insert: {
+          chunk_index: number
+          content: string
+          created_at?: string | null
+          document_id?: string | null
+          embedding?: string | null
+          id?: string
+        }
+        Update: {
+          chunk_index?: number
+          content?: string
+          created_at?: string | null
+          document_id?: string | null
+          embedding?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_chunks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_content: {
+        Row: {
+          content: string
+          created_at: string | null
+          document_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          document_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          document_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_content_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: true
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_tag_assignments: {
         Row: {
           document_id: string | null
@@ -458,45 +522,9 @@ export type Database = {
           },
         ]
       }
-      document_visibility_legacy: {
-        Row: {
-          area: string | null
-          document_id: string | null
-          id: string
-          region: string | null
-          role_type: string | null
-          team: string | null
-        }
-        Insert: {
-          area?: string | null
-          document_id?: string | null
-          id?: string
-          region?: string | null
-          role_type?: string | null
-          team?: string | null
-        }
-        Update: {
-          area?: string | null
-          document_id?: string | null
-          id?: string
-          region?: string | null
-          role_type?: string | null
-          team?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "document_visibility_document_id_fkey"
-            columns: ["document_id"]
-            isOneToOne: false
-            referencedRelation: "documents"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       documents: {
         Row: {
           category_id: string | null
-          content: string | null
           created_at: string | null
           current_version_id: string | null
           description: string | null
@@ -507,7 +535,6 @@ export type Database = {
         }
         Insert: {
           category_id?: string | null
-          content?: string | null
           created_at?: string | null
           current_version_id?: string | null
           description?: string | null
@@ -518,7 +545,6 @@ export type Database = {
         }
         Update: {
           category_id?: string | null
-          content?: string | null
           created_at?: string | null
           current_version_id?: string | null
           description?: string | null
@@ -1481,6 +1507,10 @@ export type Database = {
       }
     }
     Functions: {
+      binary_quantize: {
+        Args: { "": string } | { "": unknown }
+        Returns: unknown
+      }
       get_navigation_for_user: {
         Args: {
           p_user_id: string
@@ -1584,6 +1614,38 @@ export type Database = {
           path: string[]
         }[]
       }
+      halfvec_avg: {
+        Args: { "": number[] }
+        Returns: unknown
+      }
+      halfvec_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      halfvec_send: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      halfvec_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
+      hnsw_bit_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnsw_halfvec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnsw_sparsevec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnswhandler: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
       is_banner_currently_active: {
         Args: { p_is_active: boolean; p_start_date: string; p_end_date: string }
         Returns: boolean
@@ -1591,6 +1653,26 @@ export type Database = {
       is_navigation_item_currently_active: {
         Args: { p_is_active: boolean; p_start_date: string; p_end_date: string }
         Returns: boolean
+      }
+      ivfflat_bit_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflat_halfvec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflathandler: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      l2_norm: {
+        Args: { "": unknown } | { "": unknown }
+        Returns: number
+      }
+      l2_normalize: {
+        Args: { "": string } | { "": unknown } | { "": unknown }
+        Returns: string
       }
       log_navigation_interaction: {
         Args: {
@@ -1615,6 +1697,18 @@ export type Database = {
         Args: { p_widget_id: string; p_config: Json; p_created_by?: string }
         Returns: Json
       }
+      sparsevec_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      sparsevec_send: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      sparsevec_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
       sync_user_profile: {
         Args: {
           p_email: string
@@ -1638,6 +1732,30 @@ export type Database = {
           p_department?: string
         }
         Returns: undefined
+      }
+      vector_avg: {
+        Args: { "": number[] }
+        Returns: string
+      }
+      vector_dims: {
+        Args: { "": string } | { "": unknown }
+        Returns: number
+      }
+      vector_norm: {
+        Args: { "": string }
+        Returns: number
+      }
+      vector_out: {
+        Args: { "": string }
+        Returns: unknown
+      }
+      vector_send: {
+        Args: { "": string }
+        Returns: string
+      }
+      vector_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
       }
     }
     Enums: {
