@@ -16,6 +16,10 @@ export async function GET(
         { status: 400 }
       )
     }
+    
+    // Check for specific version ID in query params
+    const url = new URL(request.url)
+    const versionId = url.searchParams.get('versionId')
 
     // Get the authenticated user
     const supabase = await createClient()
@@ -42,13 +46,14 @@ export async function GET(
       )
     }
 
-    // Get document details including current version
+    // Get document details including versions
     const { data: document, error: documentError } = await supabase
       .from('documents')
       .select(`
         id,
         title,
         category_id,
+        current_version_id,
         document_versions (
           id,
           file_path,
@@ -95,13 +100,30 @@ export async function GET(
         }
       }
     }
-
-    // Get the current version file path
-    const currentVersion = Array.isArray(document.document_versions) 
-      ? document.document_versions[0] 
-      : document.document_versions
-
-    if (!currentVersion || !currentVersion.file_path) {
+    
+    // Get the requested version or default to current version
+    let version
+    
+    if (versionId) {
+      // Find the specific version if requested
+      version = Array.isArray(document.document_versions) 
+        ? document.document_versions.find(v => v.id === versionId)
+        : null
+        
+      if (!version) {
+        return NextResponse.json(
+          { success: false, error: 'Version not found' },
+          { status: 404 }
+        )
+      }
+    } else {
+      // Use the current version
+      version = Array.isArray(document.document_versions) 
+        ? document.document_versions.find(v => v.id === document.current_version_id) || document.document_versions[0]
+        : document.document_versions
+    }
+    
+    if (!version || !version.file_path) {
       return NextResponse.json(
         { success: false, error: 'Document file not found' },
         { status: 404 }
@@ -119,10 +141,12 @@ export async function GET(
         details: {
           document_id: documentId,
           title: document.title,
+          version_id: version.id,
+          version_label: version.version_label
         },
         metadata: {
           document_id: documentId,
-          version_id: currentVersion.id,
+          version_id: version.id,
         },
         timestamp: Date.now(),
       })
@@ -135,7 +159,7 @@ export async function GET(
       const { data: fileData, error: fileError } = await supabase
         .storage
         .from('documents')
-        .download(currentVersion.file_path)
+        .download(version.file_path)
       
       if (fileError || !fileData) {
         console.error('Error downloading file from storage:', fileError)
@@ -146,12 +170,12 @@ export async function GET(
       }
       
       // Get filename from the path
-      const filename = currentVersion.file_path.split('/').pop() || 'document'
+      const filename = version.file_path.split('/').pop() || 'document'
       
       // Create response with appropriate headers for download
       const headers = new Headers()
       headers.set('Content-Disposition', `attachment; filename="${filename}"`)
-      headers.set('Content-Type', currentVersion.file_type || 'application/octet-stream')
+      headers.set('Content-Type', version.file_type || 'application/octet-stream')
       
       // Return the file as a downloadable attachment
       return new NextResponse(fileData, {

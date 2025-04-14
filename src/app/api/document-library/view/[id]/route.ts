@@ -16,6 +16,10 @@ export async function GET(
         { status: 400 }
       )
     }
+    
+    // Check for specific version ID in query params
+    const url = new URL(request.url)
+    const versionId = url.searchParams.get('versionId')
 
     // Get the authenticated user
     const supabase = await createClient()
@@ -42,13 +46,14 @@ export async function GET(
       )
     }
 
-    // Get document details including current version
+    // Get document details including versions
     const { data: document, error: documentError } = await supabase
       .from('documents')
       .select(`
         id,
         title,
         category_id,
+        current_version_id,
         document_versions (
           id,
           file_path,
@@ -95,13 +100,30 @@ export async function GET(
         }
       }
     }
-
-    // Get the current version file path
-    const currentVersion = Array.isArray(document.document_versions) 
-      ? document.document_versions[0] 
-      : document.document_versions
-
-    if (!currentVersion || !currentVersion.file_path) {
+    
+    // Get the requested version or default to current version
+    let version
+    
+    if (versionId) {
+      // Find the specific version if requested
+      version = Array.isArray(document.document_versions) 
+        ? document.document_versions.find(v => v.id === versionId)
+        : null
+        
+      if (!version) {
+        return NextResponse.json(
+          { success: false, error: 'Version not found' },
+          { status: 404 }
+        )
+      }
+    } else {
+      // Use the current version
+      version = Array.isArray(document.document_versions) 
+        ? document.document_versions.find(v => v.id === document.current_version_id) || document.document_versions[0]
+        : document.document_versions
+    }
+    
+    if (!version || !version.file_path) {
       return NextResponse.json(
         { success: false, error: 'Document file not found' },
         { status: 404 }
@@ -119,21 +141,21 @@ export async function GET(
         details: {
           document_id: documentId,
           title: document.title,
+          version_id: version.id,
+          version_label: version.version_label
         },
         metadata: {
           document_id: documentId,
-          version_id: currentVersion.id,
+          version_id: version.id,
         },
         timestamp: Date.now(),
       })
 
-    // Instead of constructing the URL manually, let's use the Supabase client
-    // to get a signed URL that will grant temporary access to the file
-    
+    // Use the Supabase client to get a signed URL
     const { data: signedUrlData, error: signedUrlError } = await supabase
       .storage
       .from('documents')
-      .createSignedUrl(currentVersion.file_path, 60 * 60) // 1 hour expiry
+      .createSignedUrl(version.file_path, 60 * 60) // 1 hour expiry
     
     if (signedUrlError || !signedUrlData?.signedUrl) {
       console.error('Error creating signed URL:', signedUrlError)

@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatDistanceToNow } from 'date-fns'
+import Link from 'next/link'
 
 export interface DocumentViewerProps {
   initialFilters?: DocumentFilters
@@ -172,13 +173,13 @@ export function DocumentViewer({
           asChild
           title="Edit document"
         >
-          <a href={`/admin/document-library/edit/${document.id}`}>
+          <Link href={`/admin/document-library/edit/${document.id}`}>
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
               <path d="m15 5 4 4"/>
             </svg>
             <span className="sr-only">Edit</span>
-          </a>
+          </Link>
         </Button>
         
         <Button 
@@ -186,21 +187,15 @@ export function DocumentViewer({
           size="sm" 
           className="h-8 w-8 p-0"
           title="View document"
-          onClick={() => {
-            const form = window.document.createElement('form');
-            form.method = 'GET';
-            form.action = `/api/document-library/view/${document.id}`;
-            form.target = '_blank';
-            window.document.body.appendChild(form);
-            form.submit();
-            window.document.body.removeChild(form);
-          }}
+          asChild
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
-            <circle cx="12" cy="12" r="3"/>
-          </svg>
-          <span className="sr-only">View</span>
+          <Link href={`/api/document-library/view/${document.id}`} target="_blank">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <span className="sr-only">View</span>
+          </Link>
         </Button>
         
         <Button 
@@ -208,22 +203,16 @@ export function DocumentViewer({
           size="sm" 
           className="h-8 w-8 p-0"
           title="Download document"
-          onClick={() => {
-            const form = window.document.createElement('form');
-            form.method = 'GET';
-            form.action = `/api/document-library/download/${document.id}`;
-            form.target = '_blank';
-            window.document.body.appendChild(form);
-            form.submit();
-            window.document.body.removeChild(form);
-          }}
+          asChild
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" x2="12" y1="15" y2="3"/>
-          </svg>
-          <span className="sr-only">Download</span>
+          <Link href={`/api/document-library/download/${document.id}`} target="_blank">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" x2="12" y1="15" y2="3"/>
+            </svg>
+            <span className="sr-only">Download</span>
+          </Link>
         </Button>
       </div>
     </div>
