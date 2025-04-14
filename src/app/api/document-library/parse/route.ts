@@ -178,15 +178,29 @@ export async function POST(req: Request) {
 
       // Process text for chunking
       try {
+        console.log('Starting document chunking process...')
+        
         // Split text into manageable chunks (around 500 tokens each)
-        const chunks = splitIntoChunks(extractedText)
-        console.log(`Split document into ${chunks.length} chunks`)
+        // Set max chunk size to 8000 characters to stay well under any potential database limits
+        const chunks = splitIntoChunks(extractedText, 500, 8000)
+        console.log(`Split document into ${chunks.length} chunks`, chunks.map(c => c.substring(0, 50) + '...'))
+        
+        if (chunks.length === 0) {
+          console.error('No chunks generated from document text. Text length:', extractedText.length)
+          throw new Error('Chunking algorithm produced no chunks')
+        }
         
         // First, delete any existing chunks for this document to avoid duplicates
-        await supabase
+        console.log(`Deleting existing chunks for document: ${documentId}`)
+        const { error: deleteError } = await supabase
           .from('document_chunks')
           .delete()
           .eq('document_id', documentId)
+          
+        if (deleteError) {
+          console.error('Error deleting existing chunks:', deleteError)
+          // Continue anyway - attempted to clear
+        }
         
         // Store each chunk in the database
         const timestamp = new Date().toISOString()
@@ -198,18 +212,84 @@ export async function POST(req: Request) {
           updated_at: timestamp
         }))
         
+        console.log(`Preparing to insert ${chunksToInsert.length} chunks for document: ${documentId}`)
+        console.log('First chunk example:', {
+          ...chunksToInsert[0],
+          content: chunksToInsert[0]?.content?.substring(0, 50) + '...' || 'No content'
+        })
+        
+        // Check if the updated_at field is causing issues (might not be in the schema)
+        const cleanedChunksToInsert = chunksToInsert.map(chunk => {
+          // Create a new object without the updated_at field
+          const { updated_at, ...rest } = chunk;
+          return rest;
+        });
+        
+        console.log('Attempting insert with cleaned chunks (removed updated_at field)')
         const insertResult = await supabase
           .from('document_chunks')
-          .insert(chunksToInsert)
+          .insert(cleanedChunksToInsert)
         
         if (insertResult.error) {
           console.error('Error inserting chunks:', insertResult.error)
+          // Try to get more details about the error
+          console.error('Insert error details:', JSON.stringify(insertResult.error))
+          
+          // Check if chunks are too large
+          const largestChunk = chunks.reduce((max, chunk) => 
+            chunk.length > max.length ? chunk : max, '');
+          console.log(`Largest chunk size: ${largestChunk.length} characters`)
+          
+          // Try with batching instead of inserting all at once
+          console.log('Attempting to insert chunks in smaller batches...')
+          const BATCH_SIZE = 5;
+          let successCount = 0;
+          
+          for (let i = 0; i < cleanedChunksToInsert.length; i += BATCH_SIZE) {
+            const batch = cleanedChunksToInsert.slice(i, i + BATCH_SIZE);
+            console.log(`Inserting batch ${i/BATCH_SIZE + 1} of ${Math.ceil(cleanedChunksToInsert.length/BATCH_SIZE)}`)
+            
+            const batchResult = await supabase
+              .from('document_chunks')
+              .insert(batch)
+            
+            if (batchResult.error) {
+              console.error(`Error inserting batch ${i/BATCH_SIZE + 1}:`, batchResult.error)
+              
+              // If batch fails, try one by one
+              console.log('Batch failed, trying individual inserts...')
+              
+              for (const chunk of batch) {
+                const result = await supabase
+                  .from('document_chunks')
+                  .insert([chunk])
+                
+                if (!result.error) {
+                  successCount++;
+                } else {
+                  console.error('Individual chunk insert failed:', {
+                    error: result.error.message,
+                    chunkIndex: chunk.chunk_index,
+                    contentLength: chunk.content.length,
+                    content: chunk.content.substring(0, 50) + '...'
+                  })
+                }
+              }
+            } else {
+              successCount += batch.length;
+              console.log(`Batch ${i/BATCH_SIZE + 1} inserted successfully`)
+            }
+          }
+          
+          console.log(`Successfully inserted ${successCount} out of ${cleanedChunksToInsert.length} chunks`)
+          
           // Continue execution - we've at least saved the full document content
         } else {
-          console.log(`Successfully processed and stored ${chunks.length} chunks`)
+          console.log(`Successfully processed and stored ${chunks.length} chunks for document: ${documentId}`)
         }
       } catch (error) {
         console.error('Error processing document chunks:', error)
+        console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace')
         // Continue with the main response, even if chunking fails
         // This way, at least the document content is saved
       }
@@ -246,65 +326,151 @@ export async function POST(req: Request) {
  * 
  * This is a simple implementation that splits by paragraphs first,
  * then combines or splits paragraphs to achieve the target chunk size.
+ * It includes additional safeguards to ensure that chunks don't exceed database limits.
  */
-function splitIntoChunks(text: string, targetTokens: number = 500): string[] {
-  // First, split by paragraphs
-  const paragraphs = text.split(/\n\s*\n/)
-  const chunks: string[] = []
-  let currentChunk: string[] = []
-  let currentTokenCount = 0
+function splitIntoChunks(text: string, targetTokens: number = 500, maxChunkSize: number = 10000): string[] {
+  console.log('Starting text chunking process...')
+  console.log(`Input text length: ${text.length} characters`)
   
-  // Very rough token count estimation (words / 0.75)
-  // Language models typically count 1 token ~= 4 characters or ~= 0.75 words
-  const estimateTokens = (text: string): number => {
-    return Math.ceil(text.split(/\s+/).length / 0.75)
+  // Safety check for empty or invalid input
+  if (!text || typeof text !== 'string') {
+    console.error('Invalid text input for chunking:', typeof text)
+    // Return at least one chunk with whatever we received
+    return ["No content available"]
   }
   
-  for (const paragraph of paragraphs) {
-    // Skip empty paragraphs
-    if (!paragraph.trim()) continue
+  // Normalize the input text to handle any encoding issues
+  let normalizedText = text.trim()
+  if (normalizedText.length === 0) {
+    console.warn('Empty text after trimming, creating minimal chunk')
+    return ["No content available"]
+  }
+  
+  try {
+    // First, split by paragraphs
+    // Use a more defensive approach to paragraph splitting
+    const paragraphs = normalizedText.split(/\n\s*\n/).filter(p => p.trim().length > 0)
+    console.log(`Split text into ${paragraphs.length} paragraphs`)
     
-    const paragraphTokens = estimateTokens(paragraph)
+    // If we have no paragraphs after filtering, return a single chunk
+    if (paragraphs.length === 0) {
+      console.warn('No paragraphs found after filtering, using original text')
+      return [normalizedText.substring(0, maxChunkSize)]
+    }
     
-    if (paragraphTokens > targetTokens * 2) {
-      // If a single paragraph is very large, split it into sentences
-      const sentences = paragraph.match(/[^.!?]+[.!?]+/g) || [paragraph]
+    const chunks: string[] = []
+    let currentChunk: string[] = []
+    let currentTokenCount = 0
+    
+    // Very rough token count estimation (words / 0.75)
+    // Language models typically count 1 token ~= 4 characters or ~= 0.75 words
+    const estimateTokens = (text: string): number => {
+      const words = text.split(/\s+/).filter(w => w.length > 0)
+      return Math.ceil(words.length / 0.75)
+    }
+    
+    // Process paragraphs into chunks
+    for (const paragraph of paragraphs) {
+      // Skip empty paragraphs
+      const trimmedParagraph = paragraph.trim()
+      if (trimmedParagraph.length === 0) continue
       
-      for (const sentence of sentences) {
-        const sentenceTokens = estimateTokens(sentence)
+      const paragraphTokens = estimateTokens(trimmedParagraph)
+      
+      if (paragraphTokens > targetTokens * 1.5) {
+        console.log(`Large paragraph found (${paragraphTokens} tokens), splitting into sentences`)
+        // If a single paragraph is very large, split it into sentences
+        const sentenceMatches = trimmedParagraph.match(/[^.!?]+[.!?]+/g)
+        const sentences = sentenceMatches || [trimmedParagraph]
+        console.log(`Split paragraph into ${sentences.length} sentences`)
         
-        if (currentTokenCount + sentenceTokens > targetTokens && currentChunk.length > 0) {
-          // Current chunk is full, start a new one
-          chunks.push(currentChunk.join(' '))
-          currentChunk = [sentence]
-          currentTokenCount = sentenceTokens
+        for (const sentence of sentences) {
+          const sentenceTokens = estimateTokens(sentence)
+          
+          // If even a single sentence exceeds the max chunk size, split it further
+          if (sentence.length > maxChunkSize) {
+            console.log(`Extra large sentence found (${sentence.length} chars), splitting by character count`)
+            // Split by character count
+            for (let i = 0; i < sentence.length; i += maxChunkSize) {
+              const sentencePart = sentence.substring(i, i + maxChunkSize)
+              chunks.push(sentencePart)
+              console.log(`Created chunk from large sentence part: ${sentencePart.substring(0, 50)}...`)
+            }
+            continue
+          }
+          
+          if (currentTokenCount + sentenceTokens > targetTokens && currentChunk.length > 0) {
+            // Current chunk is full, start a new one
+            const joinedChunk = currentChunk.join(' ')
+            chunks.push(joinedChunk)
+            console.log(`Chunk completed with ${currentTokenCount} tokens, length: ${joinedChunk.length} chars`)
+            currentChunk = [sentence]
+            currentTokenCount = sentenceTokens
+          } else {
+            // Add to current chunk
+            currentChunk.push(sentence)
+            currentTokenCount += sentenceTokens
+          }
+        }
+      } else {
+        // Check if this paragraph would exceed max size
+        if (trimmedParagraph.length > maxChunkSize) {
+          console.log(`Paragraph exceeds max size (${trimmedParagraph.length} chars), splitting by character count`)
+          for (let i = 0; i < trimmedParagraph.length; i += maxChunkSize) {
+            const paragraphPart = trimmedParagraph.substring(i, i + maxChunkSize)
+            chunks.push(paragraphPart)
+            console.log(`Created chunk from large paragraph part: ${paragraphPart.substring(0, 50)}...`)
+          }
+          continue
+        }
+        
+        // Check if adding this paragraph would exceed target token size
+        if (currentTokenCount + paragraphTokens > targetTokens && currentChunk.length > 0) {
+          // Current chunk is full, store it and start a new one
+          const joinedChunk = currentChunk.join(' ')
+          chunks.push(joinedChunk)
+          console.log(`Chunk completed with ${currentTokenCount} tokens, length: ${joinedChunk.length} chars`)
+          currentChunk = [trimmedParagraph]
+          currentTokenCount = paragraphTokens
         } else {
-          // Add to current chunk
-          currentChunk.push(sentence)
-          currentTokenCount += sentenceTokens
+          // Add paragraph to current chunk
+          currentChunk.push(trimmedParagraph)
+          currentTokenCount += paragraphTokens
         }
       }
-    } else {
-      // Check if adding this paragraph would exceed target size
-      if (currentTokenCount + paragraphTokens > targetTokens && currentChunk.length > 0) {
-        // Current chunk is full, store it and start a new one
-        chunks.push(currentChunk.join(' '))
-        currentChunk = [paragraph]
-        currentTokenCount = paragraphTokens
-      } else {
-        // Add paragraph to current chunk
-        currentChunk.push(paragraph)
-        currentTokenCount += paragraphTokens
-      }
     }
+    
+    // Add the last chunk if not empty
+    if (currentChunk.length > 0) {
+      const finalChunk = currentChunk.join(' ')
+      chunks.push(finalChunk)
+      console.log(`Final chunk completed with ${currentTokenCount} tokens, length: ${finalChunk.length} chars`)
+    }
+    
+    console.log(`Chunking completed. Created ${chunks.length} chunks.`)
+    
+    // Ensure we have at least one chunk
+    if (chunks.length === 0) {
+      console.warn('No chunks were created through normal process, adding a default chunk')
+      // Limit the size to prevent database issues
+      chunks.push(normalizedText.substring(0, maxChunkSize))
+    }
+    
+    // Verify chunk sizes before returning
+    const verifiedChunks = chunks.map((chunk, index) => {
+      if (chunk.length > maxChunkSize) {
+        console.warn(`Chunk ${index} exceeds max size (${chunk.length} chars), truncating`)
+        return chunk.substring(0, maxChunkSize)
+      }
+      return chunk
+    })
+    
+    return verifiedChunks;
+  } catch (error) {
+    console.error('Error in chunking algorithm:', error)
+    // Return at least one sensible chunk as fallback
+    return [normalizedText.substring(0, maxChunkSize)]
   }
-  
-  // Add the last chunk if not empty
-  if (currentChunk.length > 0) {
-    chunks.push(currentChunk.join(' '))
-  }
-  
-  return chunks
 }
 
 /**
