@@ -30,6 +30,7 @@ export async function POST(req: Request) {
     // Track IDs from filtering for counting
     let matchingContentIds: string[] | undefined
     let matchingTagIds: string[] | undefined
+    let visibleDocIds: string[] = []
 
     // Get the authenticated user
     const supabase = await createClient()
@@ -84,22 +85,48 @@ export async function POST(req: Request) {
     // This assumes document_visibility has a JSONB column called 'conditions'
     // that contains role_type, teams, areas, regions
     if (userProfile.role_type !== 'admin') {
+      // For non-admins, we need to implement a simplified filtering approach
       // Non-admins can only see documents that match their role or are unrestricted
-      query = query.or(`document_visibility.conditions->role_type.eq.${userProfile.role_type},document_visibility.conditions->role_type.is.null`)
       
-      // Apply team filter if relevant
-      if (userProfile.team) {
-        query = query.or(`document_visibility.conditions->teams.cs.{${userProfile.team}},document_visibility.conditions->teams.is.null`)
-      }
+      // First get all documents that match this user's role
+      // Use proper JSONB query syntax with ->> for text extraction
+      // Cast role_type to string to fix TypeScript error
+      const userRoleType = userProfile.role_type as string
+      const { data: roleMatchDocs } = await supabase
+        .from('document_visibility')
+        .select('document_id')
+        .eq('conditions->>role_type', userRoleType)
       
-      // Apply area filter if relevant
-      if (userProfile.area) {
-        query = query.or(`document_visibility.conditions->areas.cs.{${userProfile.area}},document_visibility.conditions->areas.is.null`)
-      }
+      // Also get documents with no role restriction
+      const { data: noRoleDocs } = await supabase
+        .from('document_visibility')
+        .select('document_id')
+        .is('conditions->>role_type', null)
       
-      // Apply region filter if relevant
-      if (userProfile.region) {
-        query = query.or(`document_visibility.conditions->regions.cs.{${userProfile.region}},document_visibility.conditions->regions.is.null`)
+      // Combine document IDs and filter out null/undefined values
+      const roleDocIds = (roleMatchDocs || [])
+        .map(d => d.document_id)
+        .filter((id): id is string => id !== null && id !== undefined)
+      
+      const noRoleDocIds = (noRoleDocs || [])
+        .map(d => d.document_id)
+        .filter((id): id is string => id !== null && id !== undefined)
+      
+      visibleDocIds = [...roleDocIds, ...noRoleDocIds]
+      
+      // If we have matching documents, filter to only those
+      if (visibleDocIds.length > 0) {
+        query = query.in('id', visibleDocIds)
+      } else {
+        // If no matches, return empty result
+        return NextResponse.json({
+          success: true,
+          data: [],
+          total: 0,
+          page,
+          limit,
+          totalPages: 0
+        })
       }
     }
     
@@ -182,6 +209,11 @@ export async function POST(req: Request) {
     
     if (uploadedBy && userProfile.role_type === 'admin') {
       countQuery = countQuery.eq('uploaded_by', uploadedBy)
+    }
+    
+    // Add visibility filtering to count query for non-admins
+    if (userProfile.role_type !== 'admin' && visibleDocIds && visibleDocIds.length > 0) {
+      countQuery = countQuery.in('id', visibleDocIds)
     }
     
     // For ID-based filters (from content and tag searches)

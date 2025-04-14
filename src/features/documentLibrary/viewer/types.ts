@@ -1,3 +1,4 @@
+// my-app/src/features/documentLibrary/viewer/types.ts
 /**
  * Type definitions for Document Library Viewer
  */
