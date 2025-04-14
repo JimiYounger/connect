@@ -27,7 +27,7 @@ type InsertResult =
  * @returns Object with success status and document ID or error message
  */
 export async function insertDocumentWithRelations(input: InsertInput): Promise<InsertResult> {
-  const { document, fileUrl, filePath, userId } = input
+  const { document, filePath, userId } = input // fileUrl not used locally
   const supabase = createClient()
   
   console.log('📌 insertDocumentWithRelations received userId:', userId)
@@ -55,8 +55,9 @@ export async function insertDocumentWithRelations(input: InsertInput): Promise<I
     console.error('❌ Exception checking user profile:', profileCheckError)
   }
   
-  // Helper to extract file extension from file name
-  const getFileExtension = (filename: string): string => {
+  // NOTE: This helper was prepared for future use but is not currently used
+  // Prefix with _ to indicate intentionally unused
+  const _getFileExtension = (filename: string): string => {
     const parts = filename.split('.')
     return parts.length > 1 ? parts.pop()?.toLowerCase() || '' : ''
   }
