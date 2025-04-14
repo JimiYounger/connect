@@ -1,3 +1,5 @@
+
+
 'use client'
 
 import { useState, useCallback } from 'react'
@@ -11,11 +13,12 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatDistanceToNow } from 'date-fns'
 
-interface DocumentViewerProps {
+export interface DocumentViewerProps {
   initialFilters?: DocumentFilters
   categories?: Array<{ id: string; name: string }>
   availableTags?: DocumentTag[]
   isAdmin?: boolean
+  onRefetchNeeded?: { refetch: () => void }
 }
 
 export function DocumentViewer({
@@ -24,6 +27,8 @@ export function DocumentViewer({
   availableTags = [],
   isAdmin = false
 }: DocumentViewerProps) {
+  // We're keeping isAdmin param for future use
+  const _ = isAdmin;
   // State for filters
   const [filters, setFilters] = useState<DocumentFilters>(initialFilters)
   const [searchInput, setSearchInput] = useState(initialFilters.searchQuery || '')

@@ -1,10 +1,10 @@
 'use client'
 
-import { Suspense } from 'react'
+import { Suspense, useCallback, useMemo } from 'react'
 import { DocumentViewer } from '@/features/documentLibrary/viewer/DocumentViewer'
+import { UploadModal } from '@/features/documentLibrary/upload/UploadModal'
 import { createClient } from '@/lib/supabase'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useQuery } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { Skeleton } from '@/components/ui/skeleton'
 
 // Create a client
@@ -12,6 +12,9 @@ const queryClient = new QueryClient()
 
 // Main component to load and display documents with data
 function DocumentLibraryContent() {
+  // Create a reference object we can pass to DocumentViewer
+  const refetchRef = useMemo(() => ({ refetch: () => {} }), [])
+
   // Fetch categories
   const { data: categories = [], isLoading: categoriesLoading } = useQuery({
     queryKey: ['documentCategories'],
@@ -44,28 +47,18 @@ function DocumentLibraryContent() {
     staleTime: 5 * 60 * 1000 // 5 minutes
   })
 
-  // Check admin role
-  const { data: isAdmin = false, isLoading: adminCheckLoading } = useQuery({
-    queryKey: ['userIsAdmin'],
-    queryFn: async () => {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (!user) return false
-      
-      const { data } = await supabase
-        .from('user_profiles')
-        .select('role_type')
-        .eq('user_id', user.id)
-        .single()
-      
-      return data?.role_type === 'admin'
-    },
-    staleTime: 30 * 60 * 1000 // 30 minutes
-  })
+  // Handle successful upload
+  const handleUploadSuccess = useCallback(() => {
+    // Refetch documents from the viewer
+    if (refetchRef && refetchRef.refetch) {
+      refetchRef.refetch()
+    }
+    
+    // No need to show toast here as UploadModal handles this
+  }, [refetchRef])
 
   // Loading state
-  const isLoading = categoriesLoading || tagsLoading || adminCheckLoading
+  const isLoading = categoriesLoading || tagsLoading
   
   if (isLoading) {
     return (
@@ -94,11 +87,21 @@ function DocumentLibraryContent() {
 
   // Render viewer with data
   return (
-    <DocumentViewer 
-      categories={categories} 
-      availableTags={tags}
-      isAdmin={isAdmin}
-    />
+    <div className="container mx-auto p-4">
+      {/* Upload button and header */}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Document Library</h1>
+        <UploadModal onUploadSuccess={handleUploadSuccess} />
+      </div>
+
+      {/* Document viewer */}
+      <DocumentViewer 
+        categories={categories} 
+        availableTags={tags}
+        isAdmin={true}
+        onRefetchNeeded={refetchRef}
+      />
+    </div>
   )
 }
 
