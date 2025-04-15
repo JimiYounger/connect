@@ -7,6 +7,7 @@ type DocumentFormData = {
   selectedTags: string[]
   visibility: RoleAssignments
   selectedCategoryId?: string
+  selectedSubcategoryId?: string
 }
 
 export type DocumentForm = {
@@ -30,6 +31,7 @@ export function useUploadFormManager() {
       data: {
         selectedTags: [],
         selectedCategoryId: undefined,
+        selectedSubcategoryId: undefined,
         visibility: {
           roleTypes: [],
           teams: [],

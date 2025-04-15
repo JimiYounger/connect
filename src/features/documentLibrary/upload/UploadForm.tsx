@@ -18,7 +18,6 @@ import { RoleSelector } from '@/features/carousel/components/RoleSelector'
 import { DocumentUploadSchema, DocumentUploadInput } from './schema'
 import { useUploadFormManager } from './useUploadFormManager'
 import { handleUploadDocuments } from './handleUploadDocuments'
-import { createClient } from '@/lib/supabase'
 
 // Multi-select tag component with search and creation
 function TagSelector({ 
@@ -173,15 +172,194 @@ function TagSelector({
   )
 }
 
-// Subcategory select component
-function SubcategorySelect({ 
-  formEntryId, 
-  categoryId 
+// New component for subcategory selection with "Create New" option
+function SubcategorySelectWithCreate({ 
+  formEntryId,
+  categoryId,
+  value,
+  onChange
 }: { 
-  formEntryId: string
-  categoryId: string 
+  formEntryId: string;
+  categoryId: string;
+  value?: string;
+  onChange: (value: string) => void;
 }) {
-  const { subcategories, loading, error } = useSubcategories(categoryId)
+  const [isCreating, setIsCreating] = useState(false);
+  const [newSubcategoryName, setNewSubcategoryName] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { subcategories, loading, error, refetch } = useSubcategories(categoryId);
+  
+  // Debug logging
+  console.log(`SubcategorySelectWithCreate for ${formEntryId}:`, {
+    categoryId,
+    value,
+    subcategories,
+    loading,
+    error
+  });
+  
+  // Add one-time event listener to monitor fetch requests when component mounts
+  useEffect(() => {
+    const originalFetch = window.fetch;
+    window.fetch = function(...args) {
+      // Check if this is a request to the document_subcategories endpoint
+      const url = args[0]?.toString() || '';
+      if (url.includes('document_subcategories')) {
+        console.log('🔍 Intercepted fetch request to document_subcategories:', {
+          url,
+          method: args[1]?.method || 'GET',
+          body: args[1]?.body ? JSON.parse(args[1].body.toString()) : null
+        });
+        
+        return originalFetch.apply(this, args)
+          .then(response => {
+            // Clone the response so we can read it twice
+            const clone = response.clone();
+            clone.json().then(data => {
+              console.log('📊 document_subcategories fetch response:', {
+                status: response.status,
+                statusText: response.statusText,
+                data
+              });
+            }).catch(err => {
+              console.log('❌ Failed to parse response as JSON:', err);
+            });
+            return response;
+          })
+          .catch(err => {
+            console.error('❌ Fetch error:', err);
+            throw err;
+          });
+      }
+      
+      return originalFetch.apply(this, args);
+    };
+    
+    // Clean up
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, []);
+  
+  // Focus the input when entering creation mode
+  useEffect(() => {
+    if (isCreating && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isCreating]);
+  
+  const handleCreateTrigger = useCallback(() => {
+    setIsCreating(true);
+    setNewSubcategoryName('');
+  }, []);
+  
+  const handleCancel = useCallback(() => {
+    setIsCreating(false);
+    setNewSubcategoryName('');
+  }, []);
+  
+  const handleCreateSubcategory = useCallback(async (name: string): Promise<string | null> => {
+    console.log('🔍 handleCreateSubcategory called with:', { name, categoryId });
+    if (!name.trim() || !categoryId) {
+      console.error('❌ Missing name or categoryId:', { name, categoryId });
+      return null;
+    }
+    
+    try {
+      setIsSubmitting(true);
+      
+      // Use the new API route instead of direct Supabase access
+      const response = await fetch('/api/document-library/subcategories', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: name.trim(),
+          document_category_id: categoryId,
+          description: null // Optional
+        }),
+      });
+      
+      console.log('📊 API response status:', response.status);
+      
+      const result = await response.json();
+      console.log('📊 API response data:', result);
+      
+      if (!response.ok || !result.success) {
+        const errorMessage = result.error || 'Failed to create subcategory';
+        
+        // Handle specific error cases
+        if (response.status === 409) {
+          toast({
+            title: "Subcategory already exists",
+            description: "A subcategory with this name already exists for this category.",
+            variant: "destructive"
+          });
+        } else {
+          console.error('❌ Error creating subcategory:', errorMessage);
+          toast({
+            title: "Failed to create subcategory",
+            description: errorMessage,
+            variant: "destructive"
+          });
+        }
+        return null;
+      }
+      
+      console.log('✅ Subcategory created successfully:', result.data);
+      
+      // Refresh the subcategories list
+      refetch();
+      
+      toast({
+        title: "Subcategory created",
+        description: `"${name}" subcategory was successfully created.`
+      });
+      
+      return result.data.id;
+    } catch (err) {
+      console.error('❌ Exception creating subcategory:', err);
+      toast({
+        title: "Error",
+        description: "Failed to create new subcategory. Please try again.",
+        variant: "destructive"
+      });
+      return null;
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [categoryId, refetch]);
+  
+  const handleSubmit = useCallback(async () => {
+    if (!newSubcategoryName.trim()) return;
+    
+    console.log('🔍 handleSubmit called with:', { newSubcategoryName });
+    const newSubcategoryId = await handleCreateSubcategory(newSubcategoryName.trim());
+    console.log('🔍 handleCreateSubcategory returned:', { newSubcategoryId });
+    
+    if (newSubcategoryId) {
+      // Wait for a tiny bit to let the list refresh
+      setTimeout(() => {
+        console.log('🔍 Setting subcategory value to:', newSubcategoryId);
+        onChange(newSubcategoryId);
+        setIsCreating(false);
+        
+        // Force a refetch after a successful creation
+        refetch();
+      }, 300); // Increased timeout to ensure server has time to process
+    }
+  }, [newSubcategoryName, onChange, handleCreateSubcategory, refetch]);
+  
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSubmit();
+    } else if (e.key === 'Escape') {
+      handleCancel();
+    }
+  }, [handleSubmit, handleCancel]);
   
   if (loading) {
     return (
@@ -196,7 +374,7 @@ function SubcategorySelect({
           </SelectContent>
         </Select>
       </div>
-    )
+    );
   }
   
   if (error) {
@@ -205,80 +383,150 @@ function SubcategorySelect({
         <Label htmlFor={`subcategory-${formEntryId}`}>Subcategory</Label>
         <div className="text-sm text-red-500">Error loading subcategories</div>
       </div>
-    )
+    );
   }
   
-  if (subcategories.length === 0) {
+  if (isCreating) {
     return (
       <div className="mt-2">
-        <Label htmlFor={`subcategory-${formEntryId}`}>Subcategory</Label>
-        <div className="text-sm text-muted-foreground">No subcategories available for this category</div>
+        <Label htmlFor={`new-subcategory-${formEntryId}`}>Subcategory</Label>
+        <div className="flex gap-2 items-center">
+          <Input
+            id={`new-subcategory-${formEntryId}`}
+            ref={inputRef}
+            value={newSubcategoryName}
+            onChange={(e) => setNewSubcategoryName(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Enter new subcategory name"
+            disabled={isSubmitting}
+            className="flex-1"
+          />
+          <Button 
+            type="button" 
+            size="sm" 
+            onClick={handleSubmit} 
+            disabled={!newSubcategoryName.trim() || isSubmitting}
+          >
+            {isSubmitting ? (
+              <span className="flex items-center gap-1">
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                <span>Saving</span>
+              </span>
+            ) : "Save"}
+          </Button>
+          <Button 
+            type="button" 
+            size="sm" 
+            variant="outline" 
+            onClick={handleCancel}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+        </div>
+        <input 
+          type="hidden" 
+          name="document_subcategory_id" 
+          value={value || ''} 
+        />
       </div>
-    )
+    );
   }
   
   return (
     <div className="mt-2">
       <Label htmlFor={`subcategory-${formEntryId}`}>Subcategory</Label>
-      <Select name="document_subcategory_id">
+      <Select 
+        name="document_subcategory_id"
+        value={value || '_none'}
+        onValueChange={(value) => {
+          console.log('🔍 Subcategory select onValueChange:', { value });
+          if (value === '_create_new') {
+            handleCreateTrigger();
+          } else {
+            onChange(value === '_none' ? '' : value);
+          }
+        }}
+      >
         <SelectTrigger id={`subcategory-${formEntryId}`}>
           <SelectValue placeholder="Select a subcategory" />
         </SelectTrigger>
         <SelectContent>
+          <SelectItem value="_create_new" className="text-primary font-medium">
+            ➕ Create New Subcategory
+          </SelectItem>
           <SelectItem value="_none" key="_none">None</SelectItem>
-          {subcategories.map(subcategory => (
-            <SelectItem key={subcategory.id} value={subcategory.id}>
-              {subcategory.name}
+          {subcategories.length > 0 ? (
+            subcategories.map(subcategory => (
+              <SelectItem key={subcategory.id} value={subcategory.id}>
+                {subcategory.name}
+              </SelectItem>
+            ))
+          ) : (
+            <SelectItem value="_empty" disabled className="text-muted-foreground italic">
+              No subcategories yet - create one above
             </SelectItem>
-          ))}
+          )}
         </SelectContent>
       </Select>
     </div>
-  )
+  );
 }
 
 // Hook to fetch subcategories based on selected category ID
 function useSubcategories(categoryId?: string) {
   const [subcategories, setSubcategories] = useState<{ id: string; name: string; document_category_id: string }[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true) // Start with loading=true
   const [error, setError] = useState<string | null>(null)
   
-  useEffect(() => {
-    async function fetchSubcategories() {
-      if (!categoryId) {
-        setSubcategories([])
-        return
-      }
-      
-      setLoading(true)
-      setError(null)
-      
-      try {
-        const supabase = createClient()
-        const { data, error } = await supabase
-          .from('document_subcategories')
-          .select('id, name, document_category_id')
-          .eq('document_category_id', categoryId)
-          .order('name')
-        
-        if (error) {
-          throw new Error(error.message)
-        }
-        
-        setSubcategories(data || [])
-      } catch (err) {
-        console.error('Error fetching subcategories:', err)
-        setError(err instanceof Error ? err.message : 'Unknown error occurred')
-        setSubcategories([])
-      } finally {
-        setLoading(false)
-      }
+  const fetchSubcategories = useCallback(async () => {
+    console.log('🔄 fetchSubcategories called with categoryId:', categoryId);
+    if (!categoryId) {
+      setSubcategories([])
+      setLoading(false) // Make sure to set loading to false
+      return
     }
     
-    fetchSubcategories()
+    setLoading(true)
+    setError(null)
+    
+    try {
+      console.log('🔄 Making API request for subcategories with categoryId:', categoryId);
+      
+      // Use the API route instead of direct Supabase access
+      const response = await fetch(`/api/document-library/subcategories?categoryId=${categoryId}`);
+      const result = await response.json();
+      
+      console.log('🔄 API response for subcategories:', result);
+      
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to fetch subcategories');
+      }
+      
+      setSubcategories(result.data || [])
+    } catch (err) {
+      console.error('❌ Error fetching subcategories:', err)
+      setError(err instanceof Error ? err.message : 'Unknown error occurred')
+      setSubcategories([])
+    } finally {
+      setLoading(false)
+    }
   }, [categoryId])
   
-  return { subcategories, loading, error }
+  // Initial fetch
+  useEffect(() => {
+    fetchSubcategories()
+  }, [fetchSubcategories])
+  
+  return { 
+    subcategories, 
+    loading, 
+    error,
+    refetch: fetchSubcategories
+  }
 }
 
 export type UploadFormProps = {
@@ -455,27 +703,34 @@ export function UploadForm({ categories, allTags, userId, onUploadSuccess, onCat
   // Handler to create a new category in the database
   const handleCreateCategory = useCallback(async (name: string): Promise<string | null> => {
     try {
-      const supabase = createClient();
+      // Use the new API route instead of direct Supabase access
+      const response = await fetch('/api/document-library/categories', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: name.trim()
+        }),
+      });
       
-      // Insert the new category
-      const { data, error } = await supabase
-        .from('document_categories')
-        .insert({ name })
-        .select('id, name')
-        .single();
+      const result = await response.json();
       
-      if (error) {
-        if (error.code === '23505') { // Unique constraint violation
+      if (!response.ok || !result.success) {
+        const errorMessage = result.error || 'Failed to create category';
+        
+        // Handle specific error cases
+        if (response.status === 409) {
           toast({
             title: "Category already exists",
             description: "A category with this name already exists.",
             variant: "destructive"
           });
         } else {
-          console.error('Error creating category:', error);
+          console.error('Error creating category:', errorMessage);
           toast({
             title: "Failed to create category",
-            description: error.message,
+            description: errorMessage,
             variant: "destructive"
           });
         }
@@ -483,7 +738,7 @@ export function UploadForm({ categories, allTags, userId, onUploadSuccess, onCat
       }
       
       // Update local categories state with the new one
-      setLocalCategories(prev => [...prev, data]);
+      setLocalCategories(prev => [...prev, result.data]);
       
       // Notify parent component to refresh categories
       if (onCategoryCreated) {
@@ -495,7 +750,7 @@ export function UploadForm({ categories, allTags, userId, onUploadSuccess, onCat
         description: `"${name}" category was successfully created.`
       });
       
-      return data.id;
+      return result.data.id;
     } catch (err) {
       console.error('Error creating category:', err);
       toast({
@@ -526,9 +781,10 @@ export function UploadForm({ categories, allTags, userId, onUploadSuccess, onCat
         const document_category_id = formData.get('document_category_id') as string
         console.log('Form document_category_id value:', document_category_id, 'type:', typeof document_category_id)
         let document_subcategory_id = formData.get('document_subcategory_id') as string || undefined
-        // Convert "_none" value to undefined
-        if (document_subcategory_id === "_none") {
-          document_subcategory_id = undefined
+        // Convert empty string or "_none" value to undefined
+        if (!document_subcategory_id || document_subcategory_id === "" || document_subcategory_id === "_none") {
+          console.log('🔄 Converting document_subcategory_id to undefined:', document_subcategory_id);
+          document_subcategory_id = undefined;
         }
         console.log('Form document_subcategory_id value:', document_subcategory_id, 'type:', typeof document_subcategory_id)
         const versionLabel = formData.get('versionLabel') as string
@@ -697,16 +953,28 @@ export function UploadForm({ categories, allTags, userId, onUploadSuccess, onCat
                         categories={localCategories}
                         value={formEntry.data.selectedCategoryId}
                         onChange={(value) => {
-                          updateFormData(formEntry.id, { selectedCategoryId: value });
+                          // Reset subcategory when category changes
+                          console.log('🔍 Category changed to:', value);
+                          updateFormData(formEntry.id, { 
+                            selectedCategoryId: value,
+                            selectedSubcategoryId: undefined
+                          });
+                          console.log('🔍 Form data updated with new category:', value);
                         }}
                         onCreateNew={handleCreateCategory}
                       />
                       
                       {/* Subcategory field - only shown if a category is selected */}
                       {formEntry.data.selectedCategoryId && (
-                        <SubcategorySelect
+                        <SubcategorySelectWithCreate
                           formEntryId={formEntry.id}
                           categoryId={formEntry.data.selectedCategoryId}
+                          value={formEntry.data.selectedSubcategoryId}
+                          onChange={(value) => {
+                            console.log('🔍 Subcategory changed to:', value);
+                            updateFormData(formEntry.id, { selectedSubcategoryId: value });
+                            console.log('🔍 Form data updated with new subcategory:', value);
+                          }}
                         />
                       )}
                     </div>

@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase'
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { UploadForm } from './UploadForm'
 import { Button } from '@/components/ui/button'
@@ -23,44 +22,49 @@ export function UploadModal({ onUploadSuccess }: UploadModalProps) {
   const [isOpen, setIsOpen] = useState(false)
   const { toast } = useToast()
 
-  // Get current user
+  // Get current user using the API route
   const { data: userId } = useQuery({
     queryKey: ['currentUserId'],
     queryFn: async () => {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      return user?.id || ''
+      const response = await fetch('/api/users/current')
+      const result = await response.json()
+      
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to fetch current user')
+      }
+      
+      return result.data.id || ''
     }
   })
 
-  // Fetch categories
+  // Fetch categories using the API route
   const { data: categories = [], refetch: refetchCategories } = useQuery({
     queryKey: ['documentCategories'],
     queryFn: async () => {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from('document_categories')
-        .select('id, name')
-        .order('name')
+      const response = await fetch('/api/document-library/categories')
+      const result = await response.json()
       
-      if (error) throw new Error(error.message)
-      return data || []
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to fetch categories')
+      }
+      
+      return result.data || []
     },
     staleTime: 5 * 60 * 1000 // 5 minutes
   })
 
-  // Fetch all available tags
+  // Fetch all available tags using the API route
   const { data: tagData = [] } = useQuery({
     queryKey: ['documentTags'],
     queryFn: async () => {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from('document_tags')
-        .select('name')
-        .order('name')
+      const response = await fetch('/api/document-library/tags')
+      const result = await response.json()
       
-      if (error) throw new Error(error.message)
-      return data || []
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to fetch tags')
+      }
+      
+      return result.data || []
     },
     staleTime: 5 * 60 * 1000 // 5 minutes
   })
