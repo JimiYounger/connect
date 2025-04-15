@@ -5,7 +5,8 @@ import { createClient } from '@/lib/supabase-server'
 import { NextResponse } from 'next/server'
 
 export interface DocumentListParams {
-  categoryId?: string
+  document_category_id?: string
+  // TODO: Add document_subcategory_id support when implemented
   tags?: string[]
   uploadedBy?: string
   searchQuery?: string
@@ -16,9 +17,9 @@ export interface DocumentListParams {
 export async function POST(req: Request) {
   try {
     // Parse request body
-    const params = await req.json() as DocumentListParams
+    const params = await req.json()
     const {
-      categoryId,
+      document_category_id,
       tags,
       uploadedBy,
       searchQuery,
@@ -65,7 +66,7 @@ export async function POST(req: Request) {
       .select(`
         *,
         document_content (content),
-        category:document_categories (id, name),
+        category:document_categories!documents_document_category_id_fkey (id, name),
         uploaded_by_user:user_profiles!uploaded_by (id, first_name, last_name, email),
         tags:document_tag_assignments (
           tag:document_tags (id, name)
@@ -74,30 +75,30 @@ export async function POST(req: Request) {
       `)
       
     // Apply category filter
-    if (categoryId) {
-      query = query.eq('category_id', categoryId)
+    if (document_category_id) {
+      query = query.eq('document_category_id', document_category_id)
     }
     
     // Apply uploaded_by filter (for admins)
-    if (uploadedBy && userProfile.role_type === 'admin') {
+    if (uploadedBy && userProfile.role_type && userProfile.role_type.toLowerCase() === 'admin') {
       query = query.eq('uploaded_by', uploadedBy)
     }
     
     // Apply visibility filters based on user role
     // This assumes document_visibility has a JSONB column called 'conditions'
     // that contains role_type, teams, areas, regions
-    if (userProfile.role_type !== 'admin') {
+    if (!userProfile.role_type || userProfile.role_type.toLowerCase() !== 'admin') {
       // For non-admins, we need to implement a simplified filtering approach
       // Non-admins can only see documents that match their role or are unrestricted
       
       // First get all documents that match this user's role
       // Use proper JSONB query syntax with ->> for text extraction
-      // Cast role_type to string to fix TypeScript error
-      const userRoleType = userProfile.role_type as string
-      const { data: roleMatchDocs } = await supabase
+      // Use role_type directly
+      const userRoleType = userProfile.role_type || ''
+      const { data: roleMatchDocs } = userRoleType ? await supabase
         .from('document_visibility')
         .select('document_id')
-        .eq('conditions->>role_type', userRoleType)
+        .eq('conditions->>role_type', userRoleType) : { data: [] }
       
       // Also get documents with no role restriction
       const { data: noRoleDocs } = await supabase
@@ -205,16 +206,16 @@ export async function POST(req: Request) {
       .select('*', { count: 'exact', head: true })
 
     // Apply the same filters as the main query
-    if (categoryId) {
-      countQuery = countQuery.eq('category_id', categoryId)
+    if (document_category_id) {
+      countQuery = countQuery.eq('document_category_id', document_category_id)
     }
     
-    if (uploadedBy && userProfile.role_type === 'admin') {
+    if (uploadedBy && userProfile.role_type && userProfile.role_type.toLowerCase() === 'admin') {
       countQuery = countQuery.eq('uploaded_by', uploadedBy)
     }
     
     // Add visibility filtering to count query for non-admins
-    if (userProfile.role_type !== 'admin' && visibleDocIds && visibleDocIds.length > 0) {
+    if ((!userProfile.role_type || userProfile.role_type.toLowerCase() !== 'admin') && visibleDocIds && visibleDocIds.length > 0) {
       countQuery = countQuery.in('id', visibleDocIds)
     }
     

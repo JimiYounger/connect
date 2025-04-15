@@ -4,7 +4,8 @@ import { z } from "zod";
 export const DocumentUploadSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
-  categoryId: z.string().min(1, "Category is required"),
+  document_category_id: z.string().min(1, "Category is required"),
+  document_subcategory_id: z.string().optional(),
   tags: z.array(z.string()).optional(),
   versionLabel: z.string().optional(),
   visibility: z.object({

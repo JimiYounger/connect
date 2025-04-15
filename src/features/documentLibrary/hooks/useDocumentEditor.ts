@@ -18,7 +18,8 @@ interface DocumentData {
   id: string
   title: string
   description: string | null
-  category_id: string
+  document_category_id: string
+  // TODO: Add document_subcategory_id when implemented
   current_version_id: string
   uploaded_by: string
   created_at: string
@@ -53,7 +54,7 @@ export function useDocumentEditor({ documentId }: DocumentEditorProps) {
   // Form state
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [categoryId, setCategoryId] = useState('')
+  const [document_category_id, setDocumentCategoryId] = useState('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [visibility, setVisibility] = useState<any>({
     roleTypes: [],
@@ -83,7 +84,7 @@ export function useDocumentEditor({ documentId }: DocumentEditorProps) {
           id,
           title,
           description,
-          category_id,
+          document_category_id,
           current_version_id,
           uploaded_by,
           created_at,
@@ -218,7 +219,7 @@ export function useDocumentEditor({ documentId }: DocumentEditorProps) {
         body: JSON.stringify({
           title: documentData.title,
           description: documentData.description,
-          category_id: documentData.category_id,
+          document_category_id: documentData.document_category_id,
           tags: documentData.tags,
           visibility: documentData.visibility
         })
@@ -379,7 +380,7 @@ export function useDocumentEditor({ documentId }: DocumentEditorProps) {
     if (document) {
       setTitle(document.title || '')
       setDescription(document.description || '')
-      setCategoryId(document.category_id || '')
+      setDocumentCategoryId(document.document_category_id || '')
       // Filter out any null values from tag IDs and ensure string type
       const tagIds = document.tags?.map(tag => tag.id)
         .filter((id): id is string => id !== null && id !== undefined) || []
@@ -398,11 +399,11 @@ export function useDocumentEditor({ documentId }: DocumentEditorProps) {
     updateDocumentMutation.mutate({
       title,
       description,
-      category_id: categoryId,
+      document_category_id,
       tags: selectedTags.map(id => ({ id, name: allTags.find(tag => tag.id === id)?.name || '' })),
       visibility
     })
-  }, [title, description, categoryId, selectedTags, visibility, allTags, updateDocumentMutation])
+  }, [title, description, document_category_id, selectedTags, visibility, allTags, updateDocumentMutation])
   
   // Handle tag selection
   const handleTagChange = useCallback((tagId: string) => {
@@ -430,8 +431,8 @@ export function useDocumentEditor({ documentId }: DocumentEditorProps) {
     setTitle,
     description,
     setDescription,
-    categoryId,
-    setCategoryId,
+    document_category_id,
+    setDocumentCategoryId,
     selectedTags,
     setSelectedTags,
     visibility,

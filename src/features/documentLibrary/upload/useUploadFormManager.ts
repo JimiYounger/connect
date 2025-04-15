@@ -6,6 +6,7 @@ import type { RoleAssignments } from '@/features/carousel/types'
 type DocumentFormData = {
   selectedTags: string[]
   visibility: RoleAssignments
+  selectedCategoryId?: string
 }
 
 export type DocumentForm = {
@@ -28,6 +29,7 @@ export function useUploadFormManager() {
       file,
       data: {
         selectedTags: [],
+        selectedCategoryId: undefined,
         visibility: {
           roleTypes: [],
           teams: [],

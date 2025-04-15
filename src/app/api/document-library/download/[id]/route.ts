@@ -52,7 +52,7 @@ export async function GET(
       .select(`
         id,
         title,
-        category_id,
+        document_category_id,
         current_version_id,
         document_versions (
           id,
@@ -74,7 +74,7 @@ export async function GET(
 
     // Check document visibility (access control)
     // Skip for admins
-    if (userProfile.role_type !== 'Admin') {
+    if (userProfile.role_type.toLowerCase() !== 'admin') {
       const { data: visibilityData } = await supabase
         .from('document_visibility')
         .select('conditions')
@@ -82,8 +82,8 @@ export async function GET(
         .single()
 
       if (visibilityData && visibilityData.conditions) {
-        // Type assertion to treat conditions as a Record with string keys and any values
-        const conditions = visibilityData.conditions as Record<string, any>;
+        // Treat conditions as a Record with string keys and any values
+        const conditions = visibilityData.conditions;
         
         // Helper function to safely check array length
         const hasItems = (arr: any[] | undefined | null): boolean => 

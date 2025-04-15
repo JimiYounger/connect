@@ -451,6 +451,41 @@ export type Database = {
           },
         ]
       }
+      document_subcategories: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          document_category_id: string
+          id: string
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          document_category_id: string
+          id?: string
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          document_category_id?: string
+          id?: string
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_subcategories_document_category_id_fkey"
+            columns: ["document_category_id"]
+            isOneToOne: false
+            referencedRelation: "document_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_tag_assignments: {
         Row: {
           document_id: string | null
@@ -562,31 +597,37 @@ export type Database = {
       }
       documents: {
         Row: {
-          category_id: string | null
           created_at: string | null
           current_version_id: string | null
           description: string | null
+          document_category_id: string | null
+          document_subcategory_id: string | null
           id: string
+          subcategory_id: string | null
           title: string
           updated_at: string | null
           uploaded_by: string | null
         }
         Insert: {
-          category_id?: string | null
           created_at?: string | null
           current_version_id?: string | null
           description?: string | null
+          document_category_id?: string | null
+          document_subcategory_id?: string | null
           id?: string
+          subcategory_id?: string | null
           title: string
           updated_at?: string | null
           uploaded_by?: string | null
         }
         Update: {
-          category_id?: string | null
           created_at?: string | null
           current_version_id?: string | null
           description?: string | null
+          document_category_id?: string | null
+          document_subcategory_id?: string | null
           id?: string
+          subcategory_id?: string | null
           title?: string
           updated_at?: string | null
           uploaded_by?: string | null
@@ -594,9 +635,30 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "documents_category_id_fkey"
-            columns: ["category_id"]
+            columns: ["document_category_id"]
             isOneToOne: false
             referencedRelation: "document_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_document_category_id_fkey"
+            columns: ["document_category_id"]
+            isOneToOne: false
+            referencedRelation: "document_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_document_subcategory_id_fkey"
+            columns: ["document_subcategory_id"]
+            isOneToOne: false
+            referencedRelation: "document_subcategories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_subcategory_id_fkey"
+            columns: ["subcategory_id"]
+            isOneToOne: false
+            referencedRelation: "document_subcategories"
             referencedColumns: ["id"]
           },
           {

@@ -5,7 +5,8 @@ import { NextResponse } from 'next/server'
 interface DocumentUpdateData {
   title?: string
   description?: string | null
-  category_id?: string
+  document_category_id?: string
+  // TODO: Add document_subcategory_id support when implemented
   tags?: { id: string; name: string }[]
   visibility?: {
     roleTypes?: string[]
@@ -97,14 +98,14 @@ export async function PATCH(
     let errorMessage = ''
     
     // 1. Update the document record
-    if (updateData.title || updateData.description || updateData.category_id) {
+    if (updateData.title || updateData.description || updateData.document_category_id) {
       const updateFields: any = {
         updated_at: timestamp
       }
       
       if (updateData.title) updateFields.title = updateData.title
       if (updateData.description !== undefined) updateFields.description = updateData.description
-      if (updateData.category_id) updateFields.category_id = updateData.category_id
+      if (updateData.document_category_id) updateFields.document_category_id = updateData.document_category_id
       
       const { error } = await supabase
         .from('documents')

@@ -39,7 +39,8 @@ export interface Document {
 
 // Filter parameters for document list
 export interface DocumentFilters {
-  categoryId?: string;
+  document_category_id?: string;
+  // TODO: Add document_subcategory_id filter support
   tags?: string[];
   uploadedBy?: string;
   searchQuery?: string;

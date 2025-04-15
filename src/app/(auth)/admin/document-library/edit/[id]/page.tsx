@@ -35,7 +35,8 @@ interface DocumentData {
   id: string
   title: string
   description: string | null
-  category_id: string
+  document_category_id: string
+  // TODO: Add document_subcategory_id when implemented
   current_version_id: string
   uploaded_by: string
   created_at: string
@@ -91,7 +92,7 @@ export default function DocumentEditPage() {
           id,
           title,
           description,
-          category_id,
+          document_category_id,
           current_version_id,
           uploaded_by,
           created_at,
@@ -226,7 +227,7 @@ export default function DocumentEditPage() {
         body: JSON.stringify({
           title: documentData.title,
           description: documentData.description,
-          category_id: documentData.category_id,
+          document_category_id: documentData.document_category_id,
           tags: documentData.tags,
           visibility: documentData.visibility
         })
@@ -520,7 +521,7 @@ export default function DocumentEditPage() {
     if (document) {
       setTitle(document.title || '')
       setDescription(document.description || '')
-      setCategoryId(document.category_id || '')
+      setCategoryId(document.document_category_id || '')
       // Filter out any null values from tag IDs and ensure string type
       const tagIds = document.tags?.map(tag => tag.id)
         .filter((id): id is string => id !== null && id !== undefined) || []
@@ -539,7 +540,7 @@ export default function DocumentEditPage() {
     updateDocumentMutation.mutate({
       title,
       description,
-      category_id: categoryId,
+      document_category_id: categoryId,
       tags: selectedTags.map(id => ({ id, name: allTags.find(tag => tag.id === id)?.name || '' })),
       visibility
     })

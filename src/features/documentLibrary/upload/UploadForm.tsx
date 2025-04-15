@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useCallback } from 'react'
+import { useRef, useState, useCallback, useEffect } from 'react'
 import { X, Check, Upload, File as FileIcon, AlertTriangle, Plus, Search, Tag } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -18,6 +18,7 @@ import { RoleSelector } from '@/features/carousel/components/RoleSelector'
 import { DocumentUploadSchema, DocumentUploadInput } from './schema'
 import { useUploadFormManager } from './useUploadFormManager'
 import { handleUploadDocuments } from './handleUploadDocuments'
+import { createClient } from '@/lib/supabase'
 
 // Multi-select tag component with search and creation
 function TagSelector({ 
@@ -172,6 +173,113 @@ function TagSelector({
   )
 }
 
+// Subcategory select component
+function SubcategorySelect({ 
+  formEntryId, 
+  categoryId 
+}: { 
+  formEntryId: string
+  categoryId: string 
+}) {
+  const { subcategories, loading, error } = useSubcategories(categoryId)
+  
+  if (loading) {
+    return (
+      <div className="mt-2">
+        <Label htmlFor={`subcategory-${formEntryId}`}>Subcategory</Label>
+        <Select disabled name="document_subcategory_id">
+          <SelectTrigger id={`subcategory-${formEntryId}`}>
+            <SelectValue placeholder="Loading subcategories..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">Loading...</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    )
+  }
+  
+  if (error) {
+    return (
+      <div className="mt-2">
+        <Label htmlFor={`subcategory-${formEntryId}`}>Subcategory</Label>
+        <div className="text-sm text-red-500">Error loading subcategories</div>
+      </div>
+    )
+  }
+  
+  if (subcategories.length === 0) {
+    return (
+      <div className="mt-2">
+        <Label htmlFor={`subcategory-${formEntryId}`}>Subcategory</Label>
+        <div className="text-sm text-muted-foreground">No subcategories available for this category</div>
+      </div>
+    )
+  }
+  
+  return (
+    <div className="mt-2">
+      <Label htmlFor={`subcategory-${formEntryId}`}>Subcategory</Label>
+      <Select name="document_subcategory_id">
+        <SelectTrigger id={`subcategory-${formEntryId}`}>
+          <SelectValue placeholder="Select a subcategory" />
+        </SelectTrigger>
+        <SelectContent>
+          {subcategories.map(subcategory => (
+            <SelectItem key={subcategory.id} value={subcategory.id}>
+              {subcategory.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  )
+}
+
+// Hook to fetch subcategories based on selected category ID
+function useSubcategories(categoryId?: string) {
+  const [subcategories, setSubcategories] = useState<{ id: string; name: string; document_category_id: string }[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  
+  useEffect(() => {
+    async function fetchSubcategories() {
+      if (!categoryId) {
+        setSubcategories([])
+        return
+      }
+      
+      setLoading(true)
+      setError(null)
+      
+      try {
+        const supabase = createClient()
+        const { data, error } = await supabase
+          .from('document_subcategories')
+          .select('id, name, document_category_id')
+          .eq('document_category_id', categoryId)
+          .order('name')
+        
+        if (error) {
+          throw new Error(error.message)
+        }
+        
+        setSubcategories(data || [])
+      } catch (err) {
+        console.error('Error fetching subcategories:', err)
+        setError(err instanceof Error ? err.message : 'Unknown error occurred')
+        setSubcategories([])
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    fetchSubcategories()
+  }, [categoryId])
+  
+  return { subcategories, loading, error }
+}
+
 export type UploadFormProps = {
   categories: { id: string; name: string }[]
   allTags: string[]
@@ -205,8 +313,10 @@ export function UploadForm({ categories, allTags, userId, onUploadSuccess }: Upl
         const formData = new FormData(formControl)
         const title = formData.get('title') as string
         const description = formData.get('description') as string
-        const categoryId = formData.get('categoryId') as string
-        console.log('Form categoryId value:', categoryId, 'type:', typeof categoryId)
+        const document_category_id = formData.get('document_category_id') as string
+        console.log('Form document_category_id value:', document_category_id, 'type:', typeof document_category_id)
+        const document_subcategory_id = formData.get('document_subcategory_id') as string || undefined
+        console.log('Form document_subcategory_id value:', document_subcategory_id, 'type:', typeof document_subcategory_id)
         const versionLabel = formData.get('versionLabel') as string
         
         // Get selected tags from the form state
@@ -220,7 +330,8 @@ export function UploadForm({ categories, allTags, userId, onUploadSuccess }: Upl
         const documentData = {
           title,
           description,
-          categoryId,
+          document_category_id,
+          document_subcategory_id,
           tags,
           versionLabel,
           visibility,
@@ -368,7 +479,13 @@ export function UploadForm({ categories, allTags, userId, onUploadSuccess }: Upl
                     
                     <div className="grid gap-2">
                       <Label htmlFor={`category-${formEntry.id}`}>Category <span className="text-red-500">*</span></Label>
-                      <Select name="categoryId" required>
+                      <Select 
+                        name="document_category_id" 
+                        required
+                        onValueChange={(value) => {
+                          updateFormData(formEntry.id, { selectedCategoryId: value });
+                        }}
+                      >
                         <SelectTrigger id={`category-${formEntry.id}`}>
                           <SelectValue placeholder="Select a category" />
                         </SelectTrigger>
@@ -380,6 +497,14 @@ export function UploadForm({ categories, allTags, userId, onUploadSuccess }: Upl
                           ))}
                         </SelectContent>
                       </Select>
+                      
+                      {/* Subcategory field - only shown if a category is selected */}
+                      {formEntry.data.selectedCategoryId && (
+                        <SubcategorySelect
+                          formEntryId={formEntry.id}
+                          categoryId={formEntry.data.selectedCategoryId}
+                        />
+                      )}
                     </div>
                     
                     <div className="grid gap-2">

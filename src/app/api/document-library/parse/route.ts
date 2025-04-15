@@ -24,7 +24,7 @@ interface RequestBody {
 export async function POST(req: Request) {
   try {
     // Parse incoming request
-    const body = await req.json() as RequestBody
+    const body = await req.json()
     const { fileUrl, documentId, versionId } = body
 
     if (!fileUrl || !documentId) {

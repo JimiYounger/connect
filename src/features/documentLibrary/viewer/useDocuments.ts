@@ -12,7 +12,7 @@ import { DocumentFilters, DocumentListResponse, PaginationInfo } from './types'
 export function useDocuments(initialFilters: DocumentFilters = {}) {
   // State is managed through the query key
   const {
-    categoryId,
+    document_category_id,
     tags,
     uploadedBy,
     searchQuery,
@@ -30,7 +30,7 @@ export function useDocuments(initialFilters: DocumentFilters = {}) {
     isPending,
     isSuccess
   } = useQuery({
-    queryKey: ['documents', { categoryId, tags, uploadedBy, searchQuery, page, limit }],
+    queryKey: ['documents', { document_category_id, tags, uploadedBy, searchQuery, page, limit }],
     queryFn: async () => {
       const response = await fetch('/api/document-library/list', {
         method: 'POST',
@@ -38,7 +38,7 @@ export function useDocuments(initialFilters: DocumentFilters = {}) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          categoryId,
+          document_category_id,
           tags,
           uploadedBy,
           searchQuery,

@@ -127,7 +127,7 @@ export async function insertDocumentWithRelations(input: InsertInput): Promise<I
     // Log the document data we're about to insert
     console.log('📝 Attempting to insert document with:', {
       title: document.title,
-      category_id: document.categoryId,
+      document_category_id: document.document_category_id,
       uploaded_by: profileId  // Log the profile ID we're using
     })
     
@@ -137,7 +137,8 @@ export async function insertDocumentWithRelations(input: InsertInput): Promise<I
       .insert({
         title: document.title,
         description: document.description || null,
-        category_id: document.categoryId,
+        document_category_id: document.document_category_id,
+        document_subcategory_id: document.document_subcategory_id || null,
         uploaded_by: profileId, // Use profile ID instead of auth user ID
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()

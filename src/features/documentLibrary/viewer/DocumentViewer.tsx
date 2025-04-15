@@ -58,7 +58,7 @@ export function DocumentViewer({
   const handleCategoryChange = useCallback((value: string) => {
     setFilters(prev => ({
       ...prev,
-      categoryId: value === 'all' ? undefined : value,
+      document_category_id: value === 'all' ? undefined : value,
       page: 1 // Reset to first page when changing filters
     }))
   }, [])
@@ -269,7 +269,7 @@ export function DocumentViewer({
           <div>
             <label className="text-sm font-medium mb-1 block">Category</label>
             <Select 
-              value={filters.categoryId || 'all'} 
+              value={filters.document_category_id || 'all'} 
               onValueChange={handleCategoryChange}
             >
               <SelectTrigger>
@@ -306,7 +306,7 @@ export function DocumentViewer({
               onClick={resetFilters} 
               variant="outline" 
               className="w-full"
-              disabled={!filters.categoryId && !filters.tags?.length && !filters.searchQuery}
+              disabled={!filters.document_category_id && !filters.tags?.length && !filters.searchQuery}
             >
               Reset Filters
             </Button>
@@ -365,7 +365,7 @@ export function DocumentViewer({
           <div className="w-full text-center py-8">
             <div className="text-red-500 mb-2">Error loading documents</div>
             <p className="text-sm text-muted-foreground mb-4">
-              {error instanceof Error ? error.message : 'Unknown error occurred'}
+              {error && typeof error === 'object' && 'message' in error ? error.message : 'Unknown error occurred'}
             </p>
             <Button onClick={() => refetch()}>Try Again</Button>
           </div>
