@@ -192,7 +192,7 @@ function SubcategorySelect({
             <SelectValue placeholder="Loading subcategories..." />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Loading...</SelectItem>
+            <SelectItem value="_loading" disabled>Loading...</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -225,6 +225,7 @@ function SubcategorySelect({
           <SelectValue placeholder="Select a subcategory" />
         </SelectTrigger>
         <SelectContent>
+          <SelectItem value="_none" key="_none">None</SelectItem>
           {subcategories.map(subcategory => (
             <SelectItem key={subcategory.id} value={subcategory.id}>
               {subcategory.name}
@@ -315,7 +316,11 @@ export function UploadForm({ categories, allTags, userId, onUploadSuccess }: Upl
         const description = formData.get('description') as string
         const document_category_id = formData.get('document_category_id') as string
         console.log('Form document_category_id value:', document_category_id, 'type:', typeof document_category_id)
-        const document_subcategory_id = formData.get('document_subcategory_id') as string || undefined
+        let document_subcategory_id = formData.get('document_subcategory_id') as string || undefined
+        // Convert "_none" value to undefined
+        if (document_subcategory_id === "_none") {
+          document_subcategory_id = undefined
+        }
         console.log('Form document_subcategory_id value:', document_subcategory_id, 'type:', typeof document_subcategory_id)
         const versionLabel = formData.get('versionLabel') as string
         
