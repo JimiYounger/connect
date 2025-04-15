@@ -34,7 +34,7 @@ export function UploadModal({ onUploadSuccess }: UploadModalProps) {
   })
 
   // Fetch categories
-  const { data: categories = [] } = useQuery({
+  const { data: categories = [], refetch: refetchCategories } = useQuery({
     queryKey: ['documentCategories'],
     queryFn: async () => {
       const supabase = createClient()
@@ -102,6 +102,7 @@ export function UploadModal({ onUploadSuccess }: UploadModalProps) {
             allTags={allTags} 
             userId={userId}
             onUploadSuccess={handleUploadSuccess}
+            onCategoryCreated={() => refetchCategories()}
           />
         )}
       </DialogContent>

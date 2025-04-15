@@ -286,10 +286,159 @@ export type UploadFormProps = {
   allTags: string[]
   userId: string
   onUploadSuccess?: () => void
+  onCategoryCreated?: () => void
 }
 
-export function UploadForm({ categories, allTags, userId, onUploadSuccess }: UploadFormProps) {
+// New component for category selection with "Create New" option
+function CategorySelectWithCreate({ 
+  formEntryId,
+  categories,
+  value,
+  onChange,
+  onCreateNew
+}: { 
+  formEntryId: string;
+  categories: { id: string; name: string }[];
+  value?: string;
+  onChange: (value: string) => void;
+  onCreateNew: (name: string) => Promise<string | null>;
+}) {
+  const [isCreating, setIsCreating] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  
+  // Focus the input when entering creation mode
+  useEffect(() => {
+    if (isCreating && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isCreating]);
+  
+  const handleCreateTrigger = useCallback(() => {
+    setIsCreating(true);
+    setNewCategoryName('');
+  }, []);
+  
+  const handleCancel = useCallback(() => {
+    setIsCreating(false);
+    setNewCategoryName('');
+  }, []);
+  
+  const handleSubmit = useCallback(async () => {
+    if (!newCategoryName.trim()) return;
+    
+    try {
+      setIsSubmitting(true);
+      const newCategoryId = await onCreateNew(newCategoryName.trim());
+      
+      if (newCategoryId) {
+        // Wait for a tiny bit to let the parent component update the categories list
+        setTimeout(() => {
+          onChange(newCategoryId);
+          setIsCreating(false);
+        }, 100);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [newCategoryName, onChange, onCreateNew]);
+  
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSubmit();
+    } else if (e.key === 'Escape') {
+      handleCancel();
+    }
+  }, [handleSubmit, handleCancel]);
+  
+  if (isCreating) {
+    return (
+      <div className="flex flex-col gap-2">
+        <Label htmlFor={`new-category-${formEntryId}`}>Category <span className="text-red-500">*</span></Label>
+        <div className="flex gap-2 items-center">
+          <Input
+            id={`new-category-${formEntryId}`}
+            ref={inputRef}
+            value={newCategoryName}
+            onChange={(e) => setNewCategoryName(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Enter new category name"
+            disabled={isSubmitting}
+            className="flex-1"
+          />
+          <Button 
+            type="button" 
+            size="sm" 
+            onClick={handleSubmit} 
+            disabled={!newCategoryName.trim() || isSubmitting}
+          >
+            {isSubmitting ? (
+              <span className="flex items-center gap-1">
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                <span>Saving</span>
+              </span>
+            ) : "Save"}
+          </Button>
+          <Button 
+            type="button" 
+            size="sm" 
+            variant="outline" 
+            onClick={handleCancel}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+        </div>
+        <input 
+          type="hidden" 
+          name="document_category_id" 
+          value={value || ''} 
+        />
+      </div>
+    );
+  }
+  
+  return (
+    <div className="grid gap-2">
+      <Label htmlFor={`category-${formEntryId}`}>Category <span className="text-red-500">*</span></Label>
+      <Select 
+        name="document_category_id" 
+        required
+        value={value}
+        onValueChange={(value) => {
+          if (value === '_create_new') {
+            handleCreateTrigger();
+          } else {
+            onChange(value);
+          }
+        }}
+      >
+        <SelectTrigger id={`category-${formEntryId}`}>
+          <SelectValue placeholder="Select a category" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="_create_new" className="text-primary font-medium">
+            ➕ Create New Category
+          </SelectItem>
+          {categories.map(category => (
+            <SelectItem key={category.id} value={category.id}>
+              {category.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+export function UploadForm({ categories, allTags, userId, onUploadSuccess, onCategoryCreated }: UploadFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [localCategories, setLocalCategories] = useState(categories);
   const { 
     documentForms, 
     handleFileChange, 
@@ -297,6 +446,66 @@ export function UploadForm({ categories, allTags, userId, onUploadSuccess }: Upl
     updateFormData, 
     clearAll 
   } = useUploadFormManager()
+  
+  // Update local categories when prop changes
+  useEffect(() => {
+    setLocalCategories(categories);
+  }, [categories]);
+  
+  // Handler to create a new category in the database
+  const handleCreateCategory = useCallback(async (name: string): Promise<string | null> => {
+    try {
+      const supabase = createClient();
+      
+      // Insert the new category
+      const { data, error } = await supabase
+        .from('document_categories')
+        .insert({ name })
+        .select('id, name')
+        .single();
+      
+      if (error) {
+        if (error.code === '23505') { // Unique constraint violation
+          toast({
+            title: "Category already exists",
+            description: "A category with this name already exists.",
+            variant: "destructive"
+          });
+        } else {
+          console.error('Error creating category:', error);
+          toast({
+            title: "Failed to create category",
+            description: error.message,
+            variant: "destructive"
+          });
+        }
+        return null;
+      }
+      
+      // Update local categories state with the new one
+      setLocalCategories(prev => [...prev, data]);
+      
+      // Notify parent component to refresh categories
+      if (onCategoryCreated) {
+        onCategoryCreated();
+      }
+      
+      toast({
+        title: "Category created",
+        description: `"${name}" category was successfully created.`
+      });
+      
+      return data.id;
+    } catch (err) {
+      console.error('Error creating category:', err);
+      toast({
+        title: "Error",
+        description: "Failed to create new category. Please try again.",
+        variant: "destructive"
+      });
+      return null;
+    }
+  }, [onCategoryCreated]);
   
   const handleSubmit = useCallback(async () => {
     try {
@@ -483,25 +692,15 @@ export function UploadForm({ categories, allTags, userId, onUploadSuccess }: Upl
                     </div>
                     
                     <div className="grid gap-2">
-                      <Label htmlFor={`category-${formEntry.id}`}>Category <span className="text-red-500">*</span></Label>
-                      <Select 
-                        name="document_category_id" 
-                        required
-                        onValueChange={(value) => {
+                      <CategorySelectWithCreate
+                        formEntryId={formEntry.id}
+                        categories={localCategories}
+                        value={formEntry.data.selectedCategoryId}
+                        onChange={(value) => {
                           updateFormData(formEntry.id, { selectedCategoryId: value });
                         }}
-                      >
-                        <SelectTrigger id={`category-${formEntry.id}`}>
-                          <SelectValue placeholder="Select a category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map(category => (
-                            <SelectItem key={category.id} value={category.id}>
-                              {category.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        onCreateNew={handleCreateCategory}
+                      />
                       
                       {/* Subcategory field - only shown if a category is selected */}
                       {formEntry.data.selectedCategoryId && (
