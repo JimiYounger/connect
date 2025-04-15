@@ -217,86 +217,29 @@ export default function DocumentEditPage() {
   // Mutation to update document metadata
   const updateDocumentMutation = useMutation({
     mutationFn: async (documentData: Partial<DocumentData>) => {
-      const supabase = createClient()
-      
-      // First update the document record
-      const { error: documentError } = await supabase
-        .from('documents')
-        .update({
+      // Use the dedicated API endpoint to handle updates atomically
+      const response = await fetch(`/api/document-library/update/${documentId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
           title: documentData.title,
           description: documentData.description,
           category_id: documentData.category_id,
-          updated_at: new Date().toISOString()
+          tags: documentData.tags,
+          visibility: documentData.visibility
         })
-        .eq('id', documentId)
+      })
       
-      if (documentError) throw new Error(documentError.message)
+      const result = await response.json()
       
-      // Then handle tags if provided
-      if (documentData.tags) {
-        // First remove all existing tag assignments
-        const { error: deleteTagsError } = await supabase
-          .from('document_tag_assignments')
-          .delete()
-          .eq('document_id', documentId)
-        
-        if (deleteTagsError) throw new Error(deleteTagsError.message)
-        
-        // Then add the new tag assignments
-        if (documentData.tags.length > 0) {
-          const tagAssignments = documentData.tags.map(tag => ({
-            document_id: documentId,
-            tag_id: tag.id
-          }))
-          
-          const { error: insertTagsError } = await supabase
-            .from('document_tag_assignments')
-            .insert(tagAssignments)
-          
-          if (insertTagsError) throw new Error(insertTagsError.message)
-        }
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update document')
       }
       
-      // Finally handle visibility settings if provided
-      if (documentData.visibility) {
-        const visibility = documentData.visibility
-        
-        // Format visibility for database
-        const conditions: Record<string, any> = {}
-        
-        if (visibility.roleTypes?.length) {
-          conditions.role_type = visibility.roleTypes[0]
-        }
-        
-        if (visibility.teams?.length) {
-          conditions.teams = visibility.teams
-        }
-        
-        if (visibility.areas?.length) {
-          conditions.areas = visibility.areas
-        }
-        
-        if (visibility.regions?.length) {
-          conditions.regions = visibility.regions
-        }
-        
-        // Delete existing visibility settings
-        const { error: deleteVisibilityError } = await supabase
-          .from('document_visibility')
-          .delete()
-          .eq('document_id', documentId)
-        
-        if (deleteVisibilityError) throw new Error(deleteVisibilityError.message)
-        
-        // Insert new visibility settings
-        const { error: insertVisibilityError } = await supabase
-          .from('document_visibility')
-          .insert({
-            document_id: documentId,
-            conditions
-          })
-        
-        if (insertVisibilityError) throw new Error(insertVisibilityError.message)
+      if (!result.success) {
+        throw new Error(result.error || 'Unknown error during document update')
       }
       
       return true

@@ -8,6 +8,7 @@ import { createWorker } from 'tesseract.js'
 interface RequestBody {
   fileUrl: string
   documentId: string
+  versionId?: string // Optional version ID parameter
 }
 
 /**
@@ -24,13 +25,20 @@ export async function POST(req: Request) {
   try {
     // Parse incoming request
     const body = await req.json() as RequestBody
-    const { fileUrl, documentId } = body
+    const { fileUrl, documentId, versionId } = body
 
     if (!fileUrl || !documentId) {
       return NextResponse.json(
         { success: false, error: 'File URL and document ID are required' },
         { status: 400 }
       )
+    }
+    
+    // Log important parameters
+    console.log(`Processing document: ${documentId}, version: ${versionId || 'unknown'}, URL: ${fileUrl}`)
+    
+    if (!versionId) {
+      console.warn('No version ID provided - this might cause issues with version tracking')
     }
 
     // Get file extension to determine parser
@@ -141,32 +149,31 @@ export async function POST(req: Request) {
       // Store the content in Supabase
       const supabase = await createClient()
       
-      // Check if entry already exists and update, or insert new
+      // Store the content in document_content, handling versioning if applicable
+      let result;
+      
+      // Check if an entry already exists for this document
+      // For the content table, we're just going to replace the content for the 
+      // document regardless of version, since that seems to be how the schema is set up
       const { data: existingContent } = await supabase
         .from('document_content')
         .select('id')
         .eq('document_id', documentId)
         .single()
 
-      let result
+      // Use upsert to handle both insert and update cases in one operation
+      console.log(`Upserting content for document ${documentId}`)
       
-      if (existingContent) {
-        // Update existing content
-        result = await supabase
-          .from('document_content')
-          .update({ content: extractedText, updated_at: new Date().toISOString() })
-          .eq('document_id', documentId)
-      } else {
-        // Insert new content
-        result = await supabase
-          .from('document_content')
-          .insert({
-            document_id: documentId,
-            content: extractedText,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-      }
+      result = await supabase
+        .from('document_content')
+        .upsert({
+          document_id: documentId,
+          content: extractedText,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'document_id',
+          ignoreDuplicates: false
+        })
 
       if (result.error) {
         console.error('Error saving document content:', result.error)
@@ -190,7 +197,7 @@ export async function POST(req: Request) {
           throw new Error('Chunking algorithm produced no chunks')
         }
         
-        // First, delete any existing chunks for this document to avoid duplicates
+        // Delete existing chunks for this document
         console.log(`Deleting existing chunks for document: ${documentId}`)
         const { error: deleteError } = await supabase
           .from('document_chunks')
@@ -202,14 +209,13 @@ export async function POST(req: Request) {
           // Continue anyway - attempted to clear
         }
         
-        // Store each chunk in the database
+        // Store each chunk in the database - based on existing schema
         const timestamp = new Date().toISOString()
         const chunksToInsert = chunks.map((chunk, index) => ({
           document_id: documentId,
           chunk_index: index,
           content: chunk,
-          created_at: timestamp,
-          updated_at: timestamp
+          created_at: timestamp
         }))
         
         console.log(`Preparing to insert ${chunksToInsert.length} chunks for document: ${documentId}`)
@@ -218,11 +224,15 @@ export async function POST(req: Request) {
           content: chunksToInsert[0]?.content?.substring(0, 50) + '...' || 'No content'
         })
         
-        // Check if the updated_at field is causing issues (might not be in the schema)
+        // Filter out any fields that might not be in the schema
         const cleanedChunksToInsert = chunksToInsert.map(chunk => {
-          // Create a new object without the updated_at field
-          const { updated_at, ...rest } = chunk;
-          return rest;
+          // Keep only fields we know are in the schema
+          return {
+            document_id: chunk.document_id,
+            chunk_index: chunk.chunk_index,
+            content: chunk.content,
+            created_at: chunk.created_at
+          };
         });
         
         console.log('Attempting insert with cleaned chunks (removed updated_at field)')

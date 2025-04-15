@@ -8,6 +8,8 @@
  * with a background job system like Upstash QStash in the future.
  */
 
+import { createClient } from '@/lib/supabase'
+
 interface DocumentParseInput {
   documentId: string;
   fileUrl: string;
