@@ -603,6 +603,7 @@ export type Database = {
           document_category_id: string | null
           document_subcategory_id: string | null
           id: string
+          preview_image_url: string | null
           subcategory_id: string | null
           title: string
           updated_at: string | null
@@ -615,6 +616,7 @@ export type Database = {
           document_category_id?: string | null
           document_subcategory_id?: string | null
           id?: string
+          preview_image_url?: string | null
           subcategory_id?: string | null
           title: string
           updated_at?: string | null
@@ -627,6 +629,7 @@ export type Database = {
           document_category_id?: string | null
           document_subcategory_id?: string | null
           id?: string
+          preview_image_url?: string | null
           subcategory_id?: string | null
           title?: string
           updated_at?: string | null
@@ -1610,6 +1613,14 @@ export type Database = {
       binary_quantize: {
         Args: { "": string } | { "": unknown }
         Returns: unknown
+      }
+      delete_category_and_reassign: {
+        Args: {
+          p_category_id: string
+          p_fallback_category_id: string
+          p_document_overrides: Json
+        }
+        Returns: Json
       }
       get_navigation_for_user: {
         Args: {
