@@ -1388,14 +1388,8 @@ function DeleteSubcategoryModal({
   const [step, setStep] = useState<'prepare' | 'confirm'>('prepare');
   const [error, setError] = useState<string | null>(null);
   
-  // Load documents and subcategory details
-  useEffect(() => {
-    if (open && subcategoryId) {
-      loadDeleteDetails();
-    }
-  }, [open, subcategoryId]);
-  
-  const loadDeleteDetails = async () => {
+  // Use useCallback to memoize the loadDeleteDetails function
+  const loadDeleteDetails = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     
@@ -1439,7 +1433,14 @@ function DeleteSubcategoryModal({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [subcategoryId, toast]); // Add dependencies
+  
+  // Load documents and subcategory details
+  useEffect(() => {
+    if (open && subcategoryId) {
+      loadDeleteDetails();
+    }
+  }, [open, subcategoryId, loadDeleteDetails]); // Added loadDeleteDetails to dependency array
   
   const handleConfirmDelete = async () => {
     setIsLoading(true);

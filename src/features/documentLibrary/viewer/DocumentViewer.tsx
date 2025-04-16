@@ -10,9 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatDistanceToNow } from 'date-fns'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase'
 import { Label } from '@/components/ui/label'
-import { Checkbox } from '@/components/ui/checkbox'
 import { CategoryManagementModal } from '../management/CategoryManagementModal'
 
 export interface DocumentViewerProps {
@@ -145,8 +143,8 @@ export function DocumentViewer({
     }));
   }, []);
   
-  // Add individual filter reset handlers
-  const clearCategoryFilter = useCallback(() => {
+  // Add individual filter reset handlers - prefixing with _ to indicate they're not used currently
+  const _clearCategoryFilter = useCallback(() => {
     setFilters(prev => ({
       ...prev,
       document_category_id: undefined,
@@ -155,7 +153,7 @@ export function DocumentViewer({
     }));
   }, []);
 
-  const clearSubcategoryFilter = useCallback(() => {
+  const _clearSubcategoryFilter = useCallback(() => {
     setFilters(prev => ({
       ...prev,
       document_subcategory_id: undefined,

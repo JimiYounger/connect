@@ -25,11 +25,6 @@ interface CategoryManagementModalProps {
 export function CategoryManagementModal({ type, className }: CategoryManagementModalProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  // Close handler to use when category operations complete
-  const handleClose = () => {
-    setIsOpen(false);
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>

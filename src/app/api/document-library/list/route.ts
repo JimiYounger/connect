@@ -316,8 +316,8 @@ export async function POST(req: Request) {
       // Format tags
       const formattedTags = doc.tags
         ? doc.tags
-            .filter(t => t.tag !== null) // Filter out any null tags
-            .map(t => {
+            .filter((t: { tag: { id: string; name: string } | null }) => t.tag !== null) // Filter out any null tags
+            .map((t: { tag: { id: string; name: string } | null }) => {
               if (!t.tag) return null
               return {
                 id: t.tag.id,
