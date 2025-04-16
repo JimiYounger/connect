@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState, useCallback, useEffect } from 'react'
-import { X, Check, Upload, File as FileIcon, AlertTriangle, Plus, Search, Tag } from 'lucide-react'
+import { X, Upload, File as FileIcon, AlertTriangle, Plus, Search, Tag } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,6 +18,7 @@ import { RoleSelector } from '@/features/carousel/components/RoleSelector'
 import { DocumentUploadSchema, DocumentUploadInput } from './schema'
 import { useUploadFormManager } from './useUploadFormManager'
 import { handleUploadDocuments } from './handleUploadDocuments'
+import { Progress } from '@/components/ui/progress'
 
 // Multi-select tag component with search and creation
 function TagSelector({ 
@@ -684,6 +685,33 @@ function CategorySelectWithCreate({
   );
 }
 
+// FileProgressBar component to display upload progress for a single file
+function FileProgressBar({ 
+  progress, 
+  fileName, 
+  error 
+}: { 
+  progress: number; 
+  fileName: string; 
+  error?: boolean 
+}) {
+  return (
+    <div className="w-full mt-1 mb-3">
+      <div className="flex justify-between items-center mb-1 text-xs">
+        <span className="truncate max-w-[200px]">{fileName}</span>
+        <span>{error ? 'Failed' : `${progress}%`}</span>
+      </div>
+      <Progress 
+        value={error ? 100 : progress} 
+        className={error ? 'bg-destructive/10' : ''} 
+      />
+      {error && (
+        <p className="text-xs mt-1 text-destructive">Upload failed</p>
+      )}
+    </div>
+  )
+}
+
 export function UploadForm({ categories, allTags, userId, onUploadSuccess, onCategoryCreated }: UploadFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [localCategories, setLocalCategories] = useState(categories);
@@ -699,6 +727,17 @@ export function UploadForm({ categories, allTags, userId, onUploadSuccess, onCat
   useEffect(() => {
     setLocalCategories(categories);
   }, [categories]);
+  
+  // Add state for tracking upload progress
+  const [isUploading, setIsUploading] = useState(false);
+  const [fileProgress, setFileProgress] = useState<{ 
+    [index: number]: {
+      progress: number;
+      fileName: string;
+      error: boolean;
+    } 
+  }>({});
+  const [overallProgress, setOverallProgress] = useState(0);
   
   // Handler to create a new category in the database
   const handleCreateCategory = useCallback(async (name: string): Promise<string | null> => {
@@ -762,40 +801,48 @@ export function UploadForm({ categories, allTags, userId, onUploadSuccess, onCat
     }
   }, [onCategoryCreated]);
   
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault()
     try {
+      setIsUploading(true);
+      setFileProgress({});
+      setOverallProgress(0);
+      
       // Create an array to collect valid document data
       const validDocuments: DocumentUploadInput[] = []
       
-      // Collect and validate form data for each document
-      for (const formControl of document.querySelectorAll<HTMLFormElement>(`form[data-document-form]`)) {
+      // Collect and validate form data for each document - now looking for div elements instead of form elements
+      for (const formControl of document.querySelectorAll<HTMLDivElement>(`div[data-document-form]`)) {
         const formId = formControl.dataset.documentId
         const formEntry = documentForms.find(f => f.id === formId)
         
         if (!formEntry) continue
         
-        // Get form data
-        const formData = new FormData(formControl)
-        const title = formData.get('title') as string
-        const description = formData.get('description') as string
-        const document_category_id = formData.get('document_category_id') as string
-        console.log('Form document_category_id value:', document_category_id, 'type:', typeof document_category_id)
-        let document_subcategory_id = formData.get('document_subcategory_id') as string || undefined
+        // Get form data - since we're not using actual form elements anymore, we need to collect values differently
+        const title = formControl.querySelector<HTMLInputElement>('input[name="title"]')?.value || '';
+        const description = formControl.querySelector<HTMLTextAreaElement>('textarea[name="description"]')?.value || '';
+        const document_category_id = formControl.querySelector<HTMLInputElement>('input[name="document_category_id"]')?.value || 
+                                    formEntry.data.selectedCategoryId || '';
+        
+        let document_subcategory_id = formControl.querySelector<HTMLInputElement>('input[name="document_subcategory_id"]')?.value || 
+                                    formEntry.data.selectedSubcategoryId || undefined;
+        
         // Convert empty string or "_none" value to undefined
         if (!document_subcategory_id || document_subcategory_id === "" || document_subcategory_id === "_none") {
           console.log('🔄 Converting document_subcategory_id to undefined:', document_subcategory_id);
           document_subcategory_id = undefined;
         }
-        console.log('Form document_subcategory_id value:', document_subcategory_id, 'type:', typeof document_subcategory_id)
-        const versionLabel = formData.get('versionLabel') as string
+        
+        const versionLabel = formControl.querySelector<HTMLInputElement>('input[name="versionLabel"]')?.value || '';
         
         // Get selected tags from the form state
         const tags = formEntry.data.selectedTags
         
         // Get visibility from the form's visibility field
-        const visibilityFieldJson = formData.get('visibility') as string
-        const visibility = visibilityFieldJson ? JSON.parse(visibilityFieldJson) : undefined
-        
+        const visibilityField = formControl.querySelector<HTMLInputElement>('input[name="visibility"]');
+        const visibilityFieldJson = visibilityField?.value || '{}';
+        const visibility = visibilityFieldJson ? JSON.parse(visibilityFieldJson) : undefined;
+
         // Create document data object
         const documentData = {
           title,
@@ -825,74 +872,133 @@ export function UploadForm({ categories, allTags, userId, onUploadSuccess, onCat
       }
       
       // If all documents are valid, upload them
-      if (validDocuments.length === documentForms.length) {
-        try {
-          console.log('Final valid documents before upload:', JSON.stringify(validDocuments, (key, value) => 
-            key === 'file' ? '[File Object]' : value
-          ))
-          console.log('🔑 UploadForm passing userId to handleUploadDocuments:', userId, 'type:', typeof userId)
-          const uploadResults = await handleUploadDocuments(validDocuments, userId)
+      if (validDocuments.length > 0) {
+        console.log('Final valid documents before upload:', JSON.stringify(validDocuments, (key, value) =>
+          value instanceof File ? value.name : value))
           
-          const { successful, failed } = uploadResults
-          
-          // Clear the form after upload
-          clearAll()
-          
-          // Show appropriate toast notification based on results
-          if (successful.length > 0 && failed.length === 0) {
-            // All uploads succeeded
-            toast({ 
-              title: "Upload Complete", 
-              description: `${successful.length} documents were successfully uploaded.` 
-            })
-            // Call the success callback if provided
-            if (onUploadSuccess) {
-              onUploadSuccess();
-            }
-          } else if (successful.length > 0 && failed.length > 0) {
-            // Some uploads succeeded, some failed
-            toast({ 
-              title: "Partial Upload", 
-              description: `${successful.length} documents uploaded, ${failed.length} failed.`,
-              variant: "default"
-            })
-            // Call the success callback if provided since some uploads succeeded
-            if (onUploadSuccess) {
-              onUploadSuccess();
-            }
-          } else {
-            // All uploads failed
-            toast({ 
-              title: "Upload Failed", 
-              description: "All document uploads failed. Check console for details.", 
-              variant: "destructive" 
-            })
+        console.log('🔑 UploadForm passing userId to handleUploadDocuments:', userId, 'type:', typeof userId)
+        
+        // Track progress during upload
+        const uploadResults = await handleUploadDocuments(
+          validDocuments, 
+          userId,
+          (fileIndex, progress, fileName) => {
+            setFileProgress(prev => ({
+              ...prev,
+              [fileIndex]: {
+                progress: progress < 0 ? 0 : progress,
+                fileName,
+                error: progress < 0
+              }
+            }));
+            
+            // Calculate overall progress
+            const progressValues = Object.values({
+              ...fileProgress, 
+              [fileIndex]: { 
+                progress: progress < 0 ? 0 : progress, 
+                fileName, 
+                error: progress < 0 
+              }
+            });
+            
+            const total = progressValues.reduce((sum, item) => sum + item.progress, 0);
+            const overall = Math.round(total / (validDocuments.length * 100) * 100);
+            setOverallProgress(overall);
           }
-        } catch (uploadError) {
-          console.error('Error uploading documents:', uploadError)
-          
-          // Show error toast notification
+        );
+
+        const { successful, failed } = uploadResults
+        
+        // Clear the form after upload
+        clearAll()
+        
+        // Show appropriate toast notification based on results
+        if (successful.length > 0 && failed.length === 0) {
+          // All uploads succeeded
+          toast({ 
+            title: "Upload Complete", 
+            description: `${successful.length} documents were successfully uploaded.` 
+          })
+          // Call the success callback if provided
+          if (onUploadSuccess) {
+            onUploadSuccess();
+          }
+        } else if (successful.length > 0 && failed.length > 0) {
+          // Some uploads succeeded, some failed
+          toast({ 
+            title: "Partial Upload", 
+            description: `${successful.length} documents uploaded, ${failed.length} failed.`,
+            variant: "default"
+          })
+          // Call the success callback if provided since some uploads succeeded
+          if (onUploadSuccess) {
+            onUploadSuccess();
+          }
+        } else {
+          // All uploads failed
           toast({ 
             title: "Upload Failed", 
-            description: "Something went wrong during upload.", 
+            description: "All document uploads failed. Check console for details.", 
             variant: "destructive" 
           })
         }
       }
-    } catch (error) {
-      console.error('Error processing document forms:', error)
+    } catch (uploadError) {
+      console.error('Error uploading documents:', uploadError)
       
+      // Show error toast notification
       toast({ 
-        title: "Form Error", 
-        description: "An error occurred while processing the form.", 
+        title: "Upload Failed", 
+        description: "Something went wrong during upload.", 
         variant: "destructive" 
       })
+    } finally {
+      setIsUploading(false);
     }
-  }, [documentForms, userId, clearAll, onUploadSuccess])
+  }, [
+    documentForms, 
+    userId, 
+    clearAll, 
+    onUploadSuccess,
+    fileProgress
+  ]);
   
   const triggerFileInput = useCallback(() => {
     fileInputRef.current?.click()
   }, [fileInputRef])
+  
+  // Add this section in the form before the submit button
+  const renderProgressSection = () => {
+    if (!isUploading && Object.keys(fileProgress).length === 0) {
+      return null;
+    }
+    
+    return (
+      <div className="mt-8 mb-4 border rounded-lg p-4 bg-background/50">
+        <h3 className="text-sm font-medium mb-2">Upload Progress</h3>
+        
+        {/* Overall progress */}
+        <div className="mb-4">
+          <div className="flex justify-between items-center mb-1 text-sm">
+            <span>Overall Progress</span>
+            <span>{overallProgress}%</span>
+          </div>
+          <Progress value={overallProgress} className="h-2" />
+        </div>
+        
+        {/* Individual file progress */}
+        {Object.entries(fileProgress).map(([index, { progress, fileName, error }]) => (
+          <FileProgressBar 
+            key={`file-${index}`}
+            progress={progress}
+            fileName={fileName}
+            error={error}
+          />
+        ))}
+      </div>
+    );
+  };
   
   return (
     <div className="w-full max-w-4xl mx-auto">
@@ -907,17 +1013,17 @@ export function UploadForm({ categories, allTags, userId, onUploadSuccess, onCat
           ref={fileInputRef}
           onChange={handleFileChange}
         />
-        <Button onClick={triggerFileInput}>Select Files</Button>
+        <Button type="button" onClick={triggerFileInput}>Select Files</Button>
       </div>
       
       {documentForms.length > 0 && (
-        <div className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <h3 className="text-lg font-medium">Document Details</h3>
           
           <div className="grid gap-6">
             {documentForms.map((formEntry) => (
               <Card key={formEntry.id} className="relative">
-                <form data-document-form data-document-id={formEntry.id}>
+                <div data-document-form data-document-id={formEntry.id} className="space-y-6">
                   <CardHeader className="pb-3">
                     <div className="flex justify-between items-center">
                       <CardTitle className="flex items-center">
@@ -1031,29 +1137,32 @@ export function UploadForm({ categories, allTags, userId, onUploadSuccess, onCat
                       </div>
                     </div>
                   </CardContent>
-                </form>
+                </div>
               </Card>
             ))}
           </div>
           
-          <div className="flex justify-end mt-8 gap-4">
-            <Button 
-              variant="outline" 
+          {/* Progress section */}
+          {renderProgressSection()}
+          
+          <div className="flex justify-end space-x-2">
+            <Button
+              type="button"
+              variant="outline"
               onClick={clearAll}
-              disabled={documentForms.length === 0}
+              disabled={documentForms.length === 0 || isUploading}
             >
               Clear All
             </Button>
-            <Button 
-              onClick={handleSubmit}
-              disabled={documentForms.length === 0}
-              className="gap-2"
+            
+            <Button
+              type="submit"
+              disabled={documentForms.length === 0 || isUploading}
             >
-              <Check className="h-4 w-4" />
-              Submit Documents
+              {isUploading ? 'Uploading...' : 'Upload Documents'}
             </Button>
           </div>
-        </div>
+        </form>
       )}
     </div>
   )

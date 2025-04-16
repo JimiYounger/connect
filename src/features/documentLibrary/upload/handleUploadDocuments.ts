@@ -29,15 +29,20 @@ type UploadSummary = {
   failed: UploadResult[];
 }
 
+// Add a type for the progress callback
+type ProgressCallback = (fileIndex: number, progress: number, fileName: string) => void;
+
 /**
  * Uploads multiple documents to Supabase storage and creates metadata records
  * @param documents Array of document upload inputs with metadata and file
  * @param userId The authenticated user ID (auth.uid()) - not the profile ID
+ * @param onProgress Optional callback to report upload progress (0-100)
  * @returns Upload summary with successful and failed uploads
  */
 export async function handleUploadDocuments(
   documents: DocumentUploadInput[],
-  userId: string // This is auth.uid() - the authentication user ID
+  userId: string, // This is auth.uid() - the authentication user ID
+  onProgress?: ProgressCallback
 ): Promise<UploadSummary> {
   const supabase = createClient()
   
@@ -63,11 +68,24 @@ export async function handleUploadDocuments(
     try {
       // Process all document uploads in parallel for better performance
       const results = await Promise.all(
-        documents.map(async (document) => {
+        documents.map(async (document, index) => {
           try {
             const filePath = getStoragePath(userId, document.file.name)
             
-            // 1. Upload the file to storage
+            // Initialize progress for this file
+            if (onProgress) {
+              onProgress(index, 0, document.file.name);
+            }
+            
+            // 1. Upload the file to storage with progress reporting
+            // Note: Supabase's upload doesn't directly support progress reporting,
+            // so we'll simulate progress updates based on file size
+            
+            // Report starting upload
+            if (onProgress) {
+              onProgress(index, 10, document.file.name);
+            }
+            
             const { error: uploadError } = await supabase
               .storage
               .from('documents')
@@ -80,6 +98,11 @@ export async function handleUploadDocuments(
               throw new Error(`Error uploading file: ${uploadError.message}`)
             }
             
+            // Report file upload complete
+            if (onProgress) {
+              onProgress(index, 50, document.file.name);
+            }
+            
             // 2. Get the public URL for the file
             const { data: urlData } = supabase
               .storage
@@ -90,6 +113,11 @@ export async function handleUploadDocuments(
             
             console.log('File uploaded successfully:', filePath)
             console.log('Public URL:', fileUrl)
+            
+            // Report metadata processing
+            if (onProgress) {
+              onProgress(index, 75, document.file.name);
+            }
             
             // 3. Insert document metadata and relationships using our specialized function
             const insertResult = await insertDocumentWithRelations({
@@ -105,6 +133,11 @@ export async function handleUploadDocuments(
             
             console.log('Document metadata stored in database successfully with ID:', insertResult.documentId)
             
+            // Report document parsing
+            if (onProgress) {
+              onProgress(index, 90, document.file.name);
+            }
+            
             // 4. Trigger document parsing API to extract and chunk content
             const parseResult = await triggerDocumentParse({
               documentId: insertResult.documentId,
@@ -119,6 +152,11 @@ export async function handleUploadDocuments(
               )
             }
             
+            // Report completion
+            if (onProgress) {
+              onProgress(index, 100, document.file.name);
+            }
+            
             // Return success with document ID
             return {
               success: true,
@@ -128,6 +166,12 @@ export async function handleUploadDocuments(
             
           } catch (docError) {
             console.error('Error processing document:', document.title, docError)
+            
+            // Report error
+            if (onProgress) {
+              onProgress(index, -1, document.file.name); // -1 indicates error
+            }
+            
             // Don't throw here - try to continue with other files if possible
             return {
               success: false,
