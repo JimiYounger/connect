@@ -93,6 +93,7 @@ const SubcategoryContext = React.createContext<{
 // Interface types for API responses
 interface PrepareDeleteResponse {
   success: boolean;
+  error?: string;
   data: {
     subcategory: {
       id: string;
@@ -114,6 +115,7 @@ interface PrepareDeleteResponse {
 
 interface DeleteConfirmResponse {
   success: boolean;
+  error?: string;
   message: string;
   documentsUpdated: number;
 }
@@ -995,23 +997,21 @@ function SortableCategoryCard({
       >
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center">
-            {/* Expand/collapse button */}
-            {hasSubcategories && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="mr-1 h-8 w-8 p-0"
-                onClick={() => onToggleExpand(id)}
-              >
-                {isExpanded ? 
-                  <ChevronDown size={18} className="text-gray-600" /> : 
-                  <ChevronRight size={18} className="text-gray-600" />
-                }
-                <span className="sr-only">
-                  {isExpanded ? "Collapse" : "Expand"} {category.name}
-                </span>
-              </Button>
-            )}
+            {/* Expand/collapse button - always show for all categories */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="mr-1 h-8 w-8 p-0"
+              onClick={() => onToggleExpand(id)}
+            >
+              {isExpanded ? 
+                <ChevronDown size={18} className="text-gray-600" /> : 
+                <ChevronRight size={18} className="text-gray-600" />
+              }
+              <span className="sr-only">
+                {isExpanded ? "Collapse" : "Expand"} {category.name}
+              </span>
+            </Button>
             
             {!isBeingEdited && (
               <div 
@@ -1092,16 +1092,18 @@ function SortableCategoryCard({
         </div>
       </Card>
 
-      {/* Subcategories */}
-      {isExpanded && category.subcategories && category.subcategories.length > 0 && (
+      {/* Subcategories - show when expanded regardless of whether subcategories exist */}
+      {isExpanded && (
         <div className="pl-8 mt-2 space-y-2 mb-2">
-          {/* Subcategory list with drag and drop */}
-          <SubcategoryList 
-            categoryId={id} 
-            subcategories={category.subcategories} 
-          />
+          {/* Subcategory list with drag and drop - only show if there are subcategories */}
+          {hasSubcategories && (
+            <SubcategoryList 
+              categoryId={id} 
+              subcategories={category.subcategories} 
+            />
+          )}
           
-          {/* Add new subcategory button/form */}
+          {/* Add new subcategory button/form - always show */}
           <NewSubcategoryForm categoryId={id} />
         </div>
       )}

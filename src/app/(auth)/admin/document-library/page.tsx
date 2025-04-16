@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useCallback, useMemo } from 'react'
+import { Suspense, useCallback, useMemo, useState, useEffect } from 'react'
 import { DocumentViewer } from '@/features/documentLibrary/viewer/DocumentViewer'
 import { UploadModal } from '@/features/documentLibrary/upload/UploadModal'
 import { createClient } from '@/lib/supabase'
@@ -12,10 +12,32 @@ const queryClient = new QueryClient()
 
 // Main component to load and display documents with data
 function DocumentLibraryContent() {
+  const [isAdmin, setIsAdmin] = useState(false);
+
   // Create a reference object we can pass to DocumentViewer to enable refetching
   const refetchRef = useMemo(() => ({ 
     refetch: () => {} // This will be set by the DocumentViewer component
   }), [])
+
+  // Check if user is admin
+  useEffect(() => {
+    async function checkAdminStatus() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        const { data } = await supabase
+          .from('user_profiles')
+          .select('role_type')
+          .eq('user_id', user.id)
+          .single();
+        
+        setIsAdmin(data?.role_type?.toLowerCase() === 'admin');
+      }
+    }
+    
+    checkAdminStatus();
+  }, []);
 
   // Fetch categories
   const { data: categories = [], isLoading: categoriesLoading } = useQuery({
@@ -117,7 +139,7 @@ function DocumentLibraryContent() {
         categories={categories} 
         subcategories={subcategories}
         availableTags={tags}
-        isAdmin={true}
+        isAdmin={isAdmin}
         onRefetchNeeded={refetchRef}
       />
     </div>

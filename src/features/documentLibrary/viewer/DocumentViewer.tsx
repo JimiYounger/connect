@@ -10,6 +10,10 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatDistanceToNow } from 'date-fns'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase'
+import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
+import { CategoryManagementModal } from '../management/CategoryManagementModal'
 
 export interface DocumentViewerProps {
   initialFilters?: DocumentFilters
@@ -346,30 +350,15 @@ export function DocumentViewer({
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
           {/* Category Filter */}
           <div>
-            <label className="text-sm font-medium mb-1 block">
-              Category
-              {filters.document_category_id && (
-                <span className="ml-2">
-                  <Badge variant="secondary" className="text-xs">Filtered</Badge>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="h-5 px-1 ml-1 text-xs"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      clearCategoryFilter();
-                    }}
-                  >
-                    Clear
-                  </Button>
-                </span>
-              )}
-            </label>
+            <div className="flex items-center gap-1 mb-1">
+              <Label htmlFor="category-filter" className="text-sm font-medium">Category</Label>
+              {isAdmin && <CategoryManagementModal type="categories" />}
+            </div>
             <Select 
               value={filters.document_category_id || 'all'} 
               onValueChange={handleCategoryChange}
             >
-              <SelectTrigger>
+              <SelectTrigger id="category-filter" className="w-full">
                 <SelectValue placeholder="All categories" />
               </SelectTrigger>
               <SelectContent>
@@ -385,31 +374,16 @@ export function DocumentViewer({
           
           {/* Subcategory Filter */}
           <div>
-            <label className="text-sm font-medium mb-1 block">
-              Subcategory
-              {filters.document_subcategory_id && (
-                <span className="ml-2">
-                  <Badge variant="secondary" className="text-xs">Filtered</Badge>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="h-5 px-1 ml-1 text-xs"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      clearSubcategoryFilter();
-                    }}
-                  >
-                    Clear
-                  </Button>
-                </span>
-              )}
-            </label>
+            <div className="flex items-center gap-1 mb-1">
+              <Label htmlFor="subcategory-filter" className="text-sm font-medium">Subcategory</Label>
+              {isAdmin && <CategoryManagementModal type="subcategories" />}
+            </div>
             <Select 
               value={filters.document_subcategory_id || 'all'} 
               onValueChange={handleSubcategoryChange}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="All subcategories" />
+              <SelectTrigger id="subcategory-filter" className="w-full">
+                <SelectValue placeholder={filters.document_category_id ? "All subcategories" : "Select a category first"} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All subcategories</SelectItem>
