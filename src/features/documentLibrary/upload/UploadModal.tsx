@@ -18,6 +18,11 @@ interface UploadModalProps {
   onUploadSuccess: () => void
 }
 
+interface Tag {
+  id: string; // Or the correct type for id
+  name: string;
+}
+
 export function UploadModal({ onUploadSuccess }: UploadModalProps) {
   const [isOpen, setIsOpen] = useState(false)
   const { toast } = useToast()
@@ -54,7 +59,7 @@ export function UploadModal({ onUploadSuccess }: UploadModalProps) {
   })
 
   // Fetch all available tags using the API route
-  const { data: tagData = [] } = useQuery({
+  const { data: tagData = [] } = useQuery<Tag[]>({
     queryKey: ['documentTags'],
     queryFn: async () => {
       const response = await fetch('/api/document-library/tags')
@@ -69,7 +74,7 @@ export function UploadModal({ onUploadSuccess }: UploadModalProps) {
     staleTime: 5 * 60 * 1000 // 5 minutes
   })
 
-  const allTags = tagData.map(tag => tag.name)
+  const allTags = tagData.map((tag: Tag) => tag.name)
 
   const handleUploadSuccess = () => {
     // Close modal

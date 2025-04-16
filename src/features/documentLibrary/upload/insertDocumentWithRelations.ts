@@ -7,7 +7,7 @@ type InsertInput = {
   document: DocumentUploadInput
   fileUrl: string // public URL of the file in storage
   filePath: string // storage path of the uploaded file
-  userId: string // maps to user_profiles.id
+  userId: string // auth.uid() - the authentication user ID, not the profile ID
 }
 
 type InsertResult =
@@ -23,22 +23,23 @@ type InsertResult =
  * - Document visibility settings in document_visibility
  * - Document tags in document_tags and document_tag_assignments
  * 
- * @param input Object containing document data, file info, and user ID
+ * @param input Object containing document data, file info, and user ID (auth.uid())
  * @returns Object with success status and document ID or error message
  */
 export async function insertDocumentWithRelations(input: InsertInput): Promise<InsertResult> {
   const { document, filePath, userId } = input // fileUrl not used locally
   const supabase = createClient()
   
-  console.log('📌 insertDocumentWithRelations received userId:', userId)
+  console.log('📌 insertDocumentWithRelations received userId (auth user id):', userId)
   console.log('📌 userId type:', typeof userId)
   
-  // First, check if this userId exists in user_profiles table
+  // First, check if this auth user ID has a profile in user_profiles table
+  // IMPORTANT: userId is auth.uid(), which maps to user_profiles.user_id, NOT user_profiles.id
   try {
     const { data: userProfile, error: userProfileError } = await supabase
       .from('user_profiles')
       .select('id, email, first_name, last_name')
-      .eq('id', userId)
+      .eq('user_id', userId) // FIXED: Use user_id instead of id to match RLS policy
       .single()
     
     if (userProfileError) {
@@ -46,7 +47,7 @@ export async function insertDocumentWithRelations(input: InsertInput): Promise<I
       
       // If user profile not found, try to create a basic one
       if (userProfileError.message.includes('no rows')) {
-        console.log('🔄 Attempting to create a basic user profile for userId:', userId)
+        console.log('🔄 Attempting to create a basic user profile for auth user ID:', userId)
         
         // Get current user data using the auth API
         const { data: { user }, error: userError } = await supabase.auth.getUser()
@@ -67,7 +68,7 @@ export async function insertDocumentWithRelations(input: InsertInput): Promise<I
         const { data: newProfile, error: insertError } = await supabase
           .from('user_profiles')
           .insert({
-            id: userId,
+            user_id: userId, // This is the auth user ID
             email: userEmail,
             first_name: 'User', // Placeholder
             last_name: user.user_metadata?.name || userEmail.split('@')[0] || 'User',
@@ -91,7 +92,7 @@ export async function insertDocumentWithRelations(input: InsertInput): Promise<I
     }
     
     if (!userProfile) {
-      console.warn('⚠️ User profile not found for userId:', userId)
+      console.warn('⚠️ User profile not found for auth user ID:', userId)
     } else {
       console.log('✅ User profile found:', userProfile)
     }

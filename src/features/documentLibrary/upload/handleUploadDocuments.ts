@@ -32,12 +32,12 @@ type UploadSummary = {
 /**
  * Uploads multiple documents to Supabase storage and creates metadata records
  * @param documents Array of document upload inputs with metadata and file
- * @param userId ID of the user uploading the documents
+ * @param userId The authenticated user ID (auth.uid()) - not the profile ID
  * @returns Upload summary with successful and failed uploads
  */
 export async function handleUploadDocuments(
   documents: DocumentUploadInput[],
-  userId: string
+  userId: string // This is auth.uid() - the authentication user ID
 ): Promise<UploadSummary> {
   const supabase = createClient()
   
