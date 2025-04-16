@@ -145,11 +145,27 @@ export async function handleUploadDocuments(
             })
             
             if (!parseResult.success) {
-              // The helper already logs the error, just add a summary log
+              // Enhanced error logging for parse failures
               console.warn(
-                'Document parsing was triggered but encountered an issue. ' +
-                'Upload process will continue regardless.'
-              )
+                'Document parsing was triggered but encountered an issue: ' +
+                (parseResult.error || 'Unknown error')
+              );
+              
+              // Log file details for debugging
+              console.warn('File details:', {
+                name: document.file.name,
+                type: document.file.type,
+                size: `${Math.round(document.file.size / 1024)} KB`,
+                url: urlData.publicUrl
+              });
+              
+              // Check for common issues
+              const fileExtension = document.file.name.split('.').pop()?.toLowerCase();
+              if (!['pdf', 'docx', 'jpg', 'jpeg', 'png'].includes(fileExtension || '')) {
+                console.error(`Unsupported file type for parsing: ${fileExtension}. Only PDF, DOCX, JPG, JPEG, and PNG are supported.`);
+              } else if (document.file.size > 10 * 1024 * 1024) { // 10 MB
+                console.warn('File may be too large for efficient parsing:', `${Math.round(document.file.size / 1024 / 1024)} MB`);
+              }
             }
             
             // Report completion
@@ -157,6 +173,8 @@ export async function handleUploadDocuments(
               onProgress(index, 100, document.file.name);
             }
             
+            // Even if parsing failed, we can still consider the upload itself successful
+            // since the file is in storage and metadata is in the database
             // Return success with document ID
             return {
               success: true,

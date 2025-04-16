@@ -685,32 +685,26 @@ function CategorySelectWithCreate({
   );
 }
 
-// FileProgressBar component to display upload progress for a single file
-function FileProgressBar({ 
-  progress, 
-  fileName, 
-  error 
-}: { 
-  progress: number; 
-  fileName: string; 
-  error?: boolean 
-}) {
-  return (
-    <div className="w-full mt-1 mb-3">
-      <div className="flex justify-between items-center mb-1 text-xs">
-        <span className="truncate max-w-[200px]">{fileName}</span>
-        <span>{error ? 'Failed' : `${progress}%`}</span>
-      </div>
-      <Progress 
-        value={error ? 100 : progress} 
-        className={error ? 'bg-destructive/10' : ''} 
-      />
-      {error && (
-        <p className="text-xs mt-1 text-destructive">Upload failed</p>
-      )}
-    </div>
-  )
-}
+// Add a helper function to handle document parsing failures and log details
+const logParsingError = (file: File, error: any) => {
+  console.error('DOCUMENT PARSING ERROR', {
+    fileName: file.name,
+    fileType: file.type,
+    fileSize: `${Math.round(file.size / 1024)} KB`,
+    error: error instanceof Error ? error.message : error
+  });
+  
+  // Try to determine the cause based on file properties
+  if (file.size > 10 * 1024 * 1024) { // 10 MB
+    console.warn('File size may be too large for parsing', file.size);
+  }
+  
+  // Check file extension
+  const extension = file.name.split('.').pop()?.toLowerCase();
+  if (!['pdf', 'docx', 'jpg', 'jpeg', 'png'].includes(extension || '')) {
+    console.warn('Unsupported file type for parsing:', extension);
+  }
+};
 
 export function UploadForm({ categories, allTags, userId, onUploadSuccess, onCategoryCreated }: UploadFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -905,6 +899,19 @@ export function UploadForm({ categories, allTags, userId, onUploadSuccess, onCat
             const total = progressValues.reduce((sum, item) => sum + item.progress, 0);
             const overall = Math.round(total / (validDocuments.length * 100) * 100);
             setOverallProgress(overall);
+            
+            // Add additional logging for parse errors
+            if (progress === 90) {
+              console.log(`Document parsing started for file: ${fileName}`);
+            } else if (progress === 100) {
+              console.log(`Document parsing completed successfully for file: ${fileName}`);
+            } else if (progress < 0) {
+              // Find the document this error belongs to
+              const document = validDocuments[fileIndex];
+              if (document) {
+                logParsingError(document.file, "Processing failed");
+              }
+            }
           }
         );
 
@@ -974,28 +981,26 @@ export function UploadForm({ categories, allTags, userId, onUploadSuccess, onCat
       return null;
     }
     
+    // Get the currently uploading file name, if any
+    const currentUploads = Object.entries(fileProgress);
+    const currentFile = currentUploads.length > 0 
+      ? currentUploads[currentUploads.length - 1][1].fileName 
+      : '';
+    
     return (
       <div className="mt-8 mb-4 border rounded-lg p-4 bg-background/50">
         <h3 className="text-sm font-medium mb-2">Upload Progress</h3>
         
-        {/* Overall progress */}
-        <div className="mb-4">
+        <div className="mb-2">
           <div className="flex justify-between items-center mb-1 text-sm">
-            <span>Overall Progress</span>
+            <span>{currentFile 
+              ? `Uploading ${currentFile}${currentUploads.length > 1 ? ` (${currentUploads.length} files)` : ''}`
+              : 'Uploading files...'}
+            </span>
             <span>{overallProgress}%</span>
           </div>
           <Progress value={overallProgress} className="h-2" />
         </div>
-        
-        {/* Individual file progress */}
-        {Object.entries(fileProgress).map(([index, { progress, fileName, error }]) => (
-          <FileProgressBar 
-            key={`file-${index}`}
-            progress={progress}
-            fileName={fileName}
-            error={error}
-          />
-        ))}
       </div>
     );
   };

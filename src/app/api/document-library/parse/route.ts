@@ -146,6 +146,44 @@ export async function POST(req: Request) {
 
     // If text was successfully extracted, save to database
     if (extractedText) {
+      // Sanitize the text to remove problematic Unicode sequences
+      console.log(`Sanitizing extracted text content (${extractedText.length} characters)`)
+      
+      // Function to sanitize text by removing or replacing problematic characters
+      function sanitizeText(text: string): string {
+        if (!text) return '';
+        
+        try {
+          // Replace null bytes and other problematic control characters
+          let sanitized = text.replace(/\u0000/g, ' ');
+          
+          // Replace other problematic Unicode escape sequences
+          sanitized = sanitized.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]|[\uD800-\uDFFF]/g, ' ');
+          
+          // Replace any non-standard JSON characters that can cause issues
+          sanitized = sanitized.replace(/[\u0000-\u001F\u007F-\u009F\u2000-\u200F\u2028-\u202F\uFFF0-\uFFFF]/g, ' ');
+          
+          // Additional replacement for any other problematic sequences
+          // Convert to JSON and back as a test to ensure it's valid
+          JSON.parse(JSON.stringify({ text: sanitized }));
+          
+          return sanitized;
+        } catch (err) {
+          console.warn('Advanced Unicode sanitization failed:', err);
+          // Fallback: use a more aggressive cleanup approach
+          try {
+            // Convert to ASCII only as a last resort
+            return text.replace(/[^\x00-\x7F]/g, ' ');
+          } catch (fallbackErr) {
+            console.error('Fallback sanitization failed:', fallbackErr);
+            return 'Text extraction failed - content could not be sanitized';
+          }
+        }
+      }
+      
+      const sanitizedText = sanitizeText(extractedText);
+      console.log(`Text sanitized: original ${extractedText.length} chars, sanitized ${sanitizedText.length} chars`);
+      
       // Store the content in Supabase
       const supabase = await createClient()
       
@@ -168,7 +206,7 @@ export async function POST(req: Request) {
         .from('document_content')
         .upsert({
           document_id: documentId,
-          content: extractedText,
+          content: sanitizedText,
           updated_at: new Date().toISOString()
         }, {
           onConflict: 'document_id',
@@ -189,11 +227,11 @@ export async function POST(req: Request) {
         
         // Split text into manageable chunks (around 500 tokens each)
         // Set max chunk size to 8000 characters to stay well under any potential database limits
-        const chunks = splitIntoChunks(extractedText, 500, 8000)
+        const chunks = splitIntoChunks(sanitizedText, 500, 8000)
         console.log(`Split document into ${chunks.length} chunks`, chunks.map(c => c.substring(0, 50) + '...'))
         
         if (chunks.length === 0) {
-          console.error('No chunks generated from document text. Text length:', extractedText.length)
+          console.error('No chunks generated from document text. Text length:', sanitizedText.length)
           throw new Error('Chunking algorithm produced no chunks')
         }
         
@@ -308,7 +346,7 @@ export async function POST(req: Request) {
       if (process.env.NODE_ENV === 'development') {
         return NextResponse.json({ 
           success: true,
-          content: extractedText 
+          content: sanitizedText 
         })
       }
 
