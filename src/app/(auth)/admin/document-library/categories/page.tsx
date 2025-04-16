@@ -14,12 +14,29 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { DeleteCategoryModal } from '@/features/documentLibrary';
-import { Loader2, Pencil, Trash, Plus } from 'lucide-react';
+import { Loader2, Pencil, Trash, Plus, GripVertical } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { 
+  DndContext, 
+  DragEndEvent, 
+  KeyboardSensor, 
+  PointerSensor, 
+  closestCenter, 
+  useSensor, 
+  useSensors 
+} from '@dnd-kit/core';
+import { 
+  SortableContext, 
+  sortableKeyboardCoordinates, 
+  useSortable, 
+  verticalListSortingStrategy 
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface Category {
   id: string;
   name: string;
+  order: number;
   documentCount?: number;
 }
 
@@ -54,8 +71,8 @@ export default function CategoryManager() {
       // Get all categories
       const { data: categories, error: categoriesError } = await supabase
         .from('document_categories')
-        .select('id, name')
-        .order('name');
+        .select('id, name, order')
+        .order('order', { ascending: true, nullsFirst: false });
         
       if (categoriesError) throw categoriesError;
       
@@ -69,10 +86,18 @@ export default function CategoryManager() {
             
           if (countError) {
             console.error(`Error fetching count for category ${category.id}:`, countError);
-            return { ...category, documentCount: 0 };
+            return { 
+              ...category, 
+              documentCount: 0,
+              order: category.order === null ? 9999 : category.order
+            };
           }
           
-          return { ...category, documentCount: count || 0 };
+          return { 
+            ...category, 
+            documentCount: count || 0,
+            order: category.order === null ? 9999 : category.order
+          };
         })
       );
       
@@ -250,6 +275,69 @@ export default function CategoryManager() {
     fetchCategories();
   };
 
+  // Handle drag end for reordering categories
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (!over || active.id === over.id) return;
+    
+    // Find the indices of the dragged item and drop target
+    const oldIndex = categories.findIndex(cat => cat.id === active.id);
+    const newIndex = categories.findIndex(cat => cat.id === over.id);
+    
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    // Create a new array with the updated order
+    const newCategories = [...categories];
+    const [movedItem] = newCategories.splice(oldIndex, 1);
+    newCategories.splice(newIndex, 0, movedItem);
+    
+    // Update local state immediately for responsive UI
+    setCategories(newCategories.map((cat, idx) => ({
+      ...cat,
+      order: idx
+    })));
+
+    // Persist the new order to the database
+    try {
+      const supabase = createClient();
+      
+      // Update each category with its new order value
+      const updates = newCategories.map((cat, idx) => 
+        supabase
+          .from('document_categories')
+          .update({ order: idx })
+          .eq('id', cat.id)
+      );
+      
+      await Promise.all(updates);
+      
+      toast({
+        title: 'Categories reordered',
+        description: 'The category order has been updated successfully.',
+      });
+    } catch (error) {
+      console.error('Error updating category order:', error);
+      
+      toast({
+        title: 'Error updating order',
+        description: error instanceof Error ? error.message : 'An unknown error occurred',
+        variant: 'destructive',
+      });
+      
+      // Revert to the original order if the update fails
+      fetchCategories();
+    }
+  };
+
+  // Set up drag sensors for keyboard and pointer events
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   return (
     <div className="container mx-auto py-8">
       <div className="flex justify-between items-center mb-6">
@@ -288,79 +376,35 @@ export default function CategoryManager() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {categories.map((category) => (
-            <Card key={category.id} className="overflow-hidden">
-              <div className="flex items-center justify-between p-4">
-                <div className="flex items-center gap-4 flex-grow">
-                  {editingCategoryId === category.id ? (
-                    <div className="flex-grow">
-                      <Input
-                        value={editCategoryName}
-                        onChange={(e) => setEditCategoryName(e.target.value)}
-                        onBlur={() => handleUpdateCategory(category.id)}
-                        onKeyDown={(e) => handleEditKeyDown(e, category.id)}
-                        className="font-medium"
-                        autoFocus
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex-grow">
-                      <span className="font-medium">{category.name}</span>
-                      <span className="ml-2 text-sm text-muted-foreground">
-                        ({category.documentCount} document{category.documentCount !== 1 ? 's' : ''})
-                      </span>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  {editingCategoryId === category.id ? (
-                    <>
-                      <Button 
-                        variant="default" 
-                        size="sm" 
-                        onClick={() => handleUpdateCategory(category.id)}
-                        disabled={isEditing}
-                      >
-                        {isEditing ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : 'Save'}
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={cancelEditing}
-                        disabled={isEditing}
-                      >
-                        Cancel
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        onClick={() => startEditing(category)}
-                      >
-                        <Pencil size={18} />
-                        <span className="sr-only">Edit {category.name}</span>
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        onClick={() => openDeleteModal(category.id)}
-                      >
-                        <Trash size={18} />
-                        <span className="sr-only">Delete {category.name}</span>
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
+        <DndContext 
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext 
+            items={categories.map(cat => cat.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-4">
+              {categories.map((category) => (
+                <SortableCategoryCard 
+                  key={category.id}
+                  id={category.id}
+                  category={category}
+                  editingCategoryId={editingCategoryId}
+                  editCategoryName={editCategoryName}
+                  setEditCategoryName={setEditCategoryName}
+                  isEditing={isEditing}
+                  startEditing={startEditing}
+                  cancelEditing={cancelEditing}
+                  handleUpdateCategory={handleUpdateCategory}
+                  handleEditKeyDown={handleEditKeyDown}
+                  openDeleteModal={openDeleteModal}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       {/* Create New Category Dialog */}
@@ -419,5 +463,141 @@ export default function CategoryManager() {
         />
       )}
     </div>
+  );
+}
+
+// Sortable Category Card Component
+interface SortableCategoryCardProps {
+  id: string;
+  category: Category;
+  editingCategoryId: string | null;
+  editCategoryName: string;
+  setEditCategoryName: (name: string) => void;
+  isEditing: boolean;
+  startEditing: (category: Category) => void;
+  cancelEditing: () => void;
+  handleUpdateCategory: (categoryId: string) => void;
+  handleEditKeyDown: (e: React.KeyboardEvent, categoryId: string) => void;
+  openDeleteModal: (categoryId: string) => void;
+}
+
+function SortableCategoryCard({
+  id,
+  category,
+  editingCategoryId,
+  editCategoryName,
+  setEditCategoryName,
+  isEditing,
+  startEditing,
+  cancelEditing,
+  handleUpdateCategory,
+  handleEditKeyDown,
+  openDeleteModal,
+}: SortableCategoryCardProps) {
+  const isBeingEdited = editingCategoryId === id;
+  
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ 
+    id,
+    disabled: isBeingEdited // Disable dragging when being edited
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : 1,
+  };
+
+  return (
+    <Card 
+      ref={setNodeRef} 
+      style={style} 
+      className={`overflow-hidden ${isDragging ? 'shadow-lg' : ''}`}
+    >
+      <div className="flex items-center justify-between p-4">
+        {!isBeingEdited && (
+          <div 
+            className="cursor-grab mr-2 flex items-center justify-center p-1 hover:bg-gray-100 rounded"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical size={18} className="text-gray-400" />
+          </div>
+        )}
+        
+        <div className="flex items-center gap-4 flex-grow">
+          {isBeingEdited ? (
+            <div className="flex-grow">
+              <Input
+                value={editCategoryName}
+                onChange={(e) => setEditCategoryName(e.target.value)}
+                onBlur={() => handleUpdateCategory(category.id)}
+                onKeyDown={(e) => handleEditKeyDown(e, category.id)}
+                className="font-medium"
+                autoFocus
+              />
+            </div>
+          ) : (
+            <div className="flex-grow">
+              <span className="font-medium">{category.name}</span>
+              <span className="ml-2 text-sm text-muted-foreground">
+                ({category.documentCount} document{category.documentCount !== 1 ? 's' : ''})
+              </span>
+            </div>
+          )}
+        </div>
+        
+        <div className="flex items-center gap-2">
+          {isBeingEdited ? (
+            <>
+              <Button 
+                variant="default" 
+                size="sm" 
+                onClick={() => handleUpdateCategory(category.id)}
+                disabled={isEditing}
+              >
+                {isEditing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : 'Save'}
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={cancelEditing}
+                disabled={isEditing}
+              >
+                Cancel
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => startEditing(category)}
+              >
+                <Pencil size={18} />
+                <span className="sr-only">Edit {category.name}</span>
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => openDeleteModal(category.id)}
+              >
+                <Trash size={18} />
+                <span className="sr-only">Delete {category.name}</span>
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+    </Card>
   );
 } 

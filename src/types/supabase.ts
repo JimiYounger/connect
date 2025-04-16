@@ -338,14 +338,17 @@ export type Database = {
         Row: {
           id: string
           name: string
+          order: number
         }
         Insert: {
           id?: string
           name: string
+          order?: number
         }
         Update: {
           id?: string
           name?: string
+          order?: number
         }
         Relationships: []
       }
