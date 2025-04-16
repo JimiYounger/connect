@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { DeleteCategoryModal } from '@/features/documentLibrary';
-import { Loader2, Pencil, Trash, Plus, GripVertical } from 'lucide-react';
+import { Loader2, Pencil, Trash, Plus, GripVertical, ChevronRight, ChevronDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { 
   DndContext, 
@@ -33,11 +33,19 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
+interface Subcategory {
+  id: string;
+  name: string;
+  order: number;
+  document_category_id: string;
+}
+
 interface Category {
   id: string;
   name: string;
   order: number;
   documentCount?: number;
+  subcategories: Subcategory[];
 }
 
 export default function CategoryManager() {
@@ -59,8 +67,29 @@ export default function CategoryManager() {
   // State for category deletion
   const [deleteCategoryId, setDeleteCategoryId] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  
+  // State for tracking expanded categories
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
-  // Fetch categories and document counts
+  // Toggle expanded state of a category
+  const toggleCategoryExpanded = (categoryId: string) => {
+    setExpandedCategories(prevExpanded => {
+      const newExpanded = new Set(prevExpanded);
+      if (newExpanded.has(categoryId)) {
+        newExpanded.delete(categoryId);
+      } else {
+        newExpanded.add(categoryId);
+      }
+      return newExpanded;
+    });
+  };
+
+  // Check if a category is expanded
+  const isCategoryExpanded = (categoryId: string) => {
+    return expandedCategories.has(categoryId);
+  };
+
+  // Fetch categories, document counts, and subcategories
   const fetchCategories = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -76,9 +105,18 @@ export default function CategoryManager() {
         
       if (categoriesError) throw categoriesError;
       
-      // For each category, get document count
+      // Get all subcategories at once (more efficient than fetching per category)
+      const { data: allSubcategories, error: subcategoriesError } = await supabase
+        .from('document_subcategories')
+        .select('id, name, order, document_category_id')
+        .order('order', { ascending: true, nullsFirst: false });
+        
+      if (subcategoriesError) throw subcategoriesError;
+      
+      // For each category, get document count and attach relevant subcategories
       const enrichedCategories = await Promise.all(
         categories.map(async (category) => {
+          // Get document count
           const { count, error: countError } = await supabase
             .from('documents')
             .select('id', { count: 'exact', head: true })
@@ -89,14 +127,26 @@ export default function CategoryManager() {
             return { 
               ...category, 
               documentCount: 0,
-              order: category.order === null ? 9999 : category.order
+              order: category.order === null ? 9999 : category.order,
+              subcategories: [] 
             };
           }
+          
+          // Find subcategories for this category
+          const categorySubcategories = allSubcategories
+            .filter(sub => sub.document_category_id === category.id)
+            .map(sub => ({
+              id: sub.id,
+              name: sub.name,
+              order: sub.order === null ? 9999 : sub.order,
+              document_category_id: sub.document_category_id
+            }));
           
           return { 
             ...category, 
             documentCount: count || 0,
-            order: category.order === null ? 9999 : category.order
+            order: category.order === null ? 9999 : category.order,
+            subcategories: categorySubcategories
           };
         })
       );
@@ -400,6 +450,8 @@ export default function CategoryManager() {
                   handleUpdateCategory={handleUpdateCategory}
                   handleEditKeyDown={handleEditKeyDown}
                   openDeleteModal={openDeleteModal}
+                  isExpanded={isCategoryExpanded(category.id)}
+                  onToggleExpand={toggleCategoryExpanded}
                 />
               ))}
             </div>
@@ -479,6 +531,8 @@ interface SortableCategoryCardProps {
   handleUpdateCategory: (categoryId: string) => void;
   handleEditKeyDown: (e: React.KeyboardEvent, categoryId: string) => void;
   openDeleteModal: (categoryId: string) => void;
+  isExpanded: boolean;
+  onToggleExpand: (categoryId: string) => void;
 }
 
 function SortableCategoryCard({
@@ -493,8 +547,11 @@ function SortableCategoryCard({
   handleUpdateCategory,
   handleEditKeyDown,
   openDeleteModal,
+  isExpanded,
+  onToggleExpand,
 }: SortableCategoryCardProps) {
   const isBeingEdited = editingCategoryId === id;
+  const hasSubcategories = category.subcategories && category.subcategories.length > 0;
   
   const {
     attributes,
@@ -516,88 +573,123 @@ function SortableCategoryCard({
   };
 
   return (
-    <Card 
-      ref={setNodeRef} 
-      style={style} 
-      className={`overflow-hidden ${isDragging ? 'shadow-lg' : ''}`}
-    >
-      <div className="flex items-center justify-between p-4">
-        {!isBeingEdited && (
-          <div 
-            className="cursor-grab mr-2 flex items-center justify-center p-1 hover:bg-gray-100 rounded"
-            {...attributes}
-            {...listeners}
-          >
-            <GripVertical size={18} className="text-gray-400" />
+    <div>
+      <Card 
+        ref={setNodeRef} 
+        style={style} 
+        className={`overflow-hidden ${isDragging ? 'shadow-lg' : ''}`}
+      >
+        <div className="flex items-center justify-between p-4">
+          <div className="flex items-center">
+            {/* Expand/collapse button */}
+            {hasSubcategories && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="mr-1 h-8 w-8 p-0"
+                onClick={() => onToggleExpand(id)}
+              >
+                {isExpanded ? 
+                  <ChevronDown size={18} className="text-gray-600" /> : 
+                  <ChevronRight size={18} className="text-gray-600" />
+                }
+                <span className="sr-only">
+                  {isExpanded ? "Collapse" : "Expand"} {category.name}
+                </span>
+              </Button>
+            )}
+            
+            {!isBeingEdited && (
+              <div 
+                className="cursor-grab mr-2 flex items-center justify-center p-1 hover:bg-gray-100 rounded"
+                {...attributes}
+                {...listeners}
+              >
+                <GripVertical size={18} className="text-gray-400" />
+              </div>
+            )}
+            
+            <div className="flex items-center gap-4 flex-grow">
+              {isBeingEdited ? (
+                <div className="flex-grow">
+                  <Input
+                    value={editCategoryName}
+                    onChange={(e) => setEditCategoryName(e.target.value)}
+                    onBlur={() => handleUpdateCategory(category.id)}
+                    onKeyDown={(e) => handleEditKeyDown(e, category.id)}
+                    className="font-medium"
+                    autoFocus
+                  />
+                </div>
+              ) : (
+                <div className="flex-grow">
+                  <span className="font-medium">{category.name}</span>
+                  <span className="ml-2 text-sm text-muted-foreground">
+                    ({category.documentCount} document{category.documentCount !== 1 ? 's' : ''})
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
-        )}
-        
-        <div className="flex items-center gap-4 flex-grow">
-          {isBeingEdited ? (
-            <div className="flex-grow">
-              <Input
-                value={editCategoryName}
-                onChange={(e) => setEditCategoryName(e.target.value)}
-                onBlur={() => handleUpdateCategory(category.id)}
-                onKeyDown={(e) => handleEditKeyDown(e, category.id)}
-                className="font-medium"
-                autoFocus
-              />
-            </div>
-          ) : (
-            <div className="flex-grow">
-              <span className="font-medium">{category.name}</span>
-              <span className="ml-2 text-sm text-muted-foreground">
-                ({category.documentCount} document{category.documentCount !== 1 ? 's' : ''})
-              </span>
-            </div>
-          )}
+          
+          <div className="flex items-center gap-2">
+            {isBeingEdited ? (
+              <>
+                <Button 
+                  variant="default" 
+                  size="sm" 
+                  onClick={() => handleUpdateCategory(category.id)}
+                  disabled={isEditing}
+                >
+                  {isEditing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : 'Save'}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={cancelEditing}
+                  disabled={isEditing}
+                >
+                  Cancel
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => startEditing(category)}
+                >
+                  <Pencil size={18} />
+                  <span className="sr-only">Edit {category.name}</span>
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => openDeleteModal(category.id)}
+                >
+                  <Trash size={18} />
+                  <span className="sr-only">Delete {category.name}</span>
+                </Button>
+              </>
+            )}
+          </div>
         </div>
-        
-        <div className="flex items-center gap-2">
-          {isBeingEdited ? (
-            <>
-              <Button 
-                variant="default" 
-                size="sm" 
-                onClick={() => handleUpdateCategory(category.id)}
-                disabled={isEditing}
-              >
-                {isEditing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : 'Save'}
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={cancelEditing}
-                disabled={isEditing}
-              >
-                Cancel
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={() => startEditing(category)}
-              >
-                <Pencil size={18} />
-                <span className="sr-only">Edit {category.name}</span>
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={() => openDeleteModal(category.id)}
-              >
-                <Trash size={18} />
-                <span className="sr-only">Delete {category.name}</span>
-              </Button>
-            </>
-          )}
+      </Card>
+
+      {/* Subcategories */}
+      {isExpanded && category.subcategories && category.subcategories.length > 0 && (
+        <div className="pl-8 mt-2 space-y-2 mb-2">
+          {category.subcategories.map((subcategory) => (
+            <Card key={subcategory.id} className="overflow-hidden">
+              <div className="p-3 text-sm flex items-center">
+                <span className="font-medium">{subcategory.name}</span>
+              </div>
+            </Card>
+          ))}
         </div>
-      </div>
-    </Card>
+      )}
+    </div>
   );
 } 
