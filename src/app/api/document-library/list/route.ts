@@ -6,7 +6,7 @@ import { NextResponse } from 'next/server'
 
 export interface DocumentListParams {
   document_category_id?: string
-  // TODO: Add document_subcategory_id support when implemented
+  document_subcategory_id?: string
   tags?: string[]
   uploadedBy?: string
   searchQuery?: string
@@ -20,6 +20,7 @@ export async function POST(req: Request) {
     const params = await req.json()
     const {
       document_category_id,
+      document_subcategory_id,
       tags,
       uploadedBy,
       searchQuery,
@@ -67,6 +68,7 @@ export async function POST(req: Request) {
         *,
         document_content (content),
         category:document_categories!documents_document_category_id_fkey (id, name),
+        subcategory:document_subcategories!documents_document_subcategory_id_fkey (id, name),
         uploaded_by_user:user_profiles!uploaded_by (id, first_name, last_name, email),
         tags:document_tag_assignments (
           tag:document_tags (id, name)
@@ -77,6 +79,11 @@ export async function POST(req: Request) {
     // Apply category filter
     if (document_category_id) {
       query = query.eq('document_category_id', document_category_id)
+    }
+    
+    // Apply subcategory filter
+    if (document_subcategory_id) {
+      query = query.eq('document_subcategory_id', document_subcategory_id)
     }
     
     // Apply uploaded_by filter (for admins)
@@ -210,6 +217,10 @@ export async function POST(req: Request) {
       countQuery = countQuery.eq('document_category_id', document_category_id)
     }
     
+    if (document_subcategory_id) {
+      countQuery = countQuery.eq('document_subcategory_id', document_subcategory_id)
+    }
+    
     if (uploadedBy && userProfile.role_type && userProfile.role_type.toLowerCase() === 'admin') {
       countQuery = countQuery.eq('uploaded_by', uploadedBy)
     }
@@ -324,6 +335,7 @@ export async function POST(req: Request) {
         title: doc.title,
         description: doc.description,
         category: doc.category,
+        subcategory: doc.subcategory,
         contentPreview,
         tags: formattedTags,
         uploadedBy: doc.uploaded_by_user,

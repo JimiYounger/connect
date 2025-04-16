@@ -1,8 +1,6 @@
-
-
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useDocuments } from './useDocuments'
 import { DocumentFilters, Document, DocumentTag } from './types'
 import { Button } from '@/components/ui/button'
@@ -16,6 +14,7 @@ import Link from 'next/link'
 export interface DocumentViewerProps {
   initialFilters?: DocumentFilters
   categories?: Array<{ id: string; name: string }>
+  subcategories?: Array<{ id: string; name: string; document_category_id: string }>
   availableTags?: DocumentTag[]
   isAdmin?: boolean
   onRefetchNeeded?: { refetch: () => void }
@@ -24,6 +23,7 @@ export interface DocumentViewerProps {
 export function DocumentViewer({
   initialFilters = {},
   categories = [],
+  subcategories = [],
   availableTags = [],
   isAdmin = false,
   onRefetchNeeded
@@ -59,9 +59,26 @@ export function DocumentViewer({
     setFilters(prev => ({
       ...prev,
       document_category_id: value === 'all' ? undefined : value,
+      document_subcategory_id: undefined, // Reset subcategory when category changes
       page: 1 // Reset to first page when changing filters
     }))
   }, [])
+  
+  const handleSubcategoryChange = useCallback((value: string) => {
+    setFilters(prev => ({
+      ...prev,
+      document_subcategory_id: value === 'all' ? undefined : value,
+      page: 1 // Reset to first page when changing filters
+    }))
+  }, [])
+  
+  // Get filtered subcategories for the selected category
+  const filteredSubcategories = useMemo(() => {
+    if (!filters.document_category_id) return [];
+    return subcategories.filter(
+      subcategory => subcategory.document_category_id === filters.document_category_id
+    );
+  }, [subcategories, filters.document_category_id])
   
   const handleTagSelect = useCallback((tagId: string) => {
     setFilters(prev => {
@@ -120,11 +137,11 @@ export function DocumentViewer({
             <h3 className="font-medium truncate group-hover:underline cursor-pointer">
               {document.title}
             </h3>
-            {document.category && (
-              <div className="text-xs text-muted-foreground">
-                {document.category.name}
-              </div>
-            )}
+            <div className="text-xs text-muted-foreground">
+              {document.category && document.category.name}
+              {document.category && document.subcategory && " -> "}
+              {document.subcategory && document.subcategory.name}
+            </div>
           </div>
         </div>
         
@@ -286,6 +303,27 @@ export function DocumentViewer({
             </Select>
           </div>
           
+          {/* Subcategory Filter */}
+          <div>
+            <label className="text-sm font-medium mb-1 block">Subcategory</label>
+            <Select 
+              value={filters.document_subcategory_id || 'all'} 
+              onValueChange={handleSubcategoryChange}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="All subcategories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All subcategories</SelectItem>
+                {filteredSubcategories.map(subcategory => (
+                  <SelectItem key={subcategory.id} value={subcategory.id}>
+                    {subcategory.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
           {/* Search */}
           <div className="md:col-span-2">
             <label className="text-sm font-medium mb-1 block">Search in document content</label>
@@ -306,7 +344,7 @@ export function DocumentViewer({
               onClick={resetFilters} 
               variant="outline" 
               className="w-full"
-              disabled={!filters.document_category_id && !filters.tags?.length && !filters.searchQuery}
+              disabled={!filters.document_category_id && !filters.document_subcategory_id && !filters.tags?.length && !filters.searchQuery}
             >
               Reset Filters
             </Button>

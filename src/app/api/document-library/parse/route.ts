@@ -5,7 +5,8 @@ import pdfParse from 'pdf-parse'
 import mammoth from 'mammoth'
 import { createWorker } from 'tesseract.js'
 
-interface RequestBody {
+// Renamed with underscore prefix since it's not used but documents API shape
+interface _RequestBody {
   fileUrl: string
   documentId: string
   versionId?: string // Optional version ID parameter
@@ -193,7 +194,7 @@ export async function POST(req: Request) {
       // Check if an entry already exists for this document
       // For the content table, we're just going to replace the content for the 
       // document regardless of version, since that seems to be how the schema is set up
-      const { data: existingContent } = await supabase
+      const { data: _existingContent } = await supabase
         .from('document_content')
         .select('id')
         .eq('document_id', documentId)

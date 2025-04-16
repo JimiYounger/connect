@@ -29,6 +29,7 @@ export interface Document {
   title: string;
   description: string | null;
   category: DocumentCategory | null;
+  subcategory: DocumentCategory | null;
   contentPreview: string | null;
   tags: DocumentTag[];
   uploadedBy: UserProfile | null;
@@ -40,7 +41,7 @@ export interface Document {
 // Filter parameters for document list
 export interface DocumentFilters {
   document_category_id?: string;
-  // TODO: Add document_subcategory_id filter support
+  document_subcategory_id?: string;
   tags?: string[];
   uploadedBy?: string;
   searchQuery?: string;

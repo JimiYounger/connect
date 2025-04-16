@@ -33,6 +33,22 @@ function DocumentLibraryContent() {
     staleTime: 5 * 60 * 1000 // 5 minutes
   })
 
+  // Fetch subcategories
+  const { data: subcategories = [], isLoading: subcategoriesLoading } = useQuery({
+    queryKey: ['documentSubcategories'],
+    queryFn: async () => {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('document_subcategories')
+        .select('id, name, document_category_id')
+        .order('name')
+      
+      if (error) throw new Error(error.message)
+      return data || []
+    },
+    staleTime: 5 * 60 * 1000 // 5 minutes
+  })
+
   // Fetch tags
   const { data: tags = [], isLoading: tagsLoading } = useQuery({
     queryKey: ['documentTags'],
@@ -60,7 +76,7 @@ function DocumentLibraryContent() {
   }, [refetchRef])
 
   // Loading state
-  const isLoading = categoriesLoading || tagsLoading
+  const isLoading = categoriesLoading || tagsLoading || subcategoriesLoading
   
   if (isLoading) {
     return (
@@ -99,6 +115,7 @@ function DocumentLibraryContent() {
       {/* Document viewer */}
       <DocumentViewer 
         categories={categories} 
+        subcategories={subcategories}
         availableTags={tags}
         isAdmin={true}
         onRefetchNeeded={refetchRef}
