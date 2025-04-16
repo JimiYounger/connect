@@ -121,6 +121,44 @@ export function DocumentViewer({
     setSearchInput('')
   }, [])
   
+  // Handle category click in the document list
+  const handleCategoryClick = useCallback((categoryId: string) => {
+    setFilters(prev => ({
+      ...prev,
+      document_category_id: categoryId,
+      document_subcategory_id: undefined, // Reset subcategory when changing category
+      page: 1 // Reset to first page when changing filters
+    }));
+  }, []);
+  
+  // Handle subcategory click in the document list
+  const handleSubcategoryClick = useCallback((categoryId: string, subcategoryId: string) => {
+    setFilters(prev => ({
+      ...prev,
+      document_category_id: categoryId,
+      document_subcategory_id: subcategoryId,
+      page: 1 // Reset to first page when changing filters
+    }));
+  }, []);
+  
+  // Add individual filter reset handlers
+  const clearCategoryFilter = useCallback(() => {
+    setFilters(prev => ({
+      ...prev,
+      document_category_id: undefined,
+      document_subcategory_id: undefined, // Also clear subcategory since it depends on category
+      page: 1
+    }));
+  }, []);
+
+  const clearSubcategoryFilter = useCallback(() => {
+    setFilters(prev => ({
+      ...prev,
+      document_subcategory_id: undefined,
+      page: 1
+    }));
+  }, []);
+  
   // Render functions
   const renderDocumentListItem = (document: Document) => (
     <div className="grid grid-cols-12 gap-3 p-3 border-b hover:bg-accent/5 transition-colors group relative">
@@ -138,9 +176,33 @@ export function DocumentViewer({
               {document.title}
             </h3>
             <div className="text-xs text-muted-foreground">
-              {document.category && document.category.name}
+              {document.category && (
+                <span 
+                  className={`hover:underline cursor-pointer ${
+                    filters.document_category_id === document.category.id 
+                      ? 'text-primary font-medium' 
+                      : 'hover:text-primary'
+                  }`}
+                  onClick={() => document.category && handleCategoryClick(document.category.id)}
+                  title={`Filter by ${document.category.name} category`}
+                >
+                  {document.category.name}
+                </span>
+              )}
               {document.category && document.subcategory && " -> "}
-              {document.subcategory && document.subcategory.name}
+              {document.subcategory && (
+                <span 
+                  className={`hover:underline cursor-pointer ${
+                    filters.document_subcategory_id === document.subcategory.id 
+                      ? 'text-primary font-medium' 
+                      : 'hover:text-primary'
+                  }`}
+                  onClick={() => document.category && document.subcategory && handleSubcategoryClick(document.category.id, document.subcategory.id)}
+                  title={`Filter by ${document.subcategory.name} subcategory`}
+                >
+                  {document.subcategory.name}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -284,7 +346,25 @@ export function DocumentViewer({
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
           {/* Category Filter */}
           <div>
-            <label className="text-sm font-medium mb-1 block">Category</label>
+            <label className="text-sm font-medium mb-1 block">
+              Category
+              {filters.document_category_id && (
+                <span className="ml-2">
+                  <Badge variant="secondary" className="text-xs">Filtered</Badge>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-5 px-1 ml-1 text-xs"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      clearCategoryFilter();
+                    }}
+                  >
+                    Clear
+                  </Button>
+                </span>
+              )}
+            </label>
             <Select 
               value={filters.document_category_id || 'all'} 
               onValueChange={handleCategoryChange}
@@ -305,7 +385,25 @@ export function DocumentViewer({
           
           {/* Subcategory Filter */}
           <div>
-            <label className="text-sm font-medium mb-1 block">Subcategory</label>
+            <label className="text-sm font-medium mb-1 block">
+              Subcategory
+              {filters.document_subcategory_id && (
+                <span className="ml-2">
+                  <Badge variant="secondary" className="text-xs">Filtered</Badge>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-5 px-1 ml-1 text-xs"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      clearSubcategoryFilter();
+                    }}
+                  >
+                    Clear
+                  </Button>
+                </span>
+              )}
+            </label>
             <Select 
               value={filters.document_subcategory_id || 'all'} 
               onValueChange={handleSubcategoryChange}
