@@ -25,11 +25,11 @@ interface DeleteSubcategoryFunctionResponse {
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Validate that we have a subcategory ID
-    const subcategoryId = params.id;
+    const { id: subcategoryId } = await params;
     if (!subcategoryId) {
       return NextResponse.json(
         { success: false, error: 'Subcategory ID is required' },
@@ -104,7 +104,19 @@ export async function POST(
       );
     }
 
-    const result = data as DeleteSubcategoryFunctionResponse;
+    // Safely convert the returned data to our expected type
+    if (!data || typeof data !== 'object' || !('documents_updated' in data)) {
+      console.error('Unexpected response format from delete_subcategory_and_reassign:', data);
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Unexpected response format from server function' 
+        },
+        { status: 500, headers: { 'Cache-Control': 'no-store' } }
+      );
+    }
+
+    const result = data as unknown as DeleteSubcategoryFunctionResponse;
 
     // Return success response with the number of updated documents
     return NextResponse.json({

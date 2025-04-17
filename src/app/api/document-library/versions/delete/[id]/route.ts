@@ -4,11 +4,11 @@ import { NextResponse } from 'next/server'
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Get version ID from route params
-    const versionId = params.id
+    const { id: versionId } = await params;
     
     if (!versionId) {
       return NextResponse.json(
@@ -49,9 +49,9 @@ export async function DELETE(
       .eq('id', versionId)
       .single()
     
-    if (versionError || !version) {
+    if (versionError || !version || !version.document_id) {
       return NextResponse.json(
-        { success: false, error: 'Version not found' },
+        { success: false, error: 'Version not found or has no associated document' },
         { status: 404 }
       )
     }

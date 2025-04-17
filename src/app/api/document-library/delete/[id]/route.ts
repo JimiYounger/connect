@@ -4,11 +4,11 @@ import { NextResponse } from 'next/server'
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Get document ID from route params
-    const documentId = params.id
+    const { id: documentId } = await params
     
     if (!documentId) {
       return NextResponse.json(
@@ -124,7 +124,7 @@ export async function DELETE(
     // 5. Delete files from storage
     if (document.document_versions && document.document_versions.length > 0) {
       const filePaths = document.document_versions
-        .map(v => v.file_path)
+        .map((v: { file_path: string }) => v.file_path)
         .filter(Boolean) // Remove any undefined or null paths
       
       if (filePaths.length > 0) {

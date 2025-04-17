@@ -94,7 +94,7 @@ export async function POST(request: Request) {
     }
 
     // Check if category already exists with this name
-    const { data: existingCategory, error: existingError } = await supabase
+    const { data: existingCategory, error: _existingError } = await supabase
       .from('document_categories')
       .select('id')
       .ilike('name', name)

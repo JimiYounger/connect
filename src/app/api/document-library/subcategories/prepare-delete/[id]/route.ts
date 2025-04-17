@@ -27,10 +27,10 @@ interface _Subcategory {
  */
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const subcategoryId = params.id;
+    const { id: subcategoryId } = await params;
     
     if (!subcategoryId) {
       return NextResponse.json(

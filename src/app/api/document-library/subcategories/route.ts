@@ -120,7 +120,7 @@ export async function POST(request: Request) {
     }
 
     // Check if subcategory already exists with this name in this category
-    const { data: existingSubcategory, error: existingError } = await supabase
+    const { data: existingSubcategory, error: _existingError } = await supabase
       .from('document_subcategories')
       .select('id')
       .eq('document_category_id', document_category_id)

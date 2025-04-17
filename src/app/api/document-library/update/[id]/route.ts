@@ -18,11 +18,11 @@ interface DocumentUpdateData {
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Get document ID from route params
-    const documentId = params.id
+    const { id: documentId } = await params;
     
     if (!documentId) {
       return NextResponse.json(

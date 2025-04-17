@@ -4,11 +4,11 @@ import { NextResponse } from 'next/server'
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Get document ID from route params
-    const documentId = params.id
+    const { id: documentId } = await params;
     
     if (!documentId) {
       return NextResponse.json(
@@ -74,7 +74,7 @@ export async function GET(
 
     // Check document visibility (access control)
     // Skip for admins
-    if (userProfile.role_type.toLowerCase() !== 'admin') {
+    if (userProfile.role_type && userProfile.role_type.toLowerCase() !== 'admin') {
       const { data: visibilityData } = await supabase
         .from('document_visibility')
         .select('conditions')
@@ -83,7 +83,12 @@ export async function GET(
 
       if (visibilityData && visibilityData.conditions) {
         // Treat conditions as a Record with string keys and any values
-        const conditions = visibilityData.conditions;
+        const conditions = visibilityData.conditions as {
+          roleTypes?: string[];
+          teams?: string[];
+          areas?: string[];
+          regions?: string[];
+        };
         
         // Helper function to safely check array length
         const hasItems = (arr: any[] | undefined | null): boolean => 
@@ -119,7 +124,7 @@ export async function GET(
     if (versionId) {
       // Find the specific version if requested
       version = Array.isArray(document.document_versions) 
-        ? document.document_versions.find(v => v.id === versionId)
+        ? document.document_versions.find((v: { id: string }) => v.id === versionId)
         : null
         
       if (!version) {
@@ -131,7 +136,7 @@ export async function GET(
     } else {
       // Use the current version
       version = Array.isArray(document.document_versions) 
-        ? document.document_versions.find(v => v.id === document.current_version_id) || document.document_versions[0]
+        ? document.document_versions.find((v: { id: string }) => v.id === document.current_version_id) || document.document_versions[0]
         : document.document_versions
     }
     

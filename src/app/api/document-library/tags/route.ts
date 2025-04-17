@@ -77,7 +77,7 @@ export async function POST(request: Request) {
     }
 
     // Check if tag already exists with this name
-    const { data: existingTag, error: existingError } = await supabase
+    const { data: existingTag, error: _existingError } = await supabase
       .from('document_tags')
       .select('id')
       .ilike('name', name)
