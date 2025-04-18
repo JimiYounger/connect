@@ -35,6 +35,13 @@ export async function POST(req: Request) {
       )
     }
     
+    // Update document status to processing
+    const supabase = await createClient()
+    await supabase
+      .from('documents')
+      .update({ embedding_status: 'processing' })
+      .eq('id', documentId)
+    
     // Log important parameters
     console.log(`Processing document: ${documentId}, version: ${versionId || 'unknown'}, URL: ${fileUrl}`)
     
@@ -335,6 +342,31 @@ export async function POST(req: Request) {
           // Continue execution - we've at least saved the full document content
         } else {
           console.log(`Successfully processed and stored ${chunks.length} chunks for document: ${documentId}`)
+          
+          // Update document status to pending (ready for embedding)
+          await supabase
+            .from('documents')
+            .update({ embedding_status: 'pending' })
+            .eq('id', documentId)
+            
+          // Trigger the embedding function
+          const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_FUNCTIONS_URL ?? 'https://mxrxeqzmlwpqahkhjzdw.supabase.co/functions/v1'
+          
+          const embeddingTriggerResponse = await fetch(`${baseUrl}/generate-embeddings`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ documentId })
+          });
+
+          if (!embeddingTriggerResponse.ok) {
+            const err = await embeddingTriggerResponse.text();
+            console.error('⚠️ Failed to trigger embedding function:', err);
+          } else {
+            console.log('✅ Embedding function triggered for document:', documentId);
+          }
         }
       } catch (error) {
         console.error('Error processing document chunks:', error)

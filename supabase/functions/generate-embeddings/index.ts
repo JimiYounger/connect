@@ -1,3 +1,5 @@
+// my-app/supabase/functions/generate-embeddings/index.ts
+
 // Follow this setup guide to integrate the Deno language server with your editor:
 // https://deno.land/manual/getting_started/setup_your_environment
 // This enables autocomplete, go to definition, etc.
@@ -176,6 +178,24 @@ Deno.serve(async (req) => {
     }
 
     console.log("✅ Processing complete", results);
+    
+    // Update document status based on results
+    if (results.success > 0) {
+      // Mark as complete if at least some chunks were successfully processed
+      await client
+        .from('documents')
+        .update({ embedding_status: 'complete' })
+        .eq('id', documentId);
+      console.log(`📝 Updated document ${documentId} status to 'complete'`);
+    } else if (results.failed === results.total) {
+      // Mark as failed if all chunks failed
+      await client
+        .from('documents')
+        .update({ embedding_status: 'failed' })
+        .eq('id', documentId);
+      console.log(`⚠️ Updated document ${documentId} status to 'failed'`);
+    }
+    
     return new Response(JSON.stringify({ 
       message: "Embedding generation complete",
       results 

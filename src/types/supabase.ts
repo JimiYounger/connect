@@ -608,6 +608,7 @@ export type Database = {
           description: string | null
           document_category_id: string | null
           document_subcategory_id: string | null
+          embedding_status: string | null
           id: string
           order: number | null
           preview_image_url: string | null
@@ -622,6 +623,7 @@ export type Database = {
           description?: string | null
           document_category_id?: string | null
           document_subcategory_id?: string | null
+          embedding_status?: string | null
           id?: string
           order?: number | null
           preview_image_url?: string | null
@@ -636,6 +638,7 @@ export type Database = {
           description?: string | null
           document_category_id?: string | null
           document_subcategory_id?: string | null
+          embedding_status?: string | null
           id?: string
           order?: number | null
           preview_image_url?: string | null
