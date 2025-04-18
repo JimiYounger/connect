@@ -3,7 +3,7 @@
 'use client';
 
 import { useEffect, useRef, KeyboardEvent } from 'react';
-import { Search, AlertCircle, Calendar, Percent, FileText } from 'lucide-react';
+import { Search, AlertCircle, Calendar, Percent, FileText, ExternalLink } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { 
   Card, 
@@ -27,6 +27,7 @@ import { useSemanticSearch } from './useSemanticSearch';
 import { SemanticSearchProps, SearchResult } from './types';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import Link from 'next/link';
 
 /**
  * Formats a date string into a more readable format
@@ -49,7 +50,32 @@ const formatDate = (dateString: string) => {
 /**
  * Result card component to display a single search result
  */
-const ResultCard = ({ result }: { result: SearchResult }) => {
+const ResultCard = ({ 
+  result, 
+  onClick,
+  onView,
+  viewUrlPrefix = '/documents'
+}: { 
+  result: SearchResult; 
+  onClick?: (result: SearchResult) => void;
+  onView?: (result: SearchResult) => void;
+  viewUrlPrefix?: string;
+}) => {
+  const handleClick = () => {
+    if (onClick) {
+      onClick(result);
+    }
+  };
+  
+  const handleViewClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering the card click
+    if (onView) {
+      onView(result);
+    }
+  };
+  
+  const documentUrl = `${viewUrlPrefix}/${result.id}`;
+  
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -57,19 +83,41 @@ const ResultCard = ({ result }: { result: SearchResult }) => {
       exit={{ opacity: 0, y: -10 }}
       transition={{ duration: 0.2 }}
     >
-      <Card className="mb-4 overflow-hidden border hover:border-primary/50 transition-colors">
+      <Card 
+        className="mb-4 overflow-hidden border hover:border-primary/50 transition-colors cursor-pointer hover:shadow-md"
+        onClick={handleClick}
+      >
         <CardHeader className="px-6 py-4 bg-muted/50">
           <div className="flex justify-between items-start gap-2">
-            <div>
-              <CardTitle className="text-lg font-medium">{result.title}</CardTitle>
+            <div className="flex-1">
+              <CardTitle className="text-lg font-medium group flex items-center gap-2">
+                {result.title}
+                <Link href={documentUrl} className="opacity-0 group-hover:opacity-100 transition-opacity">
+                  <ExternalLink className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                </Link>
+              </CardTitle>
               {result.description && (
                 <CardDescription className="mt-1 line-clamp-1">{result.description}</CardDescription>
               )}
             </div>
-            <Badge className="ml-auto flex items-center gap-1 whitespace-nowrap">
-              <Percent className="h-3 w-3" />
-              {(result.similarity * 100).toFixed(0)}%
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge className="flex items-center gap-1 whitespace-nowrap">
+                <Percent className="h-3 w-3" />
+                {(result.similarity * 100).toFixed(0)}%
+              </Badge>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-8 px-2 flex gap-1 items-center"
+                onClick={handleViewClick}
+                asChild
+              >
+                <Link href={documentUrl}>
+                  <span>View</span>
+                  <ExternalLink className="h-3 w-3" />
+                </Link>
+              </Button>
+            </div>
           </div>
         </CardHeader>
         
@@ -180,8 +228,15 @@ export function SemanticSearch({
   matchThreshold = 0.5,
   matchCount = 10,
   initialSortBy = 'similarity',
-  className = ''
-}: SemanticSearchProps) {
+  className = '',
+  onDocumentClick,
+  onDocumentView,
+  documentUrlPrefix = '/documents'
+}: SemanticSearchProps & {
+  onDocumentClick?: (result: SearchResult) => void;
+  onDocumentView?: (result: SearchResult) => void;
+  documentUrlPrefix?: string;
+}) {
   // Use the search hook
   const {
     query,
@@ -305,7 +360,13 @@ export function SemanticSearch({
           <ScrollArea className="max-h-[70vh]">
             <AnimatePresence mode="popLayout">
               {results.map((result) => (
-                <ResultCard key={result.id} result={result} />
+                <ResultCard 
+                  key={result.id} 
+                  result={result} 
+                  onClick={onDocumentClick}
+                  onView={onDocumentView}
+                  viewUrlPrefix={documentUrlPrefix}
+                />
               ))}
             </AnimatePresence>
           </ScrollArea>
