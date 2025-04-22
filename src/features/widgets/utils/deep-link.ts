@@ -165,12 +165,18 @@ export const openDeepLink = async (
   // Always log the attempt for debugging
   logDeepLinkDebug(config, "Attempting to use deep link");
   
+
   // Skip deep link attempt for Safari or other environments where deep links show errors
   // Go directly to App Store or web fallback instead
   if (!canUseNativeDeepLinks()) {
     logDeepLinkDebug(config, "Environment has limited deep link support, going directly to store/fallback URL");
     window.open(config.webFallbackUrl, '_blank');
     return;
+
+  // Shorter timeout for browsers with limited deep link support
+  if (isSafari()) {
+    timeout = 1000; // Shorter timeout for Safari
+
   }
   
   return new Promise((resolve) => {
@@ -178,20 +184,6 @@ export const openDeepLink = async (
     const start = Date.now();
     let deepLinkUrl: string | null = null;
     
-    // Set up timeout for fallback
-    const fallbackTimeout = setTimeout(() => {
-      // Only fallback if we're still on this page
-      if (document.hidden || Date.now() - start > timeout + 500) {
-        return;
-      }
-      
-      logDeepLinkDebug(config, "Timeout - app not opened, using web fallback");
-      
-      // If we're still here after timeout, app wasn't opened
-      window.open(config.webFallbackUrl, '_blank');
-      resolve();
-    }, timeout);
-
     // Determine which deep link to use based on platform
     if (isIOS() && config.iosScheme) {
       // Use the direct URI scheme for iOS
@@ -205,64 +197,107 @@ export const openDeepLink = async (
       // No deep link URL available, use web fallback
       logDeepLinkDebug(config, "No deep link URL available, using web fallback");
       window.open(config.webFallbackUrl, '_blank');
-      clearTimeout(fallbackTimeout);
       resolve();
       return;
     }
 
+    // Set up visibility change listener to detect if app was opened
+    let appOpened = false;
+    const visibilityChangeHandler = () => {
+      if (document.hidden) {
+        // User has likely switched to the app
+        appOpened = true;
+        clearTimeout(fallbackTimeout);
+      }
+    };
+    document.addEventListener('visibilitychange', visibilityChangeHandler);
+    
+    // Set up timeout for fallback only if app isn't opened
+    const fallbackTimeout = setTimeout(() => {
+      // Clean up event listener
+      document.removeEventListener('visibilitychange', visibilityChangeHandler);
+      
+      // Only fallback if we're still on this page and app wasn't opened
+      if (document.hidden || Date.now() - start > timeout + 500 || appOpened) {
+        return;
+      }
+      
+      logDeepLinkDebug(config, "Timeout - app not opened, using app store fallback");
+      
+      // If we're still here after timeout, app wasn't opened
+      window.open(config.webFallbackUrl, '_blank');
+      resolve();
+    }, timeout);
+
     try {
       logDeepLinkDebug(config, `Using deep link URL: ${deepLinkUrl}`);
 
-      // The key is direct user interaction
-      // Create and trigger a clickable element to launch the deep link
-      const a = document.createElement('a');
-      a.href = deepLinkUrl;
-      a.style.display = 'none';
-      a.setAttribute('target', '_blank'); // Important for iOS
-      a.setAttribute('rel', 'noopener noreferrer');
-      document.body.appendChild(a);
-      
-      // Click the element to trigger the deep link with user interaction
-      a.click();
-      
-      // For iOS, we also try the iframe method
-      if (isIOS()) {
+      // Handle Safari specially to minimize error dialogs
+      if (isSafari()) {
+        // Open a new window first and redirect it
+        const newWindow = window.open('about:blank');
+        if (newWindow) {
+          setTimeout(() => {
+            try {
+              newWindow.location.href = deepLinkUrl!;
+            } catch (_e) {
+              // Quietly handle errors
+              console.log("Safari deep link navigation error, will fall back to App Store");
+              window.open(config.webFallbackUrl, '_blank');
+            }
+          }, 100);
+        } else {
+          // If popup blocked, fall back to standard method
+          window.location.href = deepLinkUrl;
+        }
+      } else {
+        // For non-Safari browsers, use a hidden iframe approach first
+        // to prevent the page from showing blank for a second
         const iframe = document.createElement('iframe');
         iframe.style.display = 'none';
         iframe.src = deepLinkUrl;
         document.body.appendChild(iframe);
         
-        // Clean up after short delay
+        // For iOS, use the location.href as backup if iframe doesn't work
+        if (isIOS()) {
+          // Wait a tiny bit to let iframe try first
+          setTimeout(() => {
+            if (!appOpened) {
+              window.location.href = deepLinkUrl!;
+            }
+          }, 50);
+        } else {
+          // For Android, also try the intent:// URL directly
+          const a = document.createElement('a');
+          a.href = deepLinkUrl;
+          a.style.display = 'none';
+          a.setAttribute('target', '_blank');
+          document.body.appendChild(a);
+          a.click();
+          
+          if (a.parentNode) {
+            a.parentNode.removeChild(a);
+          }
+        }
+        
+        // Clean up iframe after short delay
         setTimeout(() => {
-          document.body.removeChild(iframe);
-          document.body.removeChild(a);
+          if (iframe.parentNode) {
+            iframe.parentNode.removeChild(iframe);
+          }
         }, 100);
-      } else {
-        // Clean up the element after clicking
-        document.body.removeChild(a);
       }
     } catch (error) {
       console.error("Error opening deep link:", error);
-      window.open(config.webFallbackUrl, '_blank');
+      
+      // Clear the timeout and event listener
       clearTimeout(fallbackTimeout);
+      document.removeEventListener('visibilitychange', visibilityChangeHandler);
+      
+      // Fall back to web URL
+      window.open(config.webFallbackUrl, '_blank');
       resolve();
     }
-    
-    // Handle visibility change (app opened successfully)
-    const visibilityChangeHandler = () => {
-      if (document.hidden) {
-        logDeepLinkDebug(config, "Visibility changed - app likely opened");
-        clearTimeout(fallbackTimeout);
-        resolve();
-      }
-    };
-    
-    document.addEventListener('visibilitychange', visibilityChangeHandler);
-    
-    // Clean up after timeout
-    setTimeout(() => {
-      document.removeEventListener('visibilitychange', visibilityChangeHandler);
-    }, timeout + 1000);
   });
 };
 

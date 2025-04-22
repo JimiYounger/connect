@@ -47,28 +47,35 @@ export const RedirectWidget: React.FC<RedirectWidgetProps> = ({
     const deepLinkConfig = configuration?.deepLink;
     
     if (deepLinkConfig?.enabled && isMobile()) {
-      // Determine the appropriate fallback URL based on device
-      let fallbackUrl = processDynamicUrl(deepLinkConfig.webFallbackUrl || processedUrl, profile);
-      
       // Cast to DeepLinkConfig to access newer properties
       const config = deepLinkConfig as DeepLinkConfig;
       
-      // First check for direct app store URLs
-      if (isIOS() && 'iosAppStoreUrl' in config && config.iosAppStoreUrl) {
-        fallbackUrl = config.iosAppStoreUrl;
-      } else if (isAndroid() && 'androidAppStoreUrl' in config && config.androidAppStoreUrl) {
-        fallbackUrl = config.androidAppStoreUrl;
-      } 
-      // Fall back to legacy app store IDs if direct URLs aren't available
-      else if (isIOS() && deepLinkConfig.iosAppStoreId) {
-        const storeLinks = getAppStoreLinks(deepLinkConfig.iosAppStoreId);
-        fallbackUrl = storeLinks.ios;
-      } else if (isAndroid() && deepLinkConfig.androidAppStoreId) {
-        const storeLinks = getAppStoreLinks(deepLinkConfig.androidAppStoreId);
-        fallbackUrl = storeLinks.android;
+      // Determine the appropriate fallback URL based on device
+      // Default to the processed web URL if nothing else is available
+      let fallbackUrl = processDynamicUrl(deepLinkConfig.webFallbackUrl || processedUrl, profile);
+      
+      // First check for direct app store URLs (preferred method)
+      if (isIOS()) {
+        if ('iosAppStoreUrl' in config && config.iosAppStoreUrl) {
+          // Use direct App Store URL if available
+          fallbackUrl = config.iosAppStoreUrl;
+        } else if (deepLinkConfig.iosAppStoreId) {
+          // Fall back to generated URL from ID
+          const storeLinks = getAppStoreLinks(deepLinkConfig.iosAppStoreId);
+          fallbackUrl = storeLinks.ios;
+        }
+      } else if (isAndroid()) {
+        if ('androidAppStoreUrl' in config && config.androidAppStoreUrl) {
+          // Use direct Play Store URL if available
+          fallbackUrl = config.androidAppStoreUrl;
+        } else if (deepLinkConfig.androidAppStoreId) {
+          // Fall back to generated URL from ID
+          const storeLinks = getAppStoreLinks(deepLinkConfig.androidAppStoreId);
+          fallbackUrl = storeLinks.android;
+        }
       }
       
-      // Always attempt deep linking, with the appropriate fallback URL
+      // Pass to deep link handler with the appropriate fallback URL
       await openDeepLink({
         ...deepLinkConfig,
         webFallbackUrl: fallbackUrl
