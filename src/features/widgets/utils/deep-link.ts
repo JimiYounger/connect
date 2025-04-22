@@ -13,6 +13,11 @@ export interface DeepLinkConfig {
   iosScheme?: string;
   androidPackage?: string;
   webFallbackUrl: string;
+  iosAppStoreId?: string;
+  androidAppStoreId?: string;
+  iosAppStoreUrl?: string;
+  androidAppStoreUrl?: string;
+  preset?: AppPreset;
 }
 
 /**
