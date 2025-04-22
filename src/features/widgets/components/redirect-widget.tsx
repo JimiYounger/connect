@@ -50,8 +50,14 @@ export const RedirectWidget: React.FC<RedirectWidgetProps> = ({
       // Determine the appropriate fallback URL
       let fallbackUrl = processDynamicUrl(deepLinkConfig.webFallbackUrl || processedUrl, profile);
       
-      // If app store IDs are provided, use them as fallbacks instead of web URL
-      if (isIOS() && deepLinkConfig.iosAppStoreId) {
+      // First try to use direct app store URLs if provided
+      if (isIOS() && deepLinkConfig.iosAppStoreUrl) {
+        fallbackUrl = deepLinkConfig.iosAppStoreUrl;
+      } else if (isAndroid() && deepLinkConfig.androidAppStoreUrl) {
+        fallbackUrl = deepLinkConfig.androidAppStoreUrl;
+      } 
+      // Fall back to legacy app store IDs if direct URLs aren't available
+      else if (isIOS() && deepLinkConfig.iosAppStoreId) {
         const storeLinks = getAppStoreLinks(deepLinkConfig.iosAppStoreId);
         fallbackUrl = storeLinks.ios;
       } else if (isAndroid() && deepLinkConfig.androidAppStoreId) {
