@@ -43,9 +43,7 @@ export function RedirectWidgetFields() {
         enabled: false,
         iosScheme: '',
         androidPackage: '',
-        webFallbackUrl: getValues('config.redirectUrl') || '',
-        iosAppStoreUrl: '',
-        androidAppStoreUrl: '',
+        webFallbackUrl: getValues('config.redirectUrl') || ''
       });
     }
   }, [setValue, getValues]);
@@ -295,32 +293,25 @@ export function RedirectWidgetFields() {
             />
             
             <div className="pt-4 border-t mt-4">
-              <h4 className="text-sm font-medium mb-2">App Store Links (Optional)</h4>
+              <h4 className="text-sm font-medium mb-2">App Store IDs (Optional)</h4>
               <p className="text-sm text-muted-foreground mb-4">
                 If provided, users without the app will be directed to the app store instead of the web fallback
               </p>
               
               <FormField
                 control={control}
-                name="config.deepLink.iosAppStoreUrl"
+                name="config.deepLink.iosAppStoreId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>iOS App Store URL</FormLabel>
+                    <FormLabel>iOS App Store ID</FormLabel>
                     <FormControl>
                       <SafeInput 
-                        placeholder="https://apps.apple.com/app/..." 
+                        placeholder="123456789" 
                         {...field} 
-                        onChange={(e) => {
-                          field.onChange(e);
-                          // Clear the legacy ID field if URL is provided
-                          if (e.target.value) {
-                            setValue('config.deepLink.iosAppStoreId', '');
-                          }
-                        }}
                       />
                     </FormControl>
                     <FormDescription>
-                      The full App Store URL for iOS users (e.g., &quot;https://apps.apple.com/us/app/gmail-email-by-google/id422689480&quot;)
+                      The numeric App Store ID (e.g., &quot;389801252&quot; for Gmail)
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -329,57 +320,23 @@ export function RedirectWidgetFields() {
               
               <FormField
                 control={control}
-                name="config.deepLink.androidAppStoreUrl"
+                name="config.deepLink.androidAppStoreId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Google Play Store URL</FormLabel>
+                    <FormLabel>Android Package ID</FormLabel>
                     <FormControl>
                       <SafeInput 
-                        placeholder="https://play.google.com/store/apps/details?id=..." 
+                        placeholder="com.example.app" 
                         {...field} 
-                        onChange={(e) => {
-                          field.onChange(e);
-                          // Clear the legacy ID field if URL is provided
-                          if (e.target.value) {
-                            setValue('config.deepLink.androidAppStoreId', '');
-                          }
-                        }}
                       />
                     </FormControl>
                     <FormDescription>
-                      The full Google Play Store URL for Android users (e.g., &quot;https://play.google.com/store/apps/details?id=com.google.android.gm&quot;)
+                      The Android package ID for Google Play Store (usually same as package name)
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
-              {/* Keep the old ID fields for backward compatibility, but hide them */}
-              <div className="hidden">
-                <FormField
-                  control={control}
-                  name="config.deepLink.iosAppStoreId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <SafeInput {...field} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={control}
-                  name="config.deepLink.androidAppStoreId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <SafeInput {...field} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              </div>
             </div>
           </div>
         )}
