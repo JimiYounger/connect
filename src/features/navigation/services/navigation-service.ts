@@ -399,7 +399,8 @@ export async function getUserNavigation(
     })
   
   if (error) throw error
-  return buildNavigationTree(data)
+  // Ensure data is an array before passing to buildNavigationTree
+  return buildNavigationTree(Array.isArray(data) ? data : [])
 }
 
 /**

@@ -20,8 +20,8 @@ type DocumentDetails = {
   subcategory: { id: string; name: string } | null;
   tags: Array<{ id: string; name: string }>;
   uploadedBy: { first_name: string; last_name: string } | null;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: string | null;
+  updatedAt: string | null;
 };
 
 function CustomPDFViewer({ url }: { url: string }) {
@@ -167,10 +167,12 @@ export default function DocumentViewPage() {
           description: documentData.description,
           category: documentData.category,
           subcategory: documentData.subcategory,
-          tags: tagData.map(tag => tag.document_tags),
+          tags: tagData
+            .filter(tag => tag.document_tags !== null)
+            .map(tag => tag.document_tags as { id: string; name: string }),
           uploadedBy: documentData.user_profiles,
-          createdAt: documentData.created_at,
-          updatedAt: documentData.updated_at
+          createdAt: documentData.created_at ?? null,
+          updatedAt: documentData.updated_at ?? null
         };
         
         setDocument(formattedDocument);

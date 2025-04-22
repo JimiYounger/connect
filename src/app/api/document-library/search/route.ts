@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase-server'
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { logSearchActivity } from '@/lib/logSearchActivity'
+import { MatchDocumentResult } from '@/types/database.extensions'
+import { Json } from '@/types/supabase'
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -16,6 +18,42 @@ interface SearchRequestBody {
   match_threshold?: number
   match_count?: number
   sort_by?: 'similarity' | 'created_at' | 'title' // Support user-defined sort order
+}
+
+interface DocumentVisibilityConditions {
+  roleTypes?: string[];
+  teams?: string[];
+  areas?: string[];
+  regions?: string[];
+  [key: string]: any;
+}
+
+interface DocumentVisibility {
+  id: string;
+  conditions: Json | DocumentVisibilityConditions;
+}
+
+interface Document {
+  id: string;
+  title: string;
+  description?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  embedding_status?: string | null;
+  tags?: string[];
+  role_type?: string;
+  document_visibility?: DocumentVisibility[];
+  [key: string]: any;
+}
+
+interface SearchResultDocument extends Document {
+  similarity: number;
+  highlight: string;
+  matching_chunks: {
+    chunk_index: number;
+    content: string;
+    similarity: number;
+  }[];
 }
 
 /**
@@ -135,7 +173,7 @@ export async function POST(req: Request) {
       console.log('Performing vector similarity search')
       
       // Call match_documents RPC function which uses pgvector cosine distance
-      const { data: matchResults, error: searchError } = await supabase.rpc(
+      const { data: matchResults, error: searchError } = await supabase.rpc<MatchDocumentResult[]>(
         'match_documents',
         {
           query_embedding: embedding,
@@ -152,8 +190,8 @@ export async function POST(req: Request) {
       console.log('Raw match results:', matchResults ? matchResults.length : 'none')
       
       // For test purposes, if no results from real search, generate mock data
-      let testResults = matchResults;
-      if (!testResults || testResults.length === 0) {
+      let testResults: MatchDocumentResult[] = matchResults || [];
+      if (testResults.length === 0) {
         // In development mode, provide sample data for testing the UI
         if (process.env.NODE_ENV === 'development') {
           console.log('Generating mock results for development testing')
@@ -174,7 +212,7 @@ export async function POST(req: Request) {
         }
       }
 
-      if (!testResults || testResults.length === 0) {
+      if (testResults.length === 0) {
         console.log('No matching documents found')
         
         // Log the search activity (even for zero results)
@@ -198,7 +236,7 @@ export async function POST(req: Request) {
       const documentIds = [...new Set(testResults.map(match => match.document_id))]
       console.log(`Retrieving ${documentIds.length} unique documents`)
 
-      let documents;
+      let documents: Document[] = [];
       let documentsError;
       
       // For test documents, create mock document data
@@ -217,11 +255,18 @@ export async function POST(req: Request) {
         // Real document lookup
         const result = await supabase
           .from('documents')
-          .select('*')
+          .select(`
+            *,
+            document_visibility (
+              id,
+              conditions
+            )
+          `)
           .in('id', documentIds)
           .eq('embedding_status', 'complete')
         
-        documents = result.data;
+        // Ensure we handle null safely
+        documents = result.data || [];
         documentsError = result.error;
       }
 
@@ -243,7 +288,7 @@ export async function POST(req: Request) {
       console.log(`Retrieved ${documents.length} documents`)
 
       // Combine document data with match data
-      let results = documents.map(document => {
+      let results: SearchResultDocument[] = documents.map(document => {
         // Find the highest similarity score for this document
         const matchingChunks = testResults.filter(match => match.document_id === document.id)
         const highestSimilarity = Math.max(...matchingChunks.map(chunk => chunk.similarity))
@@ -276,19 +321,34 @@ export async function POST(req: Request) {
         
         // Filter by role_type if provided
         if (filters.role_type) {
-          results = results.filter(doc => 
-            doc.visibility?.role_type === filters.role_type
-          )
+          results = results.filter(doc => {
+            // Check if document has visibility conditions
+            if (doc.document_visibility && doc.document_visibility.length > 0) {
+              const visibilityConditions = doc.document_visibility[0].conditions;
+              // Safely check if the conditions object has roleTypes and it includes the filter value
+              if (visibilityConditions && 
+                  typeof visibilityConditions === 'object' &&
+                  'roleTypes' in visibilityConditions &&
+                  Array.isArray(visibilityConditions.roleTypes)) {
+                return visibilityConditions.roleTypes.includes(filters.role_type);
+              }
+            }
+            
+            // Fallback to direct role_type if available
+            return doc.role_type === filters.role_type;
+          });
         }
         
         // Filter by tags if provided
         if (filters.tags && Array.isArray(filters.tags) && filters.tags.length > 0) {
           results = results.filter(doc => {
             // If document has no tags, it won't match
-            if (!doc.tags || !Array.isArray(doc.tags)) return false
+            if (!doc.tags || !Array.isArray(doc.tags)) return false;
             
             // Check if any requested tag exists in document tags
-            return filters.tags.some((tag: string) => doc.tags.includes(tag))
+            return filters.tags.some((tag: string) => 
+              doc.tags!.includes(tag)
+            );
           })
         }
         

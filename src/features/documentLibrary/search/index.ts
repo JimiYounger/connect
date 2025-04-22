@@ -1,3 +1,5 @@
+// my-app/src/features/documentLibrary/search/index.ts
+
 /**
  * Semantic search feature for document library
  */

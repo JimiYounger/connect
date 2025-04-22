@@ -101,14 +101,14 @@ export const useSemanticSearch = ({
       
       // Ensure all results have the required fields
       searchResults = searchResults.map(result => ({
-        // Default values for missing fields
+        ...result, // Keep original fields first
+        // Default values for missing fields only if they don't exist
         id: result.id || `unknown-${Math.random().toString(36).substring(2, 9)}`,
         title: result.title || 'Untitled Document',
         similarity: result.similarity || 0,
         highlight: result.highlight || '',
         matching_chunks: result.matching_chunks || [],
-        embedding_status: result.embedding_status || 'complete',
-        ...result // Keep original fields
+        embedding_status: result.embedding_status || 'complete'
       }));
       
       setResults(searchResults);

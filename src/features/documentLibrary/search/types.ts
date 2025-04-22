@@ -1,3 +1,5 @@
+// my-app/src/features/documentLibrary/search/types.ts
+
 /**
  * Types for the document library semantic search feature
  */

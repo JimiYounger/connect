@@ -454,6 +454,44 @@ export type Database = {
           },
         ]
       }
+      document_search_logs: {
+        Row: {
+          created_at: string | null
+          filters: Json | null
+          id: string
+          profile_id: string | null
+          query: string
+          result_count: number
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          filters?: Json | null
+          id?: string
+          profile_id?: string | null
+          query: string
+          result_count: number
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          filters?: Json | null
+          id?: string
+          profile_id?: string | null
+          query?: string
+          result_count?: number
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_search_logs_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_subcategories: {
         Row: {
           created_at: string | null
@@ -612,7 +650,6 @@ export type Database = {
           id: string
           order: number | null
           preview_image_url: string | null
-          subcategory_id: string | null
           title: string
           updated_at: string | null
           uploaded_by: string | null
@@ -627,7 +664,6 @@ export type Database = {
           id?: string
           order?: number | null
           preview_image_url?: string | null
-          subcategory_id?: string | null
           title: string
           updated_at?: string | null
           uploaded_by?: string | null
@@ -642,19 +678,11 @@ export type Database = {
           id?: string
           order?: number | null
           preview_image_url?: string | null
-          subcategory_id?: string | null
           title?: string
           updated_at?: string | null
           uploaded_by?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "documents_category_id_fkey"
-            columns: ["document_category_id"]
-            isOneToOne: false
-            referencedRelation: "document_categories"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "documents_document_category_id_fkey"
             columns: ["document_category_id"]
@@ -665,13 +693,6 @@ export type Database = {
           {
             foreignKeyName: "documents_document_subcategory_id_fkey"
             columns: ["document_subcategory_id"]
-            isOneToOne: false
-            referencedRelation: "document_subcategories"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "documents_subcategory_id_fkey"
-            columns: ["subcategory_id"]
             isOneToOne: false
             referencedRelation: "document_subcategories"
             referencedColumns: ["id"]
@@ -1809,6 +1830,32 @@ export type Database = {
           p_metadata?: Json
         }
         Returns: string
+      }
+      match_chunks: {
+        Args: {
+          query_embedding: string
+          match_count?: number
+          similarity_threshold?: number
+        }
+        Returns: {
+          id: string
+          document_id: string
+          content: string
+          similarity: number
+        }[]
+      }
+      match_documents: {
+        Args: {
+          query_embedding: string
+          match_threshold: number
+          match_count: number
+        }
+        Returns: {
+          document_id: string
+          chunk_index: number
+          content: string
+          similarity: number
+        }[]
       }
       matches_user_criteria: {
         Args: {
