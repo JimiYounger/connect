@@ -165,10 +165,12 @@ export const openDeepLink = async (
   // Always log the attempt for debugging
   logDeepLinkDebug(config, "Attempting to use deep link");
   
-  // Use a shorter timeout for environments where we know deep links won't work well
+  // Skip deep link attempt for Safari or other environments where deep links show errors
+  // Go directly to App Store or web fallback instead
   if (!canUseNativeDeepLinks()) {
-    logDeepLinkDebug(config, "Environment has limited deep link support, using shorter timeout");
-    timeout = 500; // Use a shorter timeout for Safari/etc
+    logDeepLinkDebug(config, "Environment has limited deep link support, going directly to store/fallback URL");
+    window.open(config.webFallbackUrl, '_blank');
+    return;
   }
   
   return new Promise((resolve) => {
