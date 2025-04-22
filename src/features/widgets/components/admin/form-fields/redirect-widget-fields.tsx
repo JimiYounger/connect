@@ -72,6 +72,14 @@ export function RedirectWidgetFields() {
     const presetData = APP_PRESETS[preset];
     setValue('config.deepLink.iosScheme', presetData.iosScheme);
     setValue('config.deepLink.androidPackage', presetData.androidPackage);
+    
+    // Also set the app store URLs from the preset
+    if ('iosAppStoreUrl' in presetData) {
+      setValue('config.deepLink.iosAppStoreUrl', presetData.iosAppStoreUrl);
+    }
+    if ('androidAppStoreUrl' in presetData) {
+      setValue('config.deepLink.androidAppStoreUrl', presetData.androidAppStoreUrl);
+    }
   };
 
   return (

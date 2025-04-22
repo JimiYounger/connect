@@ -6,7 +6,7 @@ import { processDynamicUrl } from './widget-renderer';
 import { useAuth } from '@/features/auth/context/auth-context';
 import { useProfile } from '@/features/users/hooks/useProfile';
 import { WidgetService } from '../services/widget-service';
-import { isMobile, openDeepLink, isIOS, isAndroid, getAppStoreLinks, DeepLinkConfig } from '../utils/deep-link';
+import { isMobile, openDeepLink, isIOS, isAndroid, getAppStoreLinks, DeepLinkConfig, canUseNativeDeepLinks } from '../utils/deep-link';
 
 const widgetService = new WidgetService();
 
@@ -47,23 +47,36 @@ export const RedirectWidget: React.FC<RedirectWidgetProps> = ({
     const deepLinkConfig = configuration?.deepLink;
     
     if (deepLinkConfig?.enabled && isMobile()) {
-      // Determine the appropriate fallback URL
+      // Determine the appropriate fallback URL based on device
       let fallbackUrl = processDynamicUrl(deepLinkConfig.webFallbackUrl || processedUrl, profile);
+      let shouldUseAppStore = false;
       
-      // First try to use direct app store URLs if provided - using type assertion to handle new properties
+      // Cast to DeepLinkConfig to access newer properties
       const config = deepLinkConfig as DeepLinkConfig;
+      
+      // First check for direct app store URLs
       if (isIOS() && 'iosAppStoreUrl' in config && config.iosAppStoreUrl) {
         fallbackUrl = config.iosAppStoreUrl;
+        shouldUseAppStore = true;
       } else if (isAndroid() && 'androidAppStoreUrl' in config && config.androidAppStoreUrl) {
         fallbackUrl = config.androidAppStoreUrl;
+        shouldUseAppStore = true;
       } 
       // Fall back to legacy app store IDs if direct URLs aren't available
       else if (isIOS() && deepLinkConfig.iosAppStoreId) {
         const storeLinks = getAppStoreLinks(deepLinkConfig.iosAppStoreId);
         fallbackUrl = storeLinks.ios;
+        shouldUseAppStore = true;
       } else if (isAndroid() && deepLinkConfig.androidAppStoreId) {
         const storeLinks = getAppStoreLinks(deepLinkConfig.androidAppStoreId);
         fallbackUrl = storeLinks.android;
+        shouldUseAppStore = true;
+      }
+      
+      // If we can't use deep links and have app store URL, use it directly
+      if (!canUseNativeDeepLinks() && shouldUseAppStore) {
+        window.open(fallbackUrl, '_blank');
+        return;
       }
       
       // Use deep linking with the determined fallback URL

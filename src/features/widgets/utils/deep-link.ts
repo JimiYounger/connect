@@ -13,10 +13,10 @@ export interface DeepLinkConfig {
   iosScheme?: string;
   androidPackage?: string;
   webFallbackUrl: string;
-  iosAppStoreId?: string;
-  androidAppStoreId?: string;
-  iosAppStoreUrl?: string;
-  androidAppStoreUrl?: string;
+  iosAppStoreId?: string;       // Legacy app store ID (deprecated)
+  androidAppStoreId?: string;   // Legacy app store ID (deprecated)
+  iosAppStoreUrl?: string;      // Direct iOS App Store URL (preferred)
+  androidAppStoreUrl?: string;  // Direct Android Play Store URL (preferred)
   preset?: AppPreset;
 }
 
@@ -28,31 +28,43 @@ export const APP_PRESETS = {
     name: 'Gmail',
     iosScheme: 'googlegmail://',
     androidPackage: 'com.google.android.gm',
+    iosAppStoreUrl: 'https://apps.apple.com/us/app/gmail-email-by-google/id422689480',
+    androidAppStoreUrl: 'https://play.google.com/store/apps/details?id=com.google.android.gm',
   },
   salesforce: {
     name: 'Salesforce',
     iosScheme: 'salesforce://',
     androidPackage: 'com.salesforce.chatter',
+    iosAppStoreUrl: 'https://apps.apple.com/us/app/salesforce/id404249815',
+    androidAppStoreUrl: 'https://play.google.com/store/apps/details?id=com.salesforce.chatter',
   },
   outlook: {
     name: 'Outlook',
     iosScheme: 'ms-outlook://',
     androidPackage: 'com.microsoft.office.outlook',
+    iosAppStoreUrl: 'https://apps.apple.com/us/app/microsoft-outlook/id951937596',
+    androidAppStoreUrl: 'https://play.google.com/store/apps/details?id=com.microsoft.office.outlook',
   },
   teams: {
     name: 'Microsoft Teams',
     iosScheme: 'msteams://',
     androidPackage: 'com.microsoft.teams',
+    iosAppStoreUrl: 'https://apps.apple.com/us/app/microsoft-teams/id1113153706',
+    androidAppStoreUrl: 'https://play.google.com/store/apps/details?id=com.microsoft.teams',
   },
   zoom: {
     name: 'Zoom',
     iosScheme: 'zoomus://',
     androidPackage: 'us.zoom.videomeetings',
+    iosAppStoreUrl: 'https://apps.apple.com/us/app/zoom-one-platform-to-connect/id546505307',
+    androidAppStoreUrl: 'https://play.google.com/store/apps/details?id=us.zoom.videomeetings',
   },
   slack: {
     name: 'Slack',
     iosScheme: 'slack://',
     androidPackage: 'com.Slack',
+    iosAppStoreUrl: 'https://apps.apple.com/us/app/slack-for-desktop/id803453959',
+    androidAppStoreUrl: 'https://play.google.com/store/apps/details?id=com.Slack',
   },
 } as const;
 
@@ -152,6 +164,13 @@ export const openDeepLink = async (
 
   // Always log the attempt for debugging
   logDeepLinkDebug(config, "Attempting to use deep link");
+
+  // Skip deep linking attempt if we know it won't work in current environment
+  if (!canUseNativeDeepLinks()) {
+    logDeepLinkDebug(config, "Environment doesn't support deep links, using fallback immediately");
+    window.open(config.webFallbackUrl, '_blank');
+    return;
+  }
   
   return new Promise((resolve) => {
     // Store current time to check if we navigated away
