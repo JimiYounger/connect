@@ -165,15 +165,9 @@ export const openDeepLink = async (
   // Always log the attempt for debugging
   logDeepLinkDebug(config, "Attempting to use deep link");
   
-  // Use special handling for Safari to avoid error messages
+  // Shorter timeout for browsers with limited deep link support
   if (isSafari()) {
-    return handleSafariDeepLink(config, timeout);
-  }
-  
-  // Use a shorter timeout for other environments with limited deep link support
-  if (!canUseNativeDeepLinks()) {
-    logDeepLinkDebug(config, "Environment has limited deep link support, using shorter timeout");
-    timeout = 500; // Use a shorter timeout
+    timeout = 1000; // Shorter timeout for Safari
   }
   
   return new Promise((resolve) => {
@@ -216,33 +210,52 @@ export const openDeepLink = async (
     try {
       logDeepLinkDebug(config, `Using deep link URL: ${deepLinkUrl}`);
 
-      // The key is direct user interaction
-      // Create and trigger a clickable element to launch the deep link
-      const a = document.createElement('a');
-      a.href = deepLinkUrl;
-      a.style.display = 'none';
-      a.setAttribute('target', '_blank'); // Important for iOS
-      a.setAttribute('rel', 'noopener noreferrer');
-      document.body.appendChild(a);
-      
-      // Click the element to trigger the deep link with user interaction
-      a.click();
-      
-      // For iOS, we also try the iframe method
-      if (isIOS()) {
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.src = deepLinkUrl;
-        document.body.appendChild(iframe);
-        
-        // Clean up after short delay
-        setTimeout(() => {
-          document.body.removeChild(iframe);
-          document.body.removeChild(a);
-        }, 100);
+      // Handle Safari specially to minimize error dialogs
+      if (isSafari()) {
+        // Open a new window first and redirect it
+        const newWindow = window.open('about:blank');
+        if (newWindow) {
+          setTimeout(() => {
+            try {
+              newWindow.location.href = deepLinkUrl!;
+            } catch (_e) {
+              // Quietly handle errors
+              console.log("Safari deep link navigation error, will fall back to App Store");
+            }
+          }, 100);
+        } else {
+          // If popup blocked, fall back to standard method
+          window.location.href = deepLinkUrl;
+        }
       } else {
-        // Clean up the element after clicking
-        document.body.removeChild(a);
+        // For non-Safari browsers, use a direct approach
+        // Create and trigger a clickable element to launch the deep link
+        const a = document.createElement('a');
+        a.href = deepLinkUrl;
+        a.style.display = 'none';
+        a.setAttribute('target', '_blank');
+        a.setAttribute('rel', 'noopener noreferrer');
+        document.body.appendChild(a);
+        
+        // Click the element to trigger the deep link
+        a.click();
+        
+        // For iOS, also try the iframe method which often works better
+        if (isIOS() && !isSafari()) {
+          const iframe = document.createElement('iframe');
+          iframe.style.display = 'none';
+          iframe.src = deepLinkUrl;
+          document.body.appendChild(iframe);
+          
+          // Clean up after short delay
+          setTimeout(() => {
+            if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+            if (a.parentNode) a.parentNode.removeChild(a);
+          }, 100);
+        } else {
+          // Clean up the element after clicking
+          if (a.parentNode) a.parentNode.removeChild(a);
+        }
       }
     } catch (error) {
       console.error("Error opening deep link:", error);
@@ -266,84 +279,6 @@ export const openDeepLink = async (
     setTimeout(() => {
       document.removeEventListener('visibilitychange', visibilityChangeHandler);
     }, timeout + 1000);
-  });
-};
-
-/**
- * Handle deep linking specifically for Safari browsers
- * Safari requires special handling to avoid error messages
- */
-const handleSafariDeepLink = (config: DeepLinkConfig, timeout: number = 1500): Promise<void> => {
-  logDeepLinkDebug(config, "Using Safari-specific deep link handling");
-  
-  return new Promise((resolve) => {
-    // Determine which deep link to use
-    let deepLinkUrl: string | null = null;
-    
-    if (isIOS() && config.iosScheme) {
-      deepLinkUrl = config.iosScheme;
-    } else {
-      // No suitable deep link found, just use fallback
-      window.open(config.webFallbackUrl, '_blank');
-      resolve();
-      return;
-    }
-    
-    // Set up timer to detect if app opens
-    const fallbackTimeout = setTimeout(() => {
-      logDeepLinkDebug(config, "Safari timeout - falling back to app store URL");
-      window.open(config.webFallbackUrl, '_blank');
-      resolve();
-    }, timeout);
-    
-    // Track page visibility changes
-    const visibilityChangeHandler = () => {
-      if (document.hidden) {
-        logDeepLinkDebug(config, "Visibility changed - app likely opened in Safari");
-        clearTimeout(fallbackTimeout);
-        resolve();
-      }
-    };
-    
-    document.addEventListener('visibilitychange', visibilityChangeHandler);
-    
-    // For Safari, we use a hidden iframe technique
-    // This avoids the error alert while still attempting to open the app
-    try {
-      // Create and use a hidden iframe
-      const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      iframe.style.width = '0';
-      iframe.style.height = '0';
-      iframe.style.border = '0';
-      iframe.style.position = 'absolute';
-      iframe.style.top = '-1000px';
-      iframe.style.left = '-1000px';
-      
-      // Set up iframe load handler
-      iframe.onload = () => {
-        // Remove the iframe after it loads
-        setTimeout(() => {
-          document.body.removeChild(iframe);
-        }, 100);
-      };
-      
-      // Add to DOM and set src to trigger deep link
-      document.body.appendChild(iframe);
-      iframe.src = deepLinkUrl;
-      
-      logDeepLinkDebug(config, `Attempted Safari deep link via iframe: ${deepLinkUrl}`);
-    } catch (e) {
-      console.error("Error in Safari deep link handling:", e);
-      clearTimeout(fallbackTimeout);
-      window.open(config.webFallbackUrl, '_blank');
-      resolve();
-    }
-    
-    // Clean up after timeout
-    setTimeout(() => {
-      document.removeEventListener('visibilitychange', visibilityChangeHandler);
-    }, timeout + 500);
   });
 };
 
