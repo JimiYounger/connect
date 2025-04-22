@@ -6,7 +6,7 @@ import { processDynamicUrl } from './widget-renderer';
 import { useAuth } from '@/features/auth/context/auth-context';
 import { useProfile } from '@/features/users/hooks/useProfile';
 import { WidgetService } from '../services/widget-service';
-import { isMobile, openDeepLink, isIOS, isAndroid, getAppStoreLinks, DeepLinkConfig, isSafari } from '../utils/deep-link';
+import { isMobile, openDeepLink, isIOS, isAndroid, getAppStoreLinks, DeepLinkConfig } from '../utils/deep-link';
 
 const widgetService = new WidgetService();
 
@@ -49,7 +49,6 @@ export const RedirectWidget: React.FC<RedirectWidgetProps> = ({
     if (deepLinkConfig?.enabled && isMobile()) {
       // Determine the appropriate fallback URL based on device
       let fallbackUrl = processDynamicUrl(deepLinkConfig.webFallbackUrl || processedUrl, profile);
-      let hasAppStoreUrl = false;
       
       // Cast to DeepLinkConfig to access newer properties
       const config = deepLinkConfig as DeepLinkConfig;
@@ -57,29 +56,19 @@ export const RedirectWidget: React.FC<RedirectWidgetProps> = ({
       // First check for direct app store URLs
       if (isIOS() && 'iosAppStoreUrl' in config && config.iosAppStoreUrl) {
         fallbackUrl = config.iosAppStoreUrl;
-        hasAppStoreUrl = true;
       } else if (isAndroid() && 'androidAppStoreUrl' in config && config.androidAppStoreUrl) {
         fallbackUrl = config.androidAppStoreUrl;
-        hasAppStoreUrl = true;
       } 
       // Fall back to legacy app store IDs if direct URLs aren't available
       else if (isIOS() && deepLinkConfig.iosAppStoreId) {
         const storeLinks = getAppStoreLinks(deepLinkConfig.iosAppStoreId);
         fallbackUrl = storeLinks.ios;
-        hasAppStoreUrl = true;
       } else if (isAndroid() && deepLinkConfig.androidAppStoreId) {
         const storeLinks = getAppStoreLinks(deepLinkConfig.androidAppStoreId);
         fallbackUrl = storeLinks.android;
-        hasAppStoreUrl = true;
       }
       
-      // Special case for Safari - go directly to App Store to avoid error message
-      if (isSafari() && hasAppStoreUrl) {
-        window.open(fallbackUrl, '_blank');
-        return;
-      }
-      
-      // For other browsers/environments, attempt deep linking with fallback
+      // Always attempt deep linking with the appropriate fallback URL
       await openDeepLink({
         ...deepLinkConfig,
         webFallbackUrl: fallbackUrl

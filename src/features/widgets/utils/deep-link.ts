@@ -165,11 +165,9 @@ export const openDeepLink = async (
   // Always log the attempt for debugging
   logDeepLinkDebug(config, "Attempting to use deep link");
   
-  // Skip deep linking in Safari to avoid the "invalid address" error message
+  // Use special handling for Safari to avoid error messages
   if (isSafari()) {
-    logDeepLinkDebug(config, "Safari detected, skipping deep link and using fallback directly");
-    window.open(config.webFallbackUrl, '_blank');
-    return;
+    return handleSafariDeepLink(config, timeout);
   }
   
   // Use a shorter timeout for other environments with limited deep link support
@@ -268,6 +266,84 @@ export const openDeepLink = async (
     setTimeout(() => {
       document.removeEventListener('visibilitychange', visibilityChangeHandler);
     }, timeout + 1000);
+  });
+};
+
+/**
+ * Handle deep linking specifically for Safari browsers
+ * Safari requires special handling to avoid error messages
+ */
+const handleSafariDeepLink = (config: DeepLinkConfig, timeout: number = 1500): Promise<void> => {
+  logDeepLinkDebug(config, "Using Safari-specific deep link handling");
+  
+  return new Promise((resolve) => {
+    // Determine which deep link to use
+    let deepLinkUrl: string | null = null;
+    
+    if (isIOS() && config.iosScheme) {
+      deepLinkUrl = config.iosScheme;
+    } else {
+      // No suitable deep link found, just use fallback
+      window.open(config.webFallbackUrl, '_blank');
+      resolve();
+      return;
+    }
+    
+    // Set up timer to detect if app opens
+    const fallbackTimeout = setTimeout(() => {
+      logDeepLinkDebug(config, "Safari timeout - falling back to app store URL");
+      window.open(config.webFallbackUrl, '_blank');
+      resolve();
+    }, timeout);
+    
+    // Track page visibility changes
+    const visibilityChangeHandler = () => {
+      if (document.hidden) {
+        logDeepLinkDebug(config, "Visibility changed - app likely opened in Safari");
+        clearTimeout(fallbackTimeout);
+        resolve();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', visibilityChangeHandler);
+    
+    // For Safari, we use a hidden iframe technique
+    // This avoids the error alert while still attempting to open the app
+    try {
+      // Create and use a hidden iframe
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      iframe.style.position = 'absolute';
+      iframe.style.top = '-1000px';
+      iframe.style.left = '-1000px';
+      
+      // Set up iframe load handler
+      iframe.onload = () => {
+        // Remove the iframe after it loads
+        setTimeout(() => {
+          document.body.removeChild(iframe);
+        }, 100);
+      };
+      
+      // Add to DOM and set src to trigger deep link
+      document.body.appendChild(iframe);
+      iframe.src = deepLinkUrl;
+      
+      logDeepLinkDebug(config, `Attempted Safari deep link via iframe: ${deepLinkUrl}`);
+    } catch (e) {
+      console.error("Error in Safari deep link handling:", e);
+      clearTimeout(fallbackTimeout);
+      window.open(config.webFallbackUrl, '_blank');
+      resolve();
+    }
+    
+    // Clean up after timeout
+    setTimeout(() => {
+      document.removeEventListener('visibilitychange', visibilityChangeHandler);
+    }, timeout + 500);
   });
 };
 
