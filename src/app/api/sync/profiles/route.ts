@@ -162,3 +162,92 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Sync failed' }, { status: 500 })
   }
 }
+
+export async function POST(request: NextRequest) {
+  try {
+    // Verify webhook secret
+    const secret = request.nextUrl.searchParams.get('secret')
+    if (!process.env.SYNC_SECRET || secret !== process.env.SYNC_SECRET) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Parse webhook payload
+    const payload = await request.json()
+    
+    // Create Supabase client
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    )
+
+    // Extract the member data from payload
+    const member = payload.record
+    
+    // Handle TERM case - delete the user
+    if (member?.fields?.Role === 'TERM') {
+      const { error } = await supabase
+        .from('user_profiles')
+        .delete()
+        .eq('airtable_record_id', member.id)
+      
+      if (error) {
+        console.error('Error removing terminated user:', error)
+        return NextResponse.json({ error: 'Failed to remove user' }, { status: 500 })
+      }
+      
+      return NextResponse.json({ 
+        success: true, 
+        message: `User ${member.id} removed due to TERM status` 
+      })
+    }
+    
+    // Process the user update
+    try {
+      const mappedProfile = mapAirtableToSupabase(member)
+      
+      // Check if record exists
+      const { data: existingRecord } = await supabase
+        .from('user_profiles')
+        .select('id')
+        .eq('airtable_record_id', member.id)
+        .maybeSingle()
+      
+      // Update or insert based on existence
+      const operation = existingRecord ? 'updated' : 'created'
+      
+      // Use upsert to handle both insert and update cases
+      const { error } = await supabase
+        .from('user_profiles')
+        .upsert(mappedProfile, {
+          onConflict: 'airtable_record_id',
+          ignoreDuplicates: false
+        })
+        
+      if (error) {
+        console.error(`Error ${operation === 'updated' ? 'updating' : 'creating'} profile:`, error)
+        return NextResponse.json({ error: `${operation === 'updated' ? 'Update' : 'Creation'} failed` }, { status: 500 })
+      }
+      
+      return NextResponse.json({ 
+        success: true, 
+        message: `${operation === 'updated' ? 'Updated' : 'Created'} profile for ${mappedProfile.email}` 
+      })
+      
+    } catch (error: any) {
+      console.error('Error processing webhook data:', error)
+      return NextResponse.json({ 
+        error: error.message || 'Failed to process record' 
+      }, { status: 400 })
+    }
+    
+  } catch (error) {
+    console.error('Webhook processing error:', error)
+    return NextResponse.json({ error: 'Webhook failed' }, { status: 500 })
+  }
+}
