@@ -27,14 +27,43 @@ export async function GET(req: NextRequest) {
       // next: { revalidate: 0 }  // optional: disable Next.js cache
     })
 
-    const body = await res.json()
+    // Log response details for debugging
+    console.log('Response status:', res.status);
+    console.log('Response type:', res.headers.get('content-type'));
+    
+    // Check if we got a successful response
+    if (!res.ok) {
+      const text = await res.text();
+      console.error('Error response body:', text.substring(0, 200) + '...');
+      return NextResponse.json({ 
+        error: `Sync request failed with status ${res.status}`,
+        details: text.substring(0, 200) + '...'
+      }, { status: 500 });
+    }
+    
+    // Check content type to avoid JSON parse errors
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      const text = await res.text();
+      console.error('Received non-JSON response:', text.substring(0, 200) + '...');
+      return NextResponse.json({ 
+        error: 'Received non-JSON response from sync endpoint',
+        contentType,
+        details: text.substring(0, 200) + '...'
+      }, { status: 500 });
+    }
+
+    const body = await res.json();
     return NextResponse.json(
       { ok: true, syncResponse: body },
       { status: res.status }
-    )
+    );
 
   } catch (err) {
-    console.error('Cron error', err)
-    return NextResponse.json({ error: 'Cron failed' }, { status: 500 })
+    console.error('Cron error', err);
+    return NextResponse.json({ 
+      error: 'Cron failed', 
+      message: err instanceof Error ? err.message : String(err)
+    }, { status: 500 });
   }
 }
