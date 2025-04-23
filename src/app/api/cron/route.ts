@@ -1,8 +1,85 @@
 // my-app/src/app/api/cron/route.ts
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+import { getAllTeamMembers } from '@/lib/airtable'
+import type { TeamMember } from '@/types/airtable'
+import { formatPhoneE164 } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
+
+// Add allowed role types constant
+const VALID_ROLE_TYPES = [
+  'Setter',
+  'Closer',
+  'Manager',
+  'Admin',
+  'Executive'
+] as const;
+
+function mapAirtableToSupabase(member: TeamMember) {
+  // Skip terminated employees
+  if (member.fields?.Role === 'TERM') {
+    throw new Error(`Skipping terminated member ${member.id}`)
+  }
+
+  // Validate required fields
+  if (!member.id || 
+      !member.fields?.Email || 
+      !member.fields?.['First Name'] || 
+      !member.fields?.['Last Name'] ||
+      !member.fields?.Role ||
+      !member.fields?.['Role Type'] ||
+      !member.fields?.Team ||
+      !member.fields?.Area ||
+      !VALID_ROLE_TYPES.includes(member.fields['Role Type'] as any)
+  ) {
+    const missing = [
+      !member.id && 'ID',
+      !member.fields?.Email && 'Email',
+      !member.fields?.['First Name'] && 'First Name',
+      !member.fields?.['Last Name'] && 'Last Name',
+      !member.fields?.Role && 'Role',
+      !member.fields?.['Role Type'] && 'Role Type',
+      !member.fields?.Team && 'Team',
+      !member.fields?.Area && 'Area',
+      !VALID_ROLE_TYPES.includes(member.fields?.['Role Type'] as any) && 
+        `Role Type (${member.fields?.['Role Type']} not in ${VALID_ROLE_TYPES.join(', ')})`
+    ].filter(Boolean).join(', ')
+    
+    throw new Error(`Member ${member.id} missing or invalid fields: ${missing}`)
+  }
+
+  return {
+    airtable_record_id: member.id,
+    email: member.fields.Email,
+    first_name: member.fields['First Name'],
+    last_name: member.fields['Last Name'],
+    role: member.fields.Role,
+    role_type: member.fields['Role Type'],
+    team: member.fields.Team,
+    area: member.fields.Area,
+    // Format phone number to E.164
+    phone: formatPhoneE164(member.fields.Phone),
+    // Optional fields below
+    region: member.fields.Region || null,
+    profile_pic_url: member.fields['Profile Pic URL'] || null,
+    hire_date: member.fields['Hire Date'] 
+      ? new Date(member.fields['Hire Date']).toISOString() 
+      : null,
+    google_user_id: member.fields['Google User ID'] || null,
+    health_dashboard: member.fields['Health Dashboard'] || null,
+    recruiting_record_id: member.fields['Recruiting ID'] || null,
+    salesforce_id: member.fields['Salesforce ID'] || null,
+    shirt_size: member.fields['Shirt Size'] || null,
+    department: member.fields.Department || null,
+    user_key: member.fields['User Key'] || null,
+    // Use Airtable's timestamps if available
+    created_at: member.createdTime || new Date().toISOString(),
+    updated_at: member.lastModifiedTime || new Date().toISOString(),
+    last_airtable_sync: new Date().toISOString()
+  }
+}
 
 export async function GET(req: NextRequest) {
   // 1️⃣ Protect this endpoint
@@ -12,65 +89,77 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // 2️⃣ Call your existing sync route
-    // Make sure to use full URL with https://
-    let baseUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}` 
-      : 'https://www.plpconnect.com';
-      
-    // Remove any trailing slashes
-    baseUrl = baseUrl.replace(/\/$/, '');
+    console.log('Starting direct DB sync from cron job');
     
-    const syncUrl = new URL('/api/sync/profiles', baseUrl);
-    
-    // Add secret as query parameter
-    if (process.env.SYNC_SECRET) {
-      syncUrl.searchParams.set('secret', process.env.SYNC_SECRET);
+    // Create service role client for admin operations
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!, // Use service role key
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    )
+
+    // Fetch all team members from Airtable
+    const teamMembers = await getAllTeamMembers()
+    if (!teamMembers.length) {
+      console.error('No team members found in Airtable')
+      return NextResponse.json({ error: 'No team members found' }, { status: 500 })
     }
 
-    console.log('Attempting to fetch from URL:', syncUrl.toString());
-    
-    const res = await fetch(syncUrl.toString(), {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        // Add authorization header (belt and suspenders approach)
-        'Authorization': process.env.SYNC_SECRET ? `Bearer ${process.env.SYNC_SECRET}` : '',
-      },
-      cache: 'no-store'
-    });
+    // Map and filter out any invalid profiles
+    const mappedProfiles = teamMembers
+      .map(member => {
+        try {
+          return mapAirtableToSupabase(member)
+        } catch (error) {
+          console.error('Error mapping member:', error)
+          return null
+        }
+      })
+      .filter((profile): profile is NonNullable<typeof profile> => profile !== null)
 
-    // Log response details for debugging
-    console.log('Response status:', res.status);
-    console.log('Response type:', res.headers.get('content-type'));
-    
-    // Check if we got a successful response
-    if (!res.ok) {
-      const text = await res.text();
-      console.error('Error response body:', text.substring(0, 200) + '...');
-      return NextResponse.json({ 
-        error: `Sync request failed with status ${res.status}`,
-        details: text.substring(0, 200) + '...'
-      }, { status: 500 });
-    }
-    
-    // Check content type to avoid JSON parse errors
-    const contentType = res.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) {
-      const text = await res.text();
-      console.error('Received non-JSON response:', text.substring(0, 200) + '...');
-      return NextResponse.json({ 
-        error: 'Received non-JSON response from sync endpoint',
-        contentType,
-        details: text.substring(0, 200) + '...'
-      }, { status: 500 });
+    if (!mappedProfiles.length) {
+      return NextResponse.json({ error: 'No valid profiles to sync' }, { status: 500 })
     }
 
-    const body = await res.json();
-    return NextResponse.json(
-      { ok: true, syncResponse: body },
-      { status: res.status }
-    );
+    // Deduplicate profiles by email, keeping the most recent record
+    const uniqueProfiles = Object.values(
+      mappedProfiles.reduce((acc, profile) => {
+        const existing = acc[profile.email]
+        if (!existing || new Date(profile.updated_at) > new Date(existing.updated_at)) {
+          acc[profile.email] = profile
+          console.log(`Using record for ${profile.email} modified at ${profile.updated_at}`)
+        } else {
+          console.log(`Skipping older record for ${profile.email} modified at ${profile.updated_at}`)
+        }
+        return acc
+      }, {} as Record<string, typeof mappedProfiles[0]>)
+    )
+
+    console.log(`Deduped from ${mappedProfiles.length} to ${uniqueProfiles.length} profiles`);
+
+    // Upsert unique profiles
+    const { error } = await supabase
+      .from('user_profiles')
+      .upsert(uniqueProfiles, {
+        onConflict: 'email',
+        ignoreDuplicates: false
+      })
+
+    if (error) {
+      console.error('Error upserting profiles:', error)
+      return NextResponse.json({ error: 'Sync failed' }, { status: 500 })
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      message: `Synced ${uniqueProfiles.length} profiles`,
+      duplicatesRemoved: mappedProfiles.length - uniqueProfiles.length
+    })
 
   } catch (err) {
     console.error('Cron error', err);
