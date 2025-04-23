@@ -13,9 +13,15 @@ export async function GET(req: NextRequest) {
 
   try {
     // 2️⃣ Call your existing sync route
-    const syncUrl = new URL('/api/sync/profiles', process.env.NEXT_PUBLIC_VERCEL_URL || 'https://www.plpconnect.com')
+    const baseUrl = process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}` 
+      : 'https://www.plpconnect.com';
+    
+    const syncUrl = new URL('/api/sync/profiles', baseUrl);
     syncUrl.searchParams.set('secret', process.env.SYNC_SECRET!)
 
+    console.log('Attempting to fetch from URL:', syncUrl.toString());
+    
     const res = await fetch(syncUrl.toString(), {
       // since this is server→server, you don't need extra headers
       // next: { revalidate: 0 }  // optional: disable Next.js cache
