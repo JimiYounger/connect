@@ -2,50 +2,22 @@
 
 'use client';
 
-import { useEffect, useRef, KeyboardEvent } from 'react';
-import { Search, AlertCircle, Calendar, Percent, FileText, ExternalLink } from 'lucide-react';
+import { useEffect, useRef, KeyboardEvent, useMemo } from 'react';
+import { Search, AlertCircle, FileText, ExternalLink } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { 
   Card, 
   CardContent, 
-  CardDescription, 
-  CardFooter, 
   CardHeader, 
   CardTitle 
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSemanticSearch } from './useSemanticSearch';
 import { SemanticSearchProps, SearchResult } from './types';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Link from 'next/link';
-
-/**
- * Formats a date string into a more readable format
- */
-const formatDate = (dateString: string) => {
-  try {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  } catch (_e) {
-    return dateString;
-  }
-};
 
 /**
  * Result card component to display a single search result
@@ -84,69 +56,35 @@ const ResultCard = ({
       transition={{ duration: 0.2 }}
     >
       <Card 
-        className="mb-4 overflow-hidden border hover:border-primary/50 transition-colors cursor-pointer hover:shadow-md"
+        className="mb-4 overflow-hidden border hover:border-primary/50 transition-colors hover:shadow-sm"
         onClick={handleClick}
       >
-        <CardHeader className="px-6 py-4 bg-muted/50">
-          <div className="flex justify-between items-start gap-2">
-            <div className="flex-1">
-              <CardTitle className="text-lg font-medium group flex items-center gap-2">
-                {result.title}
-                <Link href={documentUrl} className="opacity-0 group-hover:opacity-100 transition-opacity">
-                  <ExternalLink className="h-4 w-4 text-muted-foreground hover:text-primary" />
-                </Link>
-              </CardTitle>
-              {result.description && (
-                <CardDescription className="mt-1 line-clamp-1">{result.description}</CardDescription>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge className="flex items-center gap-1 whitespace-nowrap">
-                <Percent className="h-3 w-3" />
-                {(result.similarity * 100).toFixed(0)}%
-              </Badge>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="h-8 px-2 flex gap-1 items-center"
-                onClick={handleViewClick}
-                asChild
-              >
-                <Link href={documentUrl}>
-                  <span>View</span>
-                  <ExternalLink className="h-3 w-3" />
-                </Link>
-              </Button>
-            </div>
-          </div>
+        <CardHeader className="px-4 py-3">
+          <CardTitle className="text-base font-medium">{result.title}</CardTitle>
         </CardHeader>
         
-        <CardContent className="px-6 py-4">
+        <CardContent className="px-4 py-2 pb-4">
           {result.highlight && (
-            <div className="text-sm text-muted-foreground mb-2">
-              <span className="font-medium text-foreground">Excerpt: </span>
+            <div className="text-sm text-muted-foreground mb-3">
               <span className="italic">{result.highlight}</span>
             </div>
           )}
-        </CardContent>
-        
-        <CardFooter className="px-6 py-3 bg-muted/20 flex flex-wrap justify-between gap-2 text-xs">
-          <div className="flex items-center gap-2">
-            <Calendar className="h-3 w-3" /> 
-            <span>{result.created_at ? formatDate(result.created_at) : 'Unknown date'}</span>
-          </div>
           
-          {result.tags && result.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {result.tags.slice(0, 3).map((tag, i) => (
-                <Badge key={i} variant="outline" className="text-xs">{tag}</Badge>
-              ))}
-              {result.tags.length > 3 && (
-                <Badge variant="outline" className="text-xs">+{result.tags.length - 3}</Badge>
-              )}
-            </div>
-          )}
-        </CardFooter>
+          <div className="flex justify-end">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-8 px-3 flex gap-1 items-center"
+              onClick={handleViewClick}
+              asChild
+            >
+              <Link href={documentUrl}>
+                <span>Open</span>
+                <ExternalLink className="h-3 w-3 ml-1" />
+              </Link>
+            </Button>
+          </div>
+        </CardContent>
       </Card>
     </motion.div>
   );
@@ -156,82 +94,43 @@ const ResultCard = ({
  * Skeleton loader for the search results
  */
 const ResultSkeleton = () => (
-  <div className="mb-4">
-    <Card className="overflow-hidden">
-      <CardHeader className="px-6 py-4">
-        <Skeleton className="h-6 w-4/5 mb-2" />
-        <Skeleton className="h-4 w-3/5" />
+  <motion.div 
+    initial={{ opacity: 1 }}
+    className="mb-4"
+  >
+    <Card className="overflow-hidden border hover:border-primary/50 transition-colors hover:shadow-sm">
+      <CardHeader className="px-4 py-3">
+        <Skeleton className="h-6 w-4/5" />
       </CardHeader>
-      <CardContent className="px-6 py-4">
-        <Skeleton className="h-4 w-full mb-2" />
-        <Skeleton className="h-4 w-full mb-2" />
-        <Skeleton className="h-4 w-2/3" />
+      <CardContent className="px-4 py-2 pb-4">
+        <div className="text-sm text-muted-foreground mb-3">
+          <Skeleton className="h-4 w-full mb-2" />
+          <Skeleton className="h-4 w-full mb-2" />
+          <Skeleton className="h-4 w-2/3" />
+        </div>
+        <div className="flex justify-end">
+          <Skeleton className="h-8 w-20" />
+        </div>
       </CardContent>
-      <CardFooter className="px-6 py-4 flex justify-between">
-        <Skeleton className="h-4 w-1/4" />
-        <Skeleton className="h-4 w-1/4" />
-      </CardFooter>
     </Card>
-  </div>
+  </motion.div>
 );
-
-/**
- * Summary bar component to display search metadata
- */
-const SearchSummary = ({ 
-  query, 
-  count, 
-  searchedAt, 
-  filters 
-}: { 
-  query: string; 
-  count: number; 
-  searchedAt: string; 
-  filters: Record<string, any> 
-}) => {
-  return (
-    <div className="bg-muted/30 rounded-md p-3 mb-4 text-sm">
-      <div className="flex flex-wrap items-center gap-2 justify-between">
-        <div className="flex items-center gap-2">
-          <span className="font-medium">Results:</span> 
-          <Badge variant="secondary">{count}</Badge> 
-          <span className="text-muted-foreground">for &quot;<span className="italic">{query}</span>&quot;</span>
-        </div>
-        
-        <div className="text-muted-foreground text-xs">
-          {searchedAt && `Searched at ${formatDate(searchedAt)}`}
-        </div>
-      </div>
-      
-      {Object.keys(filters).length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-2 items-center">
-          <span className="text-xs text-muted-foreground">Filters:</span>
-          {Object.entries(filters).map(([key, value]) => (
-            <Badge key={key} variant="outline" className="text-xs">
-              {key}: {Array.isArray(value) ? value.join(', ') : value.toString()}
-            </Badge>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
 
 /**
  * Main semantic search component
  */
 export function SemanticSearch({
-  placeholder = "Search documents...",
+  placeholder = "What are you looking for?",
   onResults,
   filters = {},
-  autoFocus = false,
+  autoFocus = true,
   matchThreshold = 0.5,
   matchCount = 10,
   initialSortBy = 'similarity',
   className = '',
   onDocumentClick,
   onDocumentView,
-  documentUrlPrefix = '/documents'
+  documentUrlPrefix = '/documents',
 }: SemanticSearchProps & {
   onDocumentClick?: (result: SearchResult) => void;
   onDocumentView?: (result: SearchResult) => void;
@@ -241,12 +140,10 @@ export function SemanticSearch({
   const {
     query,
     setQuery,
+    setFilters, // Add setFilters to update filters when they change
     results,
-    response,
     isLoading,
     error,
-    sortBy,
-    setSortBy,
     clearSearch
   } = useSemanticSearch({
     initialFilters: filters,
@@ -266,6 +163,48 @@ export function SemanticSearch({
     }
   }, [autoFocus]);
   
+  // Memoize a stable string representation of the filters prop
+  const filtersString = useMemo(() => {
+    try {
+      if (typeof filters === 'object' && filters !== null && filters.properties) {
+        // Handle DevTools object format
+        return JSON.stringify(filters.properties.map((p: any) => `${p?.name}:${p?.value}`).sort());
+      } else {
+        // Regular object
+        return JSON.stringify(filters);
+      }
+    } catch (e) {
+      console.error('Error stringifying filters:', e);
+      return '{}'; // Return a default value on error
+    }
+  }, [filters]); // Dependency is the filters object itself
+  
+  // Update internal filters state when the memoized string changes
+  useEffect(() => {
+    console.log('Filters prop changed, updating internal state:', filtersString);
+    try {
+      const parsedFilters = JSON.parse(filtersString);
+      
+      // Handle the DevTools format case if needed (though parsing the stringified version might be enough)
+      // This logic might need adjustment depending on how `useSemanticSearch` expects filters
+      let filtersToSet = parsedFilters;
+      if (typeof filters === 'object' && filters !== null && filters.properties) {
+        // Reconstruct if necessary, or assume parsedFilters is okay
+        filtersToSet = filters.properties.reduce((obj: any, prop: any) => {
+          if (prop && prop.name && 'value' in prop) {
+            obj[prop.name] = prop.value;
+          }
+          return obj;
+        }, {});
+      }
+      
+      setFilters(filtersToSet);
+    } catch (e) {
+      console.error('Error parsing filters string:', e);
+      setFilters({}); // Reset filters on error
+    }
+  }, [filtersString, setFilters, filters]); // Use the memoized string, setFilters, and filters
+  
   // Handle keyboard events
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     // Clear search on Escape
@@ -275,11 +214,11 @@ export function SemanticSearch({
   };
   
   return (
-    <div className={`w-full ${className}`}>
-      {/* Search input with sort selection */}
-      <div className="flex gap-2 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+    <div className={`w-full max-w-3xl mx-auto ${className}`}>
+      {/* Search input */}
+      <div className="flex flex-col space-y-4 mb-8">
+        <div className="relative w-full">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground z-10" />
           <Input
             ref={inputRef}
             type="text"
@@ -287,14 +226,14 @@ export function SemanticSearch({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="pl-9"
+            className="pl-10 py-6 text-lg rounded-full border-muted w-full"
             aria-label="Search documents"
           />
           {query && (
             <Button
               variant="ghost"
               size="sm"
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 px-2"
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 h-8 w-8 rounded-full flex items-center justify-center z-10"
               onClick={clearSearch}
               aria-label="Clear search"
             >
@@ -302,42 +241,21 @@ export function SemanticSearch({
             </Button>
           )}
         </div>
-        
-        <Select value={sortBy} onValueChange={(value) => setSortBy(value as any)}>
-          <SelectTrigger className="w-[160px]" aria-label="Sort by">
-            <SelectValue placeholder="Sort by" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="similarity">Relevance</SelectItem>
-            <SelectItem value="created_at">Newest</SelectItem>
-            <SelectItem value="title">Title (A-Z)</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
       
       {/* Error message */}
       {error && (
-        <div className="bg-destructive/10 text-destructive rounded-md p-4 mb-6 flex items-center gap-2">
+        <div className="bg-destructive/10 text-destructive rounded-md p-4 mb-6 flex items-center gap-2 w-full">
           <AlertCircle className="h-5 w-5" />
           <span>{error.message}</span>
         </div>
       )}
       
-      {/* Results section */}
-      <div>
-        {/* Summary of search results */}
-        {response && (
-          <SearchSummary
-            query={response.query}
-            count={response.result_count}
-            searchedAt={response.searched_at}
-            filters={response.filters_used}
-          />
-        )}
-        
+      {/* Results container - this div maintains consistent width */}
+      <div className="w-full min-h-[300px]">
         {/* Loading skeletons */}
         {isLoading && (
-          <div className="space-y-4">
+          <div className="space-y-4 w-full">
             {Array.from({ length: 3 }).map((_, i) => (
               <ResultSkeleton key={i} />
             ))}
@@ -346,7 +264,7 @@ export function SemanticSearch({
         
         {/* No results message */}
         {!isLoading && results.length === 0 && query.trim() !== '' && (
-          <div className="text-center py-12 bg-muted/20 rounded-md">
+          <div className="text-center py-12 bg-muted/10 rounded-lg w-full">
             <FileText className="h-10 w-10 mx-auto mb-2 text-muted-foreground" />
             <h3 className="text-lg font-medium">No documents found</h3>
             <p className="text-muted-foreground">
@@ -355,9 +273,20 @@ export function SemanticSearch({
           </div>
         )}
         
+        {/* Welcome message when no search */}
+        {!isLoading && query.trim() === '' && (
+          <div className="text-center py-12 w-full">
+            <Search className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+            <h3 className="text-xl font-medium mb-2">Search your documents</h3>
+            <p className="text-muted-foreground max-w-md mx-auto">
+              Type your query above to search through documents. Use the filters to narrow your results.
+            </p>
+          </div>
+        )}
+        
         {/* Results list */}
         {!isLoading && results.length > 0 && (
-          <ScrollArea className="max-h-[70vh]">
+          <ScrollArea className="max-h-[70vh] w-full">
             <AnimatePresence mode="popLayout">
               {results.map((result) => (
                 <ResultCard 

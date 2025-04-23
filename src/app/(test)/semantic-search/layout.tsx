@@ -1,8 +1,8 @@
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Semantic Search Test',
-  description: 'Test the document semantic search component in isolation',
+  title: 'Document Search',
+  description: 'Search for documents with natural language queries',
 };
 
 export default function SemanticSearchLayout({
@@ -11,7 +11,7 @@ export default function SemanticSearchLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="light bg-background text-foreground min-h-screen" data-theme="light">
+    <div className="bg-background text-foreground min-h-screen flex items-center justify-center">
       {children}
     </div>
   );

@@ -83,25 +83,40 @@ export const useSemanticSearch = ({
       };
       
       console.log('Sending search request:', JSON.stringify(requestBody, null, 2));
+      console.log('With filters:', JSON.stringify(filters));
       
-      const response = await fetch('/api/document-library/search', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
-      });
+      let data;
+      try {
+        const response = await fetch('/api/document-library/search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestBody)
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `Failed to search documents: ${response.status}`);
+        }
+        
+        // Verify we have a valid response body
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          throw new Error('Received non-JSON response from search API');
+        }
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to search documents');
-      }
-      
-      const data = await response.json();
-      console.log('Search response received:', data);
-      
-      if (!data.success) {
-        throw new Error(data.error || 'Search was unsuccessful');
+        data = await response.json();
+        console.log('Search response received:', data);
+        
+        if (!data.success) {
+          throw new Error(data.error || 'Search was unsuccessful');
+        }
+      } catch (fetchError) {
+        console.error('Error during search request:', fetchError);
+        // Type check before accessing .message
+        const errorMessage = fetchError instanceof Error ? fetchError.message : 'Unknown fetch error';
+        throw new Error(`Search request failed: ${errorMessage}`);
       }
       
       // Handle different API response formats gracefully
@@ -163,6 +178,7 @@ export const useSemanticSearch = ({
       return;
     }
     
+    console.log('Triggering search with filters:', JSON.stringify(filters));
     performSearch();
   }, [debouncedQuery, filters, matchThreshold, matchCount, sortBy, performSearch]);
   
@@ -178,10 +194,15 @@ export const useSemanticSearch = ({
   
   // Function to update filters
   const updateFilters = useCallback((newFilters: Record<string, any>) => {
-    setFilters(prev => ({
-      ...prev,
-      ...newFilters
-    }));
+    // Only update if filters have actually changed to prevent loops
+    setFilters(prev => {
+      const prevJSON = JSON.stringify(prev);
+      const nextFilters = { ...prev, ...newFilters };
+      const nextJSON = JSON.stringify(nextFilters);
+      
+      // Only update state if there's an actual change
+      return prevJSON !== nextJSON ? nextFilters : prev;
+    });
   }, []);
   
   // Manually trigger search (for forms with submit button)
