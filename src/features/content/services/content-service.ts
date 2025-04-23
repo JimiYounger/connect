@@ -29,7 +29,7 @@ class ContentService {
         })
 
       if (error) throw error
-      return data || []
+      return Array.isArray(data) ? data : []
     } catch (error) {
       ErrorLogger.log(error, {
         severity: ErrorSeverity.MEDIUM,
@@ -54,7 +54,7 @@ class ContentService {
         })
 
       if (error) throw error
-      return data || []
+      return Array.isArray(data) ? data : []
     } catch (error) {
       ErrorLogger.log(error, {
         severity: ErrorSeverity.MEDIUM,
