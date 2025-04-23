@@ -31,6 +31,7 @@ export const useSemanticSearch = ({
   const [matchThreshold, setMatchThreshold] = useState(initialMatchThreshold);
   const [matchCount, setMatchCount] = useState(initialMatchCount);
   const [sortBy, setSortBy] = useState<'similarity' | 'created_at' | 'title'>(initialSortBy);
+  const [lastLoggedQuery, setLastLoggedQuery] = useState<string>(''); // Track what we've already logged
   
   // Results and state management
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -57,12 +58,28 @@ export const useSemanticSearch = ({
     setError(null);
     
     try {
+      // Determine if we should log this search based on:
+      // 1. Has the user stopped typing (we use debounce for this)
+      // 2. Is this a new query or just a refinement of the last one
+      // 3. Only log each unique query once
+      
+      // Check if it's a completely new search vs refinement of previous search
+      const isNewSearch = !lastLoggedQuery || 
+        // Either completely different query
+        (!debouncedQuery.includes(lastLoggedQuery) && !lastLoggedQuery.includes(debouncedQuery)) ||
+        // Or significant addition (more than 50% change)
+        (debouncedQuery.length > lastLoggedQuery.length * 1.5);
+      
+      // We should log if it's a new search or user has stopped typing for a while
+      const shouldLogSearch = isNewSearch;
+      
       const requestBody: SearchRequest = {
         query: debouncedQuery,
         filters,
         match_threshold: matchThreshold,
         match_count: matchCount,
-        sort_by: sortBy
+        sort_by: sortBy,
+        log_search: shouldLogSearch
       };
       
       console.log('Sending search request:', JSON.stringify(requestBody, null, 2));
@@ -114,6 +131,12 @@ export const useSemanticSearch = ({
       setResults(searchResults);
       setResponse(data);
       
+      // Track this query as logged if we sent log_search=true
+      if (requestBody.log_search) {
+        setLastLoggedQuery(debouncedQuery);
+        console.log('Search logged:', debouncedQuery);
+      }
+      
       // Call the optional callback
       if (onResults) {
         onResults(searchResults);
@@ -129,7 +152,7 @@ export const useSemanticSearch = ({
     } finally {
       setIsLoading(false);
     }
-  }, [debouncedQuery, filters, matchThreshold, matchCount, sortBy, onResults]);
+  }, [debouncedQuery, filters, matchThreshold, matchCount, sortBy, onResults, lastLoggedQuery]);
   
   // Execute search when debounced query changes
   useEffect(() => {
@@ -150,6 +173,7 @@ export const useSemanticSearch = ({
     setResults([]);
     setResponse(null);
     setError(null);
+    setLastLoggedQuery(''); // Clear the logged query tracking
   }, []);
   
   // Function to update filters

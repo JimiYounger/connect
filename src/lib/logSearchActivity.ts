@@ -36,34 +36,15 @@ export async function logSearchActivity(
     // Prepare log entry - try multiple timestamp column names
     const logEntry: Record<string, any> = {
       user_id: userId,
-      user_profile_id: userProfileId,
+      profile_id: userProfileId, // Changed from user_profile_id to profile_id to match the table schema
       query: query,
-      filters: filters ? JSON.stringify(filters) : null,
+      filters: filters || null, // The column is already JSONB, no need to stringify
       result_count: resultCount,
     }
     
-    // Try to detect the timestamp column name from the schema or use common alternatives
-    // First, add all possible timestamp formats to cover different naming conventions
-    if (!schemaError && tableInfo && tableInfo.length > 0) {
-      // Use column that actually exists in schema
-      if ('created_at' in tableInfo[0]) {
-        logEntry.created_at = new Date().toISOString()
-      } else if ('timestamp' in tableInfo[0]) {
-        logEntry.timestamp = new Date().toISOString()
-      } else if ('search_time' in tableInfo[0]) {
-        logEntry.search_time = new Date().toISOString()
-      } else {
-        // Fallback to all common timestamp column names
-        logEntry.created_at = new Date().toISOString()
-        logEntry.timestamp = new Date().toISOString() 
-        logEntry.search_time = new Date().toISOString()
-      }
-    } else {
-      // Fallback if we couldn't check schema
-      logEntry.created_at = new Date().toISOString()
-      logEntry.timestamp = new Date().toISOString()
-      logEntry.search_time = new Date().toISOString()
-    }
+    // Your table already has created_at with default now(), so no need to set it explicitly
+    // But we'll keep this for clarity if using the API directly
+    logEntry.created_at = new Date().toISOString()
     
     // Log the search
     const { error: logError } = await supabase

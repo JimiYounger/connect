@@ -48,6 +48,7 @@ export interface SearchRequest {
   match_threshold?: number;
   match_count?: number;
   sort_by?: 'similarity' | 'created_at' | 'title';
+  log_search?: boolean; // Flag to control whether to log this search
 }
 
 // Props for the SemanticSearch component

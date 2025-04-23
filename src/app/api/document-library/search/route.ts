@@ -18,6 +18,7 @@ interface SearchRequestBody {
   match_threshold?: number
   match_count?: number
   sort_by?: 'similarity' | 'created_at' | 'title' // Support user-defined sort order
+  log_search?: boolean // Flag to control whether to log this search
 }
 
 interface DocumentVisibilityConditions {
@@ -119,7 +120,8 @@ export async function POST(req: Request) {
       filters = {}, 
       match_threshold = 0.5, // Make threshold configurable
       match_count = 10, // Make count configurable
-      sort_by = 'similarity' // Default sort order
+      sort_by = 'similarity', // Default sort order
+      log_search = true // Default to logging search
     } = body
 
     // Validate query
@@ -215,8 +217,10 @@ export async function POST(req: Request) {
       if (testResults.length === 0) {
         console.log('No matching documents found')
         
-        // Log the search activity (even for zero results)
-        await logSearchActivity(supabase, userId, sanitizedQuery, filters, 0)
+        // Log the search activity (even for zero results) if logging is enabled
+        if (log_search) {
+          await logSearchActivity(supabase, userId, sanitizedQuery, filters, 0)
+        }
         
         // Return enhanced metadata
         return NextResponse.json({
@@ -376,8 +380,10 @@ export async function POST(req: Request) {
         console.log('Results sorted by similarity (highest first)')
       }
 
-      // Log the search activity
-      await logSearchActivity(supabase, userId, sanitizedQuery, filters, results.length)
+      // Log the search activity if logging is enabled
+      if (log_search) {
+        await logSearchActivity(supabase, userId, sanitizedQuery, filters, results.length)
+      }
 
       // TODO: Usage metering could be implemented here
       // await trackSearchUsage(userId, results.length);
