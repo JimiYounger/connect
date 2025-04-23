@@ -6,7 +6,7 @@ import { processDynamicUrl } from './widget-renderer';
 import { useAuth } from '@/features/auth/context/auth-context';
 import { useProfile } from '@/features/users/hooks/useProfile';
 import { WidgetService } from '../services/widget-service';
-import { isMobile, openDeepLink, isIOS, isAndroid, getAppStoreLinks } from '../utils/deep-link';
+import { isMobile, openDeepLink, isIOS, isAndroid, getAppStoreLinks, DeepLinkConfig } from '../utils/deep-link';
 
 const widgetService = new WidgetService();
 
@@ -47,14 +47,17 @@ export const RedirectWidget: React.FC<RedirectWidgetProps> = ({
     const deepLinkConfig = configuration?.deepLink;
     
     if (deepLinkConfig?.enabled && isMobile()) {
-      // Determine the appropriate fallback URL
+      // Determine the appropriate fallback URL based on device
       let fallbackUrl = processDynamicUrl(deepLinkConfig.webFallbackUrl || processedUrl, profile);
       
-      // First try to use direct app store URLs if provided
-      if (isIOS() && deepLinkConfig.iosAppStoreUrl) {
-        fallbackUrl = deepLinkConfig.iosAppStoreUrl;
-      } else if (isAndroid() && deepLinkConfig.androidAppStoreUrl) {
-        fallbackUrl = deepLinkConfig.androidAppStoreUrl;
+      // Cast to DeepLinkConfig to access newer properties
+      const config = deepLinkConfig as DeepLinkConfig;
+      
+      // First check for direct app store URLs
+      if (isIOS() && 'iosAppStoreUrl' in config && config.iosAppStoreUrl) {
+        fallbackUrl = config.iosAppStoreUrl;
+      } else if (isAndroid() && 'androidAppStoreUrl' in config && config.androidAppStoreUrl) {
+        fallbackUrl = config.androidAppStoreUrl;
       } 
       // Fall back to legacy app store IDs if direct URLs aren't available
       else if (isIOS() && deepLinkConfig.iosAppStoreId) {
@@ -65,7 +68,7 @@ export const RedirectWidget: React.FC<RedirectWidgetProps> = ({
         fallbackUrl = storeLinks.android;
       }
       
-      // Use deep linking with the determined fallback URL
+      // Always attempt deep linking, with the appropriate fallback URL
       await openDeepLink({
         ...deepLinkConfig,
         webFallbackUrl: fallbackUrl
