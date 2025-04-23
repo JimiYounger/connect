@@ -23,7 +23,7 @@ export async function logSearchActivity(
     const userProfileId = userProfile?.id
     
     // Check table schema to determine correct column name
-    const { data: tableInfo, error: schemaError } = await supabase
+    const { error: schemaError } = await supabase
       .from('document_search_logs')
       .select('*')
       .limit(1)
