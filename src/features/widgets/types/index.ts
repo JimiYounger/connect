@@ -149,6 +149,8 @@ export interface RedirectWidgetProps extends BaseWidgetProps {
       iosScheme?: string;
       androidPackage?: string;
       webFallbackUrl: string;
+      iosAppStoreId?: string;
+      androidAppStoreId?: string;
     };
   };
 }

@@ -39,12 +39,19 @@ export async function middleware(request: NextRequest) {
     // Add public URLs and API routes that handle their own auth
     const publicUrls = ['/', '/auth/callback', '/api/log-error', '/login', '/auth/processing', '/auth/error']
     const authFlowUrls = ['/auth/callback', '/auth/processing', '/auth/error'] 
-    const isApiRoute = request.nextUrl.pathname.startsWith('/api/')
+    
+    // Service API routes that use their own API key auth, not session auth
+    const serviceApiRoutes = ['/api/cron', '/api/sync/profiles']
+    
+    const isServiceApiRoute = serviceApiRoutes.some(route => 
+      request.nextUrl.pathname === route || request.nextUrl.pathname.startsWith(route + '/')
+    )
     const isPublicUrl = publicUrls.some(url => request.nextUrl.pathname === url || request.nextUrl.pathname.startsWith(url + '?'))
     const isAuthFlow = authFlowUrls.some(url => request.nextUrl.pathname === url || request.nextUrl.pathname.startsWith(url + '?'))
     
-    // Skip session check for public URLs, API routes, and auth flow URLs
-    if (!isPublicUrl && !isApiRoute && !isAuthFlow) {
+    // Skip session check for public URLs, service API routes, and auth flow URLs
+    // For regular API routes, we'll still check session below
+    if (!isPublicUrl && !isServiceApiRoute && !isAuthFlow) {
       const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
