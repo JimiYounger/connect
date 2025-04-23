@@ -1,12 +1,31 @@
 // my-app/src/features/documentLibrary/search/useSemanticSearch.ts
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { 
   SearchRequest, 
   SearchResponse, 
   SearchResult,
   SearchError
 } from './types';
+import { DocumentListParams } from '@/app/api/document-library/list/route'; // Import list types
+
+// Helper to map List API response to SearchResult
+function mapListResultToSearchResult(item: any): SearchResult {
+  return {
+    id: item.id,
+    title: item.title || 'Untitled Document',
+    highlight: item.contentPreview || '', // Use content preview as highlight
+    similarity: 1, // Assign a default similarity score for list items
+    tags: item.tags ? item.tags.map((t: any) => t.name) : [], // Extract tag names
+    category_name: item.category?.name,
+    subcategory_name: item.subcategory?.name,
+    created_at: item.createdAt,
+    updated_at: item.updatedAt,
+    // Add other fields if needed, ensuring they conform to SearchResult
+    matching_chunks: [], // List results don't have chunks
+    embedding_status: 'complete', // Assume complete for listed items
+  };
+}
 
 /**
  * Custom hook for semantic search functionality
@@ -35,9 +54,12 @@ export const useSemanticSearch = ({
   
   // Results and state management
   const [results, setResults] = useState<SearchResult[]>([]);
-  const [response, setResponse] = useState<SearchResponse | null>(null);
+  const [response, setResponse] = useState<SearchResponse | null>(null); // Keep original search response
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<SearchError | null>(null);
+  
+  // Memoize a stable string representation of filters to use as useEffect dependency
+  const filtersString = useMemo(() => JSON.stringify(filters), [filters]);
   
   // Debounce input by 500ms
   useEffect(() => {
@@ -49,33 +71,86 @@ export const useSemanticSearch = ({
       clearTimeout(handler);
     };
   }, [query]);
+
+  // Function to fetch list based on filters only
+  const fetchList = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    setResults([]); // Clear previous results
+    setResponse(null);
+
+    try {
+      const listParams: DocumentListParams = {
+        document_category_id: filters.categoryId,
+        document_subcategory_id: filters.subcategoryId,
+        tags: filters.tagId ? [filters.tagId] : undefined, // List API expects array of tag IDs
+        limit: matchCount, // Use matchCount for limit
+        // Add pagination if needed: page: 1
+      };
+
+      console.log('Sending list request with params:', JSON.stringify(listParams));
+
+      const listResponse = await fetch('/api/document-library/list', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(listParams),
+      });
+
+      if (!listResponse.ok) {
+        const errorData = await listResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to list documents: ${listResponse.status}`);
+      }
+
+      const data = await listResponse.json();
+      console.log('List response received:', data);
+
+      if (!data.success) {
+        throw new Error(data.error || 'Listing documents was unsuccessful');
+      }
+
+      const mappedResults = data.data.map(mapListResultToSearchResult);
+      setResults(mappedResults);
+      
+      // No SearchResponse equivalent for list, set to null or a custom object
+      setResponse(null); 
+
+      if (onResults) {
+        onResults(mappedResults);
+      }
+    } catch (err) {
+      console.error('List fetch error:', err);
+      setError({
+        message: err instanceof Error ? err.message : 'An unknown error occurred while fetching list',
+      });
+      setResults([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [filters, matchCount, onResults]); // Depend on filters object, matchCount, onResults
   
-  // Function to perform the search
+  // Function to perform the semantic search
   const performSearch = useCallback(async () => {
+    // If query is empty, do nothing (handled by the main useEffect)
     if (!debouncedQuery) return;
     
     setIsLoading(true);
     setError(null);
+    setResults([]); // Clear previous results
+    setResponse(null);
     
     try {
-      // Determine if we should log this search based on:
-      // 1. Has the user stopped typing (we use debounce for this)
-      // 2. Is this a new query or just a refinement of the last one
-      // 3. Only log each unique query once
-      
-      // Check if it's a completely new search vs refinement of previous search
+      // Logging logic (can be kept or adjusted)
       const isNewSearch = !lastLoggedQuery || 
-        // Either completely different query
         (!debouncedQuery.includes(lastLoggedQuery) && !lastLoggedQuery.includes(debouncedQuery)) ||
-        // Or significant addition (more than 50% change)
         (debouncedQuery.length > lastLoggedQuery.length * 1.5);
-      
-      // We should log if it's a new search or user has stopped typing for a while
       const shouldLogSearch = isNewSearch;
       
+      // Use filter IDs from the state
       const requestBody: SearchRequest = {
         query: debouncedQuery,
-        filters,
+        filters: filters, // Pass the filters state directly (now contains IDs)
         match_threshold: matchThreshold,
         match_count: matchCount,
         sort_by: sortBy,
@@ -83,11 +158,10 @@ export const useSemanticSearch = ({
       };
       
       console.log('Sending search request:', JSON.stringify(requestBody, null, 2));
-      console.log('With filters:', JSON.stringify(filters));
       
       let data;
       try {
-        const response = await fetch('/api/document-library/search', {
+        const searchApiResponse = await fetch('/api/document-library/search', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -95,18 +169,17 @@ export const useSemanticSearch = ({
           body: JSON.stringify(requestBody)
         });
         
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || `Failed to search documents: ${response.status}`);
+        if (!searchApiResponse.ok) {
+          const errorData = await searchApiResponse.json().catch(() => ({}));
+          throw new Error(errorData.error || `Failed to search documents: ${searchApiResponse.status}`);
         }
         
-        // Verify we have a valid response body
-        const contentType = response.headers.get('content-type');
+        const contentType = searchApiResponse.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
           throw new Error('Received non-JSON response from search API');
         }
       
-        data = await response.json();
+        data = await searchApiResponse.json();
         console.log('Search response received:', data);
         
         if (!data.success) {
@@ -114,27 +187,19 @@ export const useSemanticSearch = ({
         }
       } catch (fetchError) {
         console.error('Error during search request:', fetchError);
-        // Type check before accessing .message
         const errorMessage = fetchError instanceof Error ? fetchError.message : 'Unknown fetch error';
         throw new Error(`Search request failed: ${errorMessage}`);
       }
       
-      // Handle different API response formats gracefully
       let searchResults: SearchResult[] = [];
-      
       if (Array.isArray(data.results)) {
         searchResults = data.results;
-      } else if (data.results && typeof data.results === 'object') {
-        // Handle case where results might be in a different format
-        searchResults = [data.results];
       }
       
       console.log(`Processing ${searchResults.length} search results`);
       
-      // Ensure all results have the required fields
       searchResults = searchResults.map(result => ({
-        ...result, // Keep original fields first
-        // Default values for missing fields only if they don't exist
+        ...result,
         id: result.id || `unknown-${Math.random().toString(36).substring(2, 9)}`,
         title: result.title || 'Untitled Document',
         similarity: result.similarity || 0,
@@ -144,68 +209,65 @@ export const useSemanticSearch = ({
       }));
       
       setResults(searchResults);
-      setResponse(data);
+      setResponse(data); // Store the full search response
       
-      // Track this query as logged if we sent log_search=true
       if (requestBody.log_search) {
         setLastLoggedQuery(debouncedQuery);
         console.log('Search logged:', debouncedQuery);
       }
       
-      // Call the optional callback
       if (onResults) {
         onResults(searchResults);
       }
     } catch (err) {
       console.error('Search error:', err);
       setError({ 
-        message: err instanceof Error ? err.message : 'An unknown error occurred' 
+        message: err instanceof Error ? err.message : 'An unknown error occurred during search' 
       });
-      
-      // Clear results if there's an error
       setResults([]);
     } finally {
       setIsLoading(false);
     }
-  }, [debouncedQuery, filters, matchThreshold, matchCount, sortBy, onResults, lastLoggedQuery]);
+  }, [debouncedQuery, filters, matchThreshold, matchCount, sortBy, onResults, lastLoggedQuery]); // Keep dependencies
   
-  // Execute search when debounced query changes
+  // Main effect to trigger search or list fetch
   useEffect(() => {
-    // Don't search on empty query
-    if (!debouncedQuery) {
+    const hasFilters = Object.values(filters).some(v => v && v !== 'all'); // Check if any filters are active
+
+    if (debouncedQuery.trim() !== '') {
+      console.log('Debounced query detected, performing semantic search...');
+      performSearch();
+    } else if (hasFilters) {
+      console.log('No query, but filters detected, fetching list...');
+      fetchList();
+    } else {
+      // No query and no filters, clear results
+      console.log('No query and no filters, clearing results.');
       setResults([]);
       setResponse(null);
-      return;
+      setError(null);
+      setIsLoading(false); // Ensure loading is false
     }
-    
-    console.log('Triggering search with filters:', JSON.stringify(filters));
-    performSearch();
-  }, [debouncedQuery, filters, matchThreshold, matchCount, sortBy, performSearch]);
+    // Use filtersString as dependency to react to filter changes
+  }, [debouncedQuery, filtersString, performSearch, fetchList, filters]); 
   
   // Function to clear the search
   const clearSearch = useCallback(() => {
     setQuery('');
     setDebouncedQuery('');
-    setResults([]);
-    setResponse(null);
+    // Don't clear results/response immediately, let the main useEffect handle it
+    // setResults([]); 
+    // setResponse(null);
     setError(null);
     setLastLoggedQuery(''); // Clear the logged query tracking
   }, []);
   
-  // Function to update filters
+  // Function to update filters (simplified, direct set)
   const updateFilters = useCallback((newFilters: Record<string, any>) => {
-    // Only update if filters have actually changed to prevent loops
-    setFilters(prev => {
-      const prevJSON = JSON.stringify(prev);
-      const nextFilters = { ...prev, ...newFilters };
-      const nextJSON = JSON.stringify(nextFilters);
-      
-      // Only update state if there's an actual change
-      return prevJSON !== nextJSON ? nextFilters : prev;
-    });
+    setFilters(prev => ({ ...prev, ...newFilters }));
   }, []);
   
-  // Manually trigger search (for forms with submit button)
+  // Manually trigger search (if needed, ensures debouncedQuery is updated)
   const searchNow = useCallback(() => {
     setDebouncedQuery(query);
   }, [query]);
@@ -224,8 +286,8 @@ export const useSemanticSearch = ({
     
     // Actions
     setQuery,
-    updateFilters,
-    setFilters,
+    updateFilters, // Keep if used elsewhere
+    setFilters, // Expose setFilters directly
     setSortBy,
     setMatchThreshold,
     setMatchCount,

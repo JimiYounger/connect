@@ -95,7 +95,10 @@ const ResultCard = ({
  */
 const ResultSkeleton = () => (
   <motion.div 
-    initial={{ opacity: 1 }}
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -10 }}
+    transition={{ duration: 0.2 }}
     className="mb-4"
   >
     <Card className="overflow-hidden border hover:border-primary/50 transition-colors hover:shadow-sm">
@@ -214,7 +217,7 @@ export function SemanticSearch({
   };
   
   return (
-    <div className={`w-full max-w-3xl mx-auto ${className}`}>
+    <div className={`w-full max-w-3xl mx-auto flex flex-col ${className}`}>
       {/* Search input */}
       <div className="flex flex-col space-y-4 mb-8">
         <div className="relative w-full">
@@ -251,42 +254,22 @@ export function SemanticSearch({
         </div>
       )}
       
-      {/* Results container - this div maintains consistent width */}
-      <div className="w-full min-h-[300px]">
-        {/* Loading skeletons */}
-        {isLoading && (
-          <div className="space-y-4 w-full">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <ResultSkeleton key={i} />
-            ))}
-          </div>
-        )}
+      {/* Results container - Change height to flex-1 */}
+      <div className="w-full flex-1 flex flex-col relative overflow-hidden"> {/* Changed h-[70vh] to flex-1 */}
         
-        {/* No results message */}
-        {!isLoading && results.length === 0 && query.trim() !== '' && (
-          <div className="text-center py-12 bg-muted/10 rounded-lg w-full">
-            <FileText className="h-10 w-10 mx-auto mb-2 text-muted-foreground" />
-            <h3 className="text-lg font-medium">No documents found</h3>
-            <p className="text-muted-foreground">
-              Try adjusting your search or filters to find what you&apos;re looking for.
-            </p>
-          </div>
-        )}
-        
-        {/* Welcome message when no search */}
-        {!isLoading && query.trim() === '' && (
-          <div className="text-center py-12 w-full">
-            <Search className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-            <h3 className="text-xl font-medium mb-2">Search your documents</h3>
-            <p className="text-muted-foreground max-w-md mx-auto">
-              Type your query above to search through documents. Use the filters to narrow your results.
-            </p>
-          </div>
-        )}
-        
-        {/* Results list */}
-        {!isLoading && results.length > 0 && (
-          <ScrollArea className="max-h-[70vh] w-full">
+        {/* Always render ScrollArea */}
+        <ScrollArea className="h-full w-full"> {/* h-full will fill the flex-1 parent */}
+          {/* Conditionally render skeletons inside ScrollArea */}
+          {isLoading && (
+            <AnimatePresence mode="popLayout">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <ResultSkeleton key={i} />
+              ))}
+            </AnimatePresence>
+          )}
+          
+          {/* Conditionally render results inside ScrollArea */}          
+          {!isLoading && results.length > 0 && (
             <AnimatePresence mode="popLayout">
               {results.map((result) => (
                 <ResultCard 
@@ -298,8 +281,30 @@ export function SemanticSearch({
                 />
               ))}
             </AnimatePresence>
-          </ScrollArea>
-        )}
+          )}
+
+          {/* No results message - Render inside ScrollArea */}
+          {!isLoading && results.length === 0 && query.trim() !== '' && (
+            <div className="h-full flex flex-col items-center justify-center text-center py-12 px-4"> {/* Centered within scroll area */}
+              <FileText className="h-10 w-10 mx-auto mb-2 text-muted-foreground" />
+              <h3 className="text-lg font-medium">No documents found</h3>
+              <p className="text-muted-foreground">
+                Try adjusting your search or filters to find what you&apos;re looking for.
+              </p>
+            </div>
+          )}
+          
+          {/* Welcome message when no search - Render inside ScrollArea */}
+          {!isLoading && query.trim() === '' && results.length === 0 && (
+            <div className="h-full flex flex-col items-center justify-center text-center py-12 px-4"> {/* Centered within scroll area */}
+              <Search className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+              <h3 className="text-xl font-medium mb-2">Search your documents</h3>
+              <p className="text-muted-foreground max-w-md mx-auto">
+                Type your query above to search through documents. Use the filters to narrow your results.
+              </p>
+            </div>
+          )}
+        </ScrollArea>
       </div>
     </div>
   );

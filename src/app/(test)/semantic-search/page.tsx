@@ -26,7 +26,7 @@ export default function SemanticSearchTestPage() {
   // Get filter data from our hook
   const { 
     categories, 
-    subcategories, 
+    subcategories: _unusedSubcategories,
     tags, 
     getSubcategoriesForCategory,
     loading: filtersLoading 
@@ -55,47 +55,25 @@ export default function SemanticSearchTestPage() {
     return [{ id: 'all', name: 'All Tags' }, ...tags];
   }, [tags]);
   
-  // Get the selected category/subcategory/tag names for filters
-  const selectedCategoryName = useMemo(() => {
-    if (selectedCategoryId === 'all') return null;
-    const category = categories.find(c => c.id === selectedCategoryId);
-    console.log('Selected category:', category?.name);
-    return category?.name || null;
-  }, [selectedCategoryId, categories]);
-  
-  const selectedSubcategoryName = useMemo(() => {
-    if (selectedSubcategoryId === 'all') return null;
-    const subcategory = subcategories.find(s => s.id === selectedSubcategoryId);
-    console.log('Selected subcategory:', subcategory?.name);
-    return subcategory?.name || null;
-  }, [selectedSubcategoryId, subcategories]);
-  
-  const selectedTagName = useMemo(() => {
-    if (selectedTagId === 'all') return null;
-    const tag = tags.find(t => t.id === selectedTagId);
-    console.log('Selected tag:', tag?.name);
-    return tag?.name || null;
-  }, [selectedTagId, tags]);
-  
   // Memoize the filters object to prevent unnecessary re-renders
   const memoizedFilters = useMemo(() => {
     const filters: Record<string, any> = {};
     
-    if (selectedCategoryName) {
-      filters.category = selectedCategoryName;
+    if (selectedCategoryId && selectedCategoryId !== 'all') {
+      filters.categoryId = selectedCategoryId;
     }
     
-    if (selectedSubcategoryName) {
-      filters.subcategory = selectedSubcategoryName;
+    if (selectedSubcategoryId && selectedSubcategoryId !== 'all') {
+      filters.subcategoryId = selectedSubcategoryId;
     }
     
-    if (selectedTagName) {
-      filters.tags = [selectedTagName]; // Ensure tags are always an array
+    if (selectedTagId && selectedTagId !== 'all') {
+      filters.tagId = selectedTagId;
     }
     
-    console.log('Memoized filters updated:', JSON.stringify(filters));
+    console.log('Memoized filters updated (using IDs):', JSON.stringify(filters));
     return filters;
-  }, [selectedCategoryName, selectedSubcategoryName, selectedTagName]);
+  }, [selectedCategoryId, selectedSubcategoryId, selectedTagId]);
   
   // Handle document click
   const handleDocumentClick = useCallback((document: SearchResult) => {
@@ -132,8 +110,8 @@ export default function SemanticSearchTestPage() {
 
   return (
     <main className="min-h-screen py-8 px-4 sm:px-6 lg:px-8 bg-background">
-      <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">
-        {/* Filters */}
+      <div className="flex flex-col gap-4 max-w-5xl mx-auto w-full">
+        {/* Filters - Allow natural height */}
         <div className="flex flex-col md:flex-row gap-3 items-start md:items-center bg-muted/20 p-4 rounded-lg w-full">
           {filtersLoading ? (
             <>
@@ -201,7 +179,7 @@ export default function SemanticSearchTestPage() {
           )}
         </div>
 
-        {/* Search */}
+        {/* Search - Remove margin-top */}
         <SemanticSearch
           placeholder="What are you looking for?"
           autoFocus={true}
@@ -211,7 +189,7 @@ export default function SemanticSearchTestPage() {
           onResults={handleResults}
           filters={memoizedFilters}
           onDocumentClick={handleDocumentClick}
-          className="mt-6 w-full"
+          className="w-full"
         />
       </div>
       

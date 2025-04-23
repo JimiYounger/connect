@@ -228,175 +228,16 @@ export async function POST(req: Request) {
       )
     }
 
-    // Perform vector similarity search with pre-filtering (when filters are applied)
+    // Perform vector similarity search
     try {
-      console.log('Performing vector similarity search with filters:', JSON.stringify(filters))
+      console.log('Performing vector similarity search, filters will be applied after fetching:', JSON.stringify(filters))
       
-      // Determine if we need to filter by document IDs
-      let filteredDocumentIds: string[] | null = null;
-      
-      // If filters exist, get matching document IDs first before vector search
-      if (filters && Object.keys(filters).length > 0) {
-        console.log('Pre-filtering documents based on filters before vector search:', JSON.stringify(filters));
-        
-        // Build a query to get document IDs that match our filters
-        let docQuery = supabase.from('documents').select('id');
-        let shouldReturnEmpty = false; // Flag if filters lead to no possible results
-        
-        // Filter by category if provided
-        if (filters.category) {
-          console.log(`Pre-filtering by category: ${filters.category}`);
-          const { data: categoryData, error: categoryError } = await supabase
-            .from('document_categories')
-            .select('id')
-            .eq('name', filters.category)
-            .maybeSingle();
-            
-          if (categoryError) {
-            console.error('Error fetching category ID:', categoryError);
-            throw new Error('Failed to filter by category');
-          }
-          
-          if (categoryData) {
-            console.log('Found category ID:', categoryData.id);
-            docQuery = docQuery.eq('document_category_id', categoryData.id);
-          } else {
-            console.log(`Category name '${filters.category}' not found.`);
-            shouldReturnEmpty = true; // No document can match this category
-          }
-        }
-        
-        // Filter by subcategory if provided (only if we haven't already determined no results)
-        if (!shouldReturnEmpty && filters.subcategory) {
-          console.log(`Pre-filtering by subcategory: ${filters.subcategory}`);
-          const { data: subcategoryData, error: subcategoryError } = await supabase
-            .from('document_subcategories')
-            .select('id')
-            .eq('name', filters.subcategory)
-            .maybeSingle(); // Assuming subcategory names are unique
-
-          if (subcategoryError) {
-            console.error('Error fetching subcategory ID:', subcategoryError);
-            throw new Error('Failed to filter by subcategory');
-          }
-          
-          if (subcategoryData) {
-            console.log('Found subcategory ID:', subcategoryData.id);
-            docQuery = docQuery.eq('document_subcategory_id', subcategoryData.id);
-          } else {
-            console.log(`Subcategory name '${filters.subcategory}' not found.`);
-            shouldReturnEmpty = true; // No document can match this subcategory
-          }
-        }
-        
-        // Filter by tags if provided (only if we haven't already determined no results)
-        if (!shouldReturnEmpty && filters.tags && Array.isArray(filters.tags) && filters.tags.length > 0) {
-          console.log(`Pre-filtering by tags: ${filters.tags.join(', ')}`);
-          
-          // Find tag IDs for the given tag names
-          const { data: tagIdsData, error: tagIdsError } = await supabase
-            .from('document_tags')
-            .select('id')
-            .in('name', filters.tags);
-            
-          if (tagIdsError) {
-            console.error('Error fetching tag IDs:', tagIdsError);
-            throw new Error('Failed to filter by tags');
-          }
-          
-          if (tagIdsData && tagIdsData.length > 0) {
-            const tagIds = tagIdsData.map(t => t.id);
-            console.log(`Found tag IDs: ${tagIds.join(', ')}`);
-            
-            // Get document IDs that have ANY of these tags
-            const { data: taggedDocs, error: tagAssignmentError } = await supabase
-              .from('document_tag_assignments')
-              .select('document_id')
-              .in('tag_id', tagIds);
-              
-            if (tagAssignmentError) {
-              console.error('Error fetching document tag assignments:', tagAssignmentError);
-              throw new Error('Failed to filter by tag assignments');
-            }
-            
-            if (taggedDocs && taggedDocs.length > 0) {
-              const taggedDocIds = [...new Set(taggedDocs.map(doc => doc.document_id).filter(id => id !== null))] as string[];
-              console.log(`Found ${taggedDocIds.length} documents matching tags`);
-              if (taggedDocIds.length > 0) {
-                docQuery = docQuery.in('id', taggedDocIds);
-              } else {
-                shouldReturnEmpty = true; // No documents have these tags
-              }
-            } else {
-              console.log('No documents found with the specified tags');
-              shouldReturnEmpty = true; // No documents have these tags
-            }
-          } else {
-            console.log('None of the specified tag names were found.');
-            shouldReturnEmpty = true; // No tags matched, so no documents can match
-          }
-        }
-        
-        // If any filter condition leads to no possible results, return early
-        if (shouldReturnEmpty) {
-          console.log('Filter criteria result in no possible documents. Returning empty.');
-          if (log_search) {
-            await logSearchActivity(supabase, userId, sanitizedQuery, filters, 0);
-          }
-          return NextResponse.json({
-            success: true,
-            query: sanitizedQuery,
-            result_count: 0,
-            searched_at: new Date().toISOString(),
-            filters_used: filters,
-            sort_by: sort_by,
-            results: []
-          });
-        }
-        
-        // Execute the filter query
-        const { data: filteredDocs, error: filterError } = await docQuery; // Use the modified docQuery
-        
-        if (filterError) {
-          console.error('Error during pre-filtering:', filterError);
-          throw new Error('Failed to filter documents');
-        }
-        
-        if (!filteredDocs || filteredDocs.length === 0) {
-          console.log('No documents match the filter criteria');
-          
-          // Log the search even when no documents match the filters
-          if (log_search) {
-            await logSearchActivity(supabase, userId, sanitizedQuery, filters, 0);
-          }
-          
-          return NextResponse.json({
-            success: true,
-            query: sanitizedQuery,
-            result_count: 0,
-            searched_at: new Date().toISOString(),
-            filters_used: filters,
-            sort_by: sort_by,
-            results: []
-          });
-        }
-        
-        // Get the filtered document IDs
-        filteredDocumentIds = filteredDocs.map(doc => doc.id);
-        console.log(`Pre-filtering found ${filteredDocumentIds.length} matching documents`);
-      }
-      
-      // Now call the vector search function, passing filtered document IDs if applicable
-      const searchParams: any = {
+      // Now call the vector search function with only the required parameters
+      const searchParams = {
         query_embedding: embedding,
         match_threshold: match_threshold,
         match_count: match_count
       };
-      
-      // If we have filtered document IDs, include them in the RPC call
-      if (filteredDocumentIds && filteredDocumentIds.length > 0) {
-        searchParams.filter_document_ids = filteredDocumentIds;
-      }
       
       console.log('Calling match_documents with params:', JSON.stringify(searchParams));
       const { data: matchResults, error: searchError } = await supabase.rpc<MatchDocumentResult[]>(
@@ -702,21 +543,20 @@ export async function POST(req: Request) {
         }
       }
       
-      // Apply filters if provided - this is now mostly a backup since we filter earlier
-      // We still log the filtering for debugging purposes
+      // Apply filters if provided - this is now the primary filtering step
       if (filters && Object.keys(filters).length > 0) {
-        console.log('Post-checking filters match:', filters)
+        console.log('Applying post-search filters:', filters)
         
-        // Log category matches
-        if (filters.category) {
-          const categoryMatches = results.filter(doc => doc.category_name === filters.category);
-          console.log(`Category '${filters.category}' matches: ${categoryMatches.length}/${results.length} documents`);
+        // Filter by category ID if provided
+        if (filters.categoryId) {
+          results = results.filter(doc => doc.document_category_id === filters.categoryId);
+          console.log(`After category filter (ID: ${filters.categoryId}): ${results.length} documents`);
         }
         
-        // Log subcategory matches
-        if (filters.subcategory) {
-          const subcategoryMatches = results.filter(doc => doc.subcategory_name === filters.subcategory);
-          console.log(`Subcategory '${filters.subcategory}' matches: ${subcategoryMatches.length}/${results.length} documents`);
+        // Filter by subcategory ID if provided
+        if (filters.subcategoryId) {
+          results = results.filter(doc => doc.document_subcategory_id === filters.subcategoryId);
+          console.log(`After subcategory filter (ID: ${filters.subcategoryId}): ${results.length} documents`);
         }
         
         // Filter by role_type if provided
@@ -739,17 +579,18 @@ export async function POST(req: Request) {
           });
         }
         
-        // Filter by tags if provided
-        if (filters.tags && Array.isArray(filters.tags) && filters.tags.length > 0) {
+        // Filter by tags if provided (using tag names - keep for debugging if needed or adapt)
+        if (filters.tagId) {
           results = results.filter(doc => {
             // If document has no tags, it won't match
             if (!doc.tags || !Array.isArray(doc.tags)) return false;
             
-            // Check if any requested tag exists in document tags
-            return filters.tags.some((tag: string) => 
-              doc.tags!.includes(tag)
+            // Check if any assigned tag has the required ID
+            return doc.tags.some((tag: string) => 
+              tag === filters.tagId
             );
           })
+          console.log(`After tag filter (ID: ${filters.tagId}): ${results.length} documents`);
         }
         
         // Add more filters as needed based on your schema
