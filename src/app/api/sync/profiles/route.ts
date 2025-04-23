@@ -1,3 +1,5 @@
+// my-app/src/app/api/sync/profiles/route.ts
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getAllTeamMembers } from '@/lib/airtable'
