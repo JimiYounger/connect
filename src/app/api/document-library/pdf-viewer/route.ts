@@ -244,7 +244,21 @@ export async function GET(request: NextRequest) {
             let pageNum = 1;
             let pageRendering = false;
             let pageNumPending = null;
-            let scale = 1.0;
+            
+            // --- Determine Initial Scale from URL Hash ---
+            let scale = 1.0; // Default scale
+            const hash = window.location.hash;
+            if (hash && hash.startsWith('#zoom=')) {
+              const zoomPercent = parseFloat(hash.substring(6)); // Get number after #zoom=
+              if (!isNaN(zoomPercent) && zoomPercent > 0) {
+                scale = zoomPercent / 100;
+                console.log('Initial scale set from URL hash:', scale);
+              } else {
+                console.log('Invalid zoom value in hash, using default scale.');
+              }
+            }
+            // Add other hash handling like #view=FitH here if needed in the future
+            // -----------------------------------------------
             
             const container = document.getElementById('viewerContainer');
             const viewer = document.getElementById('viewer');
@@ -354,6 +368,9 @@ export async function GET(request: NextRequest) {
               document.getElementById('scaleSelect').textContent = Math.round(scale * 100) + '%';
               queueRenderPage(pageNum);
             }
+            
+            // Update the initial scale display in the toolbar
+            document.getElementById('scaleSelect').textContent = Math.round(scale * 100) + '%';
             
             // Set up loading timeout to detect issues
             const loadingTimeout = setTimeout(() => {
