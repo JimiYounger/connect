@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
         <title>Secure Document Viewer</title>
         
         <!-- PDF.js stylesheets -->
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf_viewer.min.css" integrity="sha512-VYsoUnChapJ+FPQmOfQQK8Vf3HEtYJcCFJGXUwOhgGJpM7iANsszCcRG9+zG4QLLg0YSKfhEZYgGOjNI78NJQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf_viewer.min.css" />
         
         <style>
           body {
@@ -188,7 +188,7 @@ export async function GET(request: NextRequest) {
         </div>
           
         <!-- PDF.js scripts -->
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js" integrity="sha512-ZsHGIr+zYoMpJR+M0ynk0jH7U2V/S0F/2AEPFi5imeXl2EPx2HxM4TDNQG73jUvYGQWpa0hkQCHJtksOEbXLYg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
         
         <script>
           document.body.classList.add('loadingInProgress');
