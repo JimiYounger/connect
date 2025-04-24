@@ -2,8 +2,8 @@
 
 'use client';
 
-import { useEffect, useRef, KeyboardEvent, useMemo } from 'react';
-import { Search, AlertCircle, FileText, ExternalLink } from 'lucide-react';
+import { useEffect, useRef, KeyboardEvent, useMemo, useState } from 'react';
+import { Search, AlertCircle, FileText, ExternalLink, Share2, Check } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { 
   Card, 
@@ -31,13 +31,48 @@ const ResultCard = ({
   onClick?: (result: SearchResult) => void;
   viewUrlPrefix?: string;
 }) => {
+  const [shareFeedback, setShareFeedback] = useState('');
+  
   const handleClick = () => {
     if (onClick) {
       onClick(result);
     }
   };
   
-  const documentUrl = `${viewUrlPrefix}/${result.id}`;
+  const documentUrl = useMemo(() => {
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''; 
+    return `${baseUrl}${viewUrlPrefix}/${result.id}`;
+  }, [result.id, viewUrlPrefix]);
+  
+  const handleShareClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShareFeedback('');
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: result.title,
+          text: `Check out this document: ${result.title}`,
+          url: documentUrl,
+        });
+        console.log('Shared successfully');
+      } catch (error) {
+        console.error('Error sharing:', error);
+      }
+    } else if (navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(documentUrl);
+        setShareFeedback('Copied!');
+        setTimeout(() => setShareFeedback(''), 2000);
+      } catch (error) {
+        console.error('Error copying to clipboard:', error);
+        setShareFeedback('Failed!');
+        setTimeout(() => setShareFeedback(''), 2000); 
+      }
+    } else {
+      alert("Sharing/Copying is not supported on your browser.");
+    }
+  };
   
   return (
     <motion.div
@@ -61,7 +96,24 @@ const ResultCard = ({
             </div>
           )}
           
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-8 px-3 flex gap-1 items-center"
+              onClick={handleShareClick}
+              title={shareFeedback || "Share document link"}
+            >
+              {shareFeedback === 'Copied!' ? (
+                <Check className="h-3 w-3" />
+              ) : shareFeedback === 'Failed!' ? (
+                <AlertCircle className="h-3 w-3 text-destructive" />
+              ) : (
+                <Share2 className="h-3 w-3" />
+              )}
+              <span className="ml-1">{shareFeedback || 'Share'}</span>
+            </Button>
+
             <Button 
               variant="outline" 
               size="sm" 
