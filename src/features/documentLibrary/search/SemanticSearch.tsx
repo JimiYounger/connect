@@ -24,20 +24,12 @@ import Link from 'next/link';
  */
 const ResultCard = ({ 
   result, 
-  onClick,
   viewUrlPrefix = '/documents'
 }: { 
   result: SearchResult; 
-  onClick?: (result: SearchResult) => void;
   viewUrlPrefix?: string;
 }) => {
   const [shareFeedback, setShareFeedback] = useState('');
-  
-  const handleClick = () => {
-    if (onClick) {
-      onClick(result);
-    }
-  };
   
   const documentUrl = useMemo(() => {
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''; 
@@ -82,8 +74,7 @@ const ResultCard = ({
       transition={{ duration: 0.2 }}
     >
       <Card 
-        className="mb-4 overflow-hidden border hover:border-primary/50 transition-colors hover:shadow-sm"
-        onClick={handleClick}
+        className="mb-4 overflow-hidden border transition-colors hover:shadow-sm"
       >
         <CardHeader className="px-4 py-3">
           <CardTitle className="text-base font-medium">{result.title}</CardTitle>
@@ -173,11 +164,9 @@ export function SemanticSearch({
   matchCount = 10,
   initialSortBy = 'similarity',
   className = '',
-  onDocumentClick,
   documentUrlPrefix = '/documents',
   initialQuery
 }: SemanticSearchProps & {
-  onDocumentClick?: (result: SearchResult) => void;
   documentUrlPrefix?: string;
 }) {
   console.log('[SemanticSearch Component] Props received. initialQuery:', initialQuery);
@@ -320,7 +309,6 @@ export function SemanticSearch({
                 <ResultCard 
                   key={result.id} 
                   result={result} 
-                  onClick={onDocumentClick}
                   viewUrlPrefix={documentUrlPrefix}
                 />
               ))}

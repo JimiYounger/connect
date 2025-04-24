@@ -13,6 +13,39 @@ import { Badge } from '@/components/ui/badge';
 import { useDocumentFilters } from '@/features/documentLibrary/hooks';
 import { Skeleton } from '@/components/ui/skeleton';
 
+// Helper function to manage prefetch links
+const PREFETCH_LINK_SELECTOR = 'link[data-prefetch-for="wiki-search"]';
+
+function removeExistingPrefetchLinks() {
+  document.querySelectorAll(PREFETCH_LINK_SELECTOR).forEach(link => link.remove());
+}
+
+async function addPrefetchLink(documentId: string) {
+  try {
+    const response = await fetch(`/api/document-library/get-secure-url/${documentId}`);
+    if (!response.ok) {
+      // Don't throw error for individual failures, just log and skip
+      console.warn(`Prefetch failed for ${documentId}: ${response.status}`);
+      return;
+    }
+    const data = await response.json();
+    if (data.url) {
+      const link = document.createElement('link');
+      link.rel = 'prefetch';
+      link.href = data.url;
+      link.as = 'fetch'; // Hint the type of content being fetched
+      link.crossOrigin = 'anonymous'; // Important for cross-origin resources to be reusable
+      link.setAttribute('data-prefetch-for', 'wiki-search'); // Custom attribute for cleanup
+      document.head.appendChild(link);
+      // console.log(`Prefetch link added for ${documentId}`);
+    } else {
+       console.warn(`Prefetch skipped for ${documentId}: No URL returned.`);
+    }
+  } catch (error) {
+    console.error(`Error prefetching ${documentId}:`, error);
+  }
+}
+
 export default function SemanticSearchTestPage() {
   // State
   const [_results, setResults] = useState<SearchResult[]>([]);
@@ -27,11 +60,12 @@ export default function SemanticSearchTestPage() {
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState('all');
   const [selectedTagId, setSelectedTagId] = useState('all');
   const [initialSearchQuery, setInitialSearchQuery] = useState('');
+  const [isInitialized, setIsInitialized] = useState(false);
   
   // Get filter data from our hook
   const { 
     categories, 
-    subcategories: _unusedSubcategories,
+    // subcategories: _unusedSubcategories, // Not directly used here
     tags, 
     getSubcategoriesForCategory,
     loading: filtersLoading 
@@ -52,27 +86,26 @@ export default function SemanticSearchTestPage() {
     setSelectedSubcategoryId('all');
   }, [selectedCategoryId, searchParams]);
   
-  // Effect to initialize SEARCH state from URL parameters on mount
+  // COMBINED Effect to initialize ALL state from URL parameters AFTER filters load and params available
   useEffect(() => {
-    // Only needs searchParams
-    if (!searchParams) return;
+    console.log('[Combined Init Effect] Running. Dependencies:', { filtersLoading, searchParamsExists: !!searchParams, categoriesLoaded: !!categories, tagsLoaded: !!tags, isInitialized });
 
-    const searchParam = searchParams.get('search');
-
-    if (searchParam) {
-      console.log('Setting initial search query from URL:', searchParam);
-      setInitialSearchQuery(searchParam);
-    }
-    // Runs once when searchParams becomes available
-  }, [searchParams]);
-  
-  // Effect to initialize FILTER states from URL parameters AFTER filters load
-  useEffect(() => {
-    // Only run if filters are loaded and searchParams is available
-    if (filtersLoading || !searchParams || !categories || !tags) {
+    // Only run once, and only when filters are loaded and searchParams is available
+    if (isInitialized || filtersLoading || !searchParams || !categories || !tags) {
+      console.log('[Combined Init Effect] Skipping: Not ready or already initialized.');
       return;
     }
 
+    console.log('[Combined Init Effect] Initializing state from URL params...');
+
+    // --- Initialize Search Query --- 
+    const searchParam = searchParams.get('search');
+    if (searchParam) {
+      console.log('[Combined Init Effect] Setting initial search query from URL:', searchParam);
+      setInitialSearchQuery(searchParam);
+    }
+
+    // --- Initialize Filters --- 
     const categoryParam = searchParams.get('category');
     const subcategoryParam = searchParams.get('subcategory');
     const tagParam = searchParams.get('tag');
@@ -80,27 +113,31 @@ export default function SemanticSearchTestPage() {
     if (categoryParam) {
       const category = categories.find(c => c.id === categoryParam || c.name.toLowerCase() === categoryParam.toLowerCase());
       if (category) {
-        console.log('Setting category from URL:', category.id);
+        console.log('[Combined Init Effect] Setting category from URL:', category.id);
         setSelectedCategoryId(category.id);
       } else {
-        console.warn('Category from URL not found:', categoryParam);
+        console.warn('[Combined Init Effect] Category from URL not found:', categoryParam);
       }
     }
     if (subcategoryParam) {
-      // Note: Subcategory lookup might be needed if param is not ID
-      console.log('Setting subcategory from URL:', subcategoryParam);
+      // Subcategory needs category to be set first for validation if needed, but we set directly here
+      console.log('[Combined Init Effect] Setting subcategory from URL:', subcategoryParam);
       setSelectedSubcategoryId(subcategoryParam);
     }
     if (tagParam) {
       const tag = tags.find(t => t.id === tagParam || t.name.toLowerCase() === tagParam.toLowerCase());
       if (tag) {
-        console.log('Setting tag from URL:', tag.id);
+        console.log('[Combined Init Effect] Setting tag from URL:', tag.id);
         setSelectedTagId(tag.id);
       } else {
-        console.warn('Tag from URL not found:', tagParam);
+        console.warn('[Combined Init Effect] Tag from URL not found:', tagParam);
       }
     }
-  }, [searchParams, categories, tags, filtersLoading, getSubcategoriesForCategory]);
+
+    console.log('[Combined Init Effect] Initialization complete.');
+    setIsInitialized(true); // Mark as initialized
+
+  }, [searchParams, categories, tags, filtersLoading, getSubcategoriesForCategory, isInitialized]);
   
   // Format categories and tags for the dropdowns
   const formattedCategories = useMemo(() => {
@@ -132,7 +169,7 @@ export default function SemanticSearchTestPage() {
   }, [selectedCategoryId, selectedSubcategoryId, selectedTagId]);
   
   // Handle document click
-  const handleDocumentClick = useCallback((document: SearchResult) => {
+  const _handleDocumentClick = useCallback((document: SearchResult) => {
     setSelectedDocument(document);
     setDialogOpen(true);
   }, []);
@@ -140,29 +177,26 @@ export default function SemanticSearchTestPage() {
   // Handle results callback
   const handleResults = useCallback((results: SearchResult[]) => {
     setResults(results);
-  }, []);
+  }, [setResults]);
   
-  // Build filters based on selections (keep for potential direct use, but memoizedFilters is preferred for props)
-  /* // Removing unused function
-  const buildFilters = useCallback(() => {
-    const filters: Record<string, any> = {};
-    
-    if (selectedCategoryName) {
-      filters.category = selectedCategoryName;
+  // Effect to prefetch top results when results change
+  useEffect(() => {
+    // Clean up previous links first
+    removeExistingPrefetchLinks();
+
+    if (_results && _results.length > 0) {
+      const topResults = _results.slice(0, 4); // Get top 4
+      console.log(`Prefetching top ${topResults.length} results...`);
+      topResults.forEach(result => {
+        addPrefetchLink(result.id);
+      });
     }
     
-    if (selectedSubcategoryName) {
-      filters.subcategory = selectedSubcategoryName;
-    }
-    
-    if (selectedTagName) {
-      filters.tags = [selectedTagName];
-    }
-    
-    console.log('Applied filters (buildFilters):', JSON.stringify(filters)); // Keep log if needed
-    return filters;
-  }, [selectedCategoryName, selectedSubcategoryName, selectedTagName]);
-  */
+    // Cleanup function for when the component unmounts or _results change again
+    return () => {
+      removeExistingPrefetchLinks();
+    };
+  }, [_results]); // Run when results change
 
   return (
     <main className="min-h-screen py-8 px-4 sm:px-6 lg:px-8 bg-background">
@@ -235,19 +269,24 @@ export default function SemanticSearchTestPage() {
           )}
         </div>
 
-        {/* Search - Remove margin-top */}
-        <SemanticSearch
-          placeholder="What are you looking for?"
-          autoFocus={true}
-          matchThreshold={0.5}
-          matchCount={20}
-          initialSortBy="similarity"
-          onResults={handleResults}
-          filters={memoizedFilters}
-          onDocumentClick={handleDocumentClick}
-          className="w-full"
-          initialQuery={initialSearchQuery}
-        />
+        {/* Conditionally render Search based on initialization */} 
+        {isInitialized ? (
+          <SemanticSearch
+            placeholder="What are you looking for?"
+            autoFocus={true}
+            matchThreshold={0.5}
+            matchCount={20}
+            initialSortBy="similarity"
+            onResults={handleResults}
+            filters={memoizedFilters}
+            className="w-full"
+            initialQuery={initialSearchQuery}
+          />
+        ) : (
+          <div className="w-full flex items-center justify-center h-60"> 
+            <p className="text-muted-foreground">Initializing search...</p>
+          </div>
+        )}
       </div>
       
       {/* Document Preview Dialog */}

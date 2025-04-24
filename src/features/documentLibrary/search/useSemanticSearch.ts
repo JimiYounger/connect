@@ -131,6 +131,7 @@ export const useSemanticSearch = ({
   // Function to fetch list based on filters only
   const fetchList = useCallback(async () => {
     setIsLoading(true);
+    console.log('[useSemanticSearch] fetchList CALLED.');
     setError(null);
     setResults([]); // Clear previous results
     setResponse(null);
@@ -189,6 +190,7 @@ export const useSemanticSearch = ({
   // Function to perform the semantic search
   const performSearch = useCallback(async () => {
     // If query is empty, do nothing (handled by the main useEffect)
+    console.log('[useSemanticSearch] performSearch CALLED.');
     if (!debouncedQuery) return;
     
     setIsLoading(true);
@@ -287,9 +289,10 @@ export const useSemanticSearch = ({
   // Main effect to trigger search or list fetch
   useEffect(() => {
     const hasFilters = Object.values(filters).some(v => v && v !== 'all'); // Check if any filters are active
+    console.log('[useSemanticSearch] Main effect triggered. Debounced Query:', debouncedQuery, 'Has Filters:', hasFilters);
 
     if (debouncedQuery.trim() !== '') {
-      console.log('Debounced query detected, performing semantic search...');
+      console.log('[useSemanticSearch] Main effect -> Calling performSearch');
       performSearch();
     } else if (hasFilters) {
       console.log('No query, but filters detected, fetching list...');
@@ -303,8 +306,11 @@ export const useSemanticSearch = ({
       setIsLoading(false); // Ensure loading is false
     }
     // Use filtersString as dependency to react to filter changes
-    // Also add initialQuery to ensure the effect runs if the prop changes (though less likely)
-  }, [debouncedQuery, filtersString, performSearch, fetchList, filters, initialQuery]); 
+     
+    // We intentionally only want this effect to run when the core inputs (query/filters) change,
+    // not when the callback functions themselves change identity due to internal state updates.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedQuery, filtersString]); // ONLY depend on the inputs that drive the decision
   
   // Function to clear the search
   const clearSearch = useCallback(() => {
