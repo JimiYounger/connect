@@ -237,6 +237,9 @@ export async function GET(request: NextRequest) {
           
           // Initialize PDF viewer once library is loaded
           function initPdfViewer() {
+            // Set worker path before initializing
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+            
             const pdfDataUri = "${dataUri}";
             console.log('Using embedded PDF data');
             

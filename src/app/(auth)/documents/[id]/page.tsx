@@ -16,6 +16,7 @@ function CustomPDFViewer({ url }: { url: string }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!url) return;
@@ -24,7 +25,11 @@ function CustomPDFViewer({ url }: { url: string }) {
     setIsLoading(true);
     setError(null);
     
-    const timeout = setTimeout(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    
+    timeoutRef.current = setTimeout(() => {
       if (isLoading) {
         console.log('CustomPDFViewer: Loading is taking longer than expected');
       }
@@ -35,12 +40,14 @@ function CustomPDFViewer({ url }: { url: string }) {
         console.error('PDF iframe reported error:', event.data.message);
         setError(event.data.message || 'An error occurred in the PDF viewer.');
         setIsLoading(false);
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
       }
       
       if (event.data?.type === 'pdf-loaded') {
         console.log('PDF iframe reported successful load');
         setIsLoading(false);
         setError(null);
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
       }
     };
     
@@ -48,7 +55,7 @@ function CustomPDFViewer({ url }: { url: string }) {
     
     return () => {
       window.removeEventListener('message', handleMessage);
-      clearTimeout(timeout);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, [url, isLoading]);
 
