@@ -1,6 +1,6 @@
 // my-app/src/features/documentLibrary/search/useSemanticSearch.ts
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { 
   SearchRequest, 
   SearchResponse, 
@@ -64,6 +64,10 @@ export const useSemanticSearch = ({
   // Memoize a stable string representation of filters to use as useEffect dependency
   const filtersString = useMemo(() => JSON.stringify(filters), [filters]);
   
+  // State and ref for debounced logging decision
+  const [shouldLogNextSearch, setShouldLogNextSearch] = useState(false);
+  const logDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   // Effect to update query state if initialQuery prop changes AFTER mount
   useEffect(() => {
     // Only update if the prop has a value and differs from current query
@@ -75,7 +79,7 @@ export const useSemanticSearch = ({
     // We only want this effect to react to changes in the initialQuery prop itself.
   }, [initialQuery, query]); // <-- Add query dependency
 
-  // Debounce input by 500ms
+  // Debounce input by 500ms for triggering search/list
   useEffect(() => {
     // If the query is the initial query, the debouncedQuery is already set.
     // Only apply debounce for subsequent user changes.
@@ -87,12 +91,42 @@ export const useSemanticSearch = ({
     
     const handler = setTimeout(() => {
       setDebouncedQuery(query);
-    }, 500);
+    }, 500); // Search debounce
     
     return () => {
       clearTimeout(handler);
     };
   }, [query, initialQuery, debouncedQuery]);
+
+  // Debounce logging decision by 2000ms
+  useEffect(() => {
+    if (logDebounceTimerRef.current) {
+      clearTimeout(logDebounceTimerRef.current);
+    }
+
+    // Only set up logging debounce if the query is potentially valid for logging
+    if (debouncedQuery && debouncedQuery.trim() !== '') {
+      logDebounceTimerRef.current = setTimeout(() => {
+        // Check if the query is actually different from the last logged one
+        if (debouncedQuery !== lastLoggedQuery) {
+          console.log(`[useSemanticSearch] Log debounce fired. Query "${debouncedQuery}" is different from last logged "${lastLoggedQuery}". Flagging next search for logging.`);
+          setShouldLogNextSearch(true);
+        } else {
+          console.log(`[useSemanticSearch] Log debounce fired. Query "${debouncedQuery}" is SAME as last logged. Not flagging.`);
+          setShouldLogNextSearch(false); // Ensure it's false if query hasn't changed
+        }
+      }, 2000); // Logging debounce (longer)
+    } else {
+      // If query becomes empty, reset logging flag
+      setShouldLogNextSearch(false);
+    }
+
+    return () => {
+      if (logDebounceTimerRef.current) {
+        clearTimeout(logDebounceTimerRef.current);
+      }
+    };
+  }, [debouncedQuery, lastLoggedQuery]); // Depend on debouncedQuery and lastLoggedQuery
 
   // Function to fetch list based on filters only
   const fetchList = useCallback(async () => {
@@ -163,11 +197,8 @@ export const useSemanticSearch = ({
     setResponse(null);
     
     try {
-      // Logging logic (can be kept or adjusted)
-      const isNewSearch = !lastLoggedQuery || 
-        (!debouncedQuery.includes(lastLoggedQuery) && !lastLoggedQuery.includes(debouncedQuery)) ||
-        (debouncedQuery.length > lastLoggedQuery.length * 1.5);
-      const shouldLogSearch = isNewSearch;
+      // Logging decision is now based on the debounced flag
+      const logThisSearch = shouldLogNextSearch;
       
       // Use filter IDs from the state
       const requestBody: SearchRequest = {
@@ -176,7 +207,7 @@ export const useSemanticSearch = ({
         match_threshold: matchThreshold,
         match_count: matchCount,
         sort_by: sortBy,
-        log_search: shouldLogSearch
+        log_search: logThisSearch // Use the debounced flag
       };
       
       console.log('Sending search request:', JSON.stringify(requestBody, null, 2));
@@ -235,6 +266,7 @@ export const useSemanticSearch = ({
       
       if (requestBody.log_search) {
         setLastLoggedQuery(debouncedQuery);
+        setShouldLogNextSearch(false); // Reset flag after logging
         console.log('Search logged:', debouncedQuery);
       }
       
@@ -250,7 +282,7 @@ export const useSemanticSearch = ({
     } finally {
       setIsLoading(false);
     }
-  }, [debouncedQuery, filters, matchThreshold, matchCount, sortBy, onResults, lastLoggedQuery]); // Keep dependencies
+  }, [debouncedQuery, filters, matchThreshold, matchCount, sortBy, onResults, shouldLogNextSearch]); // Removed lastLoggedQuery dependency
   
   // Main effect to trigger search or list fetch
   useEffect(() => {
@@ -278,11 +310,9 @@ export const useSemanticSearch = ({
   const clearSearch = useCallback(() => {
     setQuery('');
     setDebouncedQuery('');
-    // Don't clear results/response immediately, let the main useEffect handle it
-    // setResults([]); 
-    // setResponse(null);
     setError(null);
     setLastLoggedQuery(''); // Clear the logged query tracking
+    setShouldLogNextSearch(false); // Reset logging flag on clear
   }, []);
   
   // Function to update filters (simplified, direct set)
