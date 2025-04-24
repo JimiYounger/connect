@@ -80,8 +80,7 @@ function CustomPDFViewer({ url }: { url: string }) {
     );
   }
 
-  const urlFragment = '#view=FitH';
-  const iframeSrc = `/api/document-library/pdf-viewer?url=${encodeURIComponent(url)}${urlFragment}`;
+  const iframeSrc = `/api/document-library/pdf-viewer?url=${encodeURIComponent(url)}`;
 
   return (
     <div className="w-full h-full relative bg-muted/10">

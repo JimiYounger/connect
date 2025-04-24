@@ -248,20 +248,11 @@ export async function GET(request: NextRequest) {
             let pageRendering = false;
             let pageNumPending = null;
             
-            // --- Determine Initial Scale from URL Hash ---
-            let scale = 1.0; // Default scale
-            const hash = window.location.hash;
-            if (hash && hash.startsWith('#zoom=')) {
-              const zoomPercent = parseFloat(hash.substring(6)); // Get number after #zoom=
-              if (!isNaN(zoomPercent) && zoomPercent > 0) {
-                scale = zoomPercent / 100;
-                console.log('Initial scale set from URL hash:', scale);
-              } else {
-                console.log('Invalid zoom value in hash, using default scale.');
-              }
-            }
-            // Add other hash handling like #view=FitH here if needed in the future
-            // -----------------------------------------------
+            // --- Determine Initial Scale --- 
+            let scale = 0.7; // Default scale (e.g., 70%)
+            // --- Removed hash logic for now ---
+            // const hash = window.location.hash;
+            // if (hash && hash.startsWith('#zoom=')) {
             
             const container = document.getElementById('viewerContainer');
             const viewer = document.getElementById('viewer');
@@ -296,14 +287,20 @@ export async function GET(request: NextRequest) {
                 // Create a canvas for page rendering
                 const canvas = document.createElement('canvas');
                 const context = canvas.getContext('2d');
-                canvas.width = viewport.width;
-                canvas.height = viewport.height;
+                const outputScale = window.devicePixelRatio || 1;
+                
+                canvas.width = Math.floor(viewport.width * outputScale);
+                canvas.height = Math.floor(viewport.height * outputScale);
+                canvas.style.width = Math.floor(viewport.width) + "px";
+                canvas.style.height =  Math.floor(viewport.height) + "px";
+                
                 pageDiv.appendChild(canvas);
                 
                 // Render the page
                 const renderContext = {
                   canvasContext: context,
                   viewport: viewport,
+                  transform: outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : null,
                   background: 'white'
                 };
                 
