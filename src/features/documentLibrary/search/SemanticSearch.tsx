@@ -25,24 +25,15 @@ import Link from 'next/link';
 const ResultCard = ({ 
   result, 
   onClick,
-  onView,
   viewUrlPrefix = '/documents'
 }: { 
   result: SearchResult; 
   onClick?: (result: SearchResult) => void;
-  onView?: (result: SearchResult) => void;
   viewUrlPrefix?: string;
 }) => {
   const handleClick = () => {
     if (onClick) {
       onClick(result);
-    }
-  };
-  
-  const handleViewClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent triggering the card click
-    if (onView) {
-      onView(result);
     }
   };
   
@@ -75,7 +66,6 @@ const ResultCard = ({
               variant="outline" 
               size="sm" 
               className="h-8 px-3 flex gap-1 items-center"
-              onClick={handleViewClick}
               asChild
             >
               <Link href={documentUrl}>
@@ -132,13 +122,13 @@ export function SemanticSearch({
   initialSortBy = 'similarity',
   className = '',
   onDocumentClick,
-  onDocumentView,
   documentUrlPrefix = '/documents',
+  initialQuery
 }: SemanticSearchProps & {
   onDocumentClick?: (result: SearchResult) => void;
-  onDocumentView?: (result: SearchResult) => void;
   documentUrlPrefix?: string;
 }) {
+  console.log('[SemanticSearch Component] Props received. initialQuery:', initialQuery);
   // Use the search hook
   const {
     query,
@@ -153,8 +143,11 @@ export function SemanticSearch({
     initialMatchThreshold: matchThreshold,
     initialMatchCount: matchCount,
     initialSortBy,
-    onResults
+    onResults,
+    initialQuery
   });
+  
+  console.log('[SemanticSearch Component] State from hook. query:', query);
   
   // Ref for input field
   const inputRef = useRef<HTMLInputElement>(null);
@@ -276,7 +269,6 @@ export function SemanticSearch({
                   key={result.id} 
                   result={result} 
                   onClick={onDocumentClick}
-                  onView={onDocumentView}
                   viewUrlPrefix={documentUrlPrefix}
                 />
               ))}

@@ -3,6 +3,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { SemanticSearch, SearchResult } from '@/features/documentLibrary/search';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -18,10 +19,14 @@ export default function SemanticSearchTestPage() {
   const [selectedDocument, setSelectedDocument] = useState<SearchResult | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   
-  // Filter state
+  // Get search params
+  const searchParams = useSearchParams();
+  
+  // Filter state - Initialize with defaults or URL params
   const [selectedCategoryId, setSelectedCategoryId] = useState('all');
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState('all');
   const [selectedTagId, setSelectedTagId] = useState('all');
+  const [initialSearchQuery, setInitialSearchQuery] = useState('');
   
   // Get filter data from our hook
   const { 
@@ -43,8 +48,59 @@ export default function SemanticSearchTestPage() {
   
   // Reset subcategory when category changes
   useEffect(() => {
+    if (searchParams.get('subcategory')) return;
     setSelectedSubcategoryId('all');
-  }, [selectedCategoryId]);
+  }, [selectedCategoryId, searchParams]);
+  
+  // Effect to initialize SEARCH state from URL parameters on mount
+  useEffect(() => {
+    // Only needs searchParams
+    if (!searchParams) return;
+
+    const searchParam = searchParams.get('search');
+
+    if (searchParam) {
+      console.log('Setting initial search query from URL:', searchParam);
+      setInitialSearchQuery(searchParam);
+    }
+    // Runs once when searchParams becomes available
+  }, [searchParams]);
+  
+  // Effect to initialize FILTER states from URL parameters AFTER filters load
+  useEffect(() => {
+    // Only run if filters are loaded and searchParams is available
+    if (filtersLoading || !searchParams || !categories || !tags) {
+      return;
+    }
+
+    const categoryParam = searchParams.get('category');
+    const subcategoryParam = searchParams.get('subcategory');
+    const tagParam = searchParams.get('tag');
+
+    if (categoryParam) {
+      const category = categories.find(c => c.id === categoryParam || c.name.toLowerCase() === categoryParam.toLowerCase());
+      if (category) {
+        console.log('Setting category from URL:', category.id);
+        setSelectedCategoryId(category.id);
+      } else {
+        console.warn('Category from URL not found:', categoryParam);
+      }
+    }
+    if (subcategoryParam) {
+      // Note: Subcategory lookup might be needed if param is not ID
+      console.log('Setting subcategory from URL:', subcategoryParam);
+      setSelectedSubcategoryId(subcategoryParam);
+    }
+    if (tagParam) {
+      const tag = tags.find(t => t.id === tagParam || t.name.toLowerCase() === tagParam.toLowerCase());
+      if (tag) {
+        console.log('Setting tag from URL:', tag.id);
+        setSelectedTagId(tag.id);
+      } else {
+        console.warn('Tag from URL not found:', tagParam);
+      }
+    }
+  }, [searchParams, categories, tags, filtersLoading, getSubcategoriesForCategory]);
   
   // Format categories and tags for the dropdowns
   const formattedCategories = useMemo(() => {
@@ -190,6 +246,7 @@ export default function SemanticSearchTestPage() {
           filters={memoizedFilters}
           onDocumentClick={handleDocumentClick}
           className="w-full"
+          initialQuery={initialSearchQuery}
         />
       </div>
       

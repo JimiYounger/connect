@@ -61,6 +61,7 @@ export interface SemanticSearchProps {
   matchCount?: number;
   initialSortBy?: 'similarity' | 'created_at' | 'title';
   className?: string;
+  initialQuery?: string;
 }
 
 // Error state

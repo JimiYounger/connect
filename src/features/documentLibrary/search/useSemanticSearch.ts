@@ -35,17 +35,20 @@ export const useSemanticSearch = ({
   initialMatchThreshold = 0.5,
   initialMatchCount = 10,
   initialSortBy = 'similarity',
-  onResults
+  onResults,
+  initialQuery = ''
 }: {
   initialFilters?: Record<string, any>;
   initialMatchThreshold?: number;
   initialMatchCount?: number;
   initialSortBy?: 'similarity' | 'created_at' | 'title';
   onResults?: (results: SearchResult[]) => void;
+  initialQuery?: string;
 }) => {
+  console.log('[useSemanticSearch] Hook initialized. Received initialQuery:', initialQuery);
   // State management
-  const [query, setQuery] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [query, setQuery] = useState(initialQuery);
+  const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
   const [filters, setFilters] = useState<Record<string, any>>(initialFilters);
   const [matchThreshold, setMatchThreshold] = useState(initialMatchThreshold);
   const [matchCount, setMatchCount] = useState(initialMatchCount);
@@ -61,8 +64,27 @@ export const useSemanticSearch = ({
   // Memoize a stable string representation of filters to use as useEffect dependency
   const filtersString = useMemo(() => JSON.stringify(filters), [filters]);
   
+  // Effect to update query state if initialQuery prop changes AFTER mount
+  useEffect(() => {
+    // Only update if the prop has a value and differs from current query
+    if (initialQuery && initialQuery !== query) {
+      console.log(`[useSemanticSearch] initialQuery prop changed to '${initialQuery}', updating internal state.`);
+      setQuery(initialQuery);
+      setDebouncedQuery(initialQuery); // Also update debouncedQuery to trigger search
+    }
+    // We only want this effect to react to changes in the initialQuery prop itself.
+  }, [initialQuery, query]); // <-- Add query dependency
+
   // Debounce input by 500ms
   useEffect(() => {
+    // If the query is the initial query, the debouncedQuery is already set.
+    // Only apply debounce for subsequent user changes.
+    if (query === initialQuery && debouncedQuery === initialQuery) {
+      // If query hasn't changed from initial, ensure debounced is also set (safe redundancy)
+      if (debouncedQuery !== initialQuery) setDebouncedQuery(initialQuery);
+      return; // Don't start debounce timer for the initial value
+    }
+    
     const handler = setTimeout(() => {
       setDebouncedQuery(query);
     }, 500);
@@ -70,7 +92,7 @@ export const useSemanticSearch = ({
     return () => {
       clearTimeout(handler);
     };
-  }, [query]);
+  }, [query, initialQuery, debouncedQuery]);
 
   // Function to fetch list based on filters only
   const fetchList = useCallback(async () => {
@@ -249,7 +271,8 @@ export const useSemanticSearch = ({
       setIsLoading(false); // Ensure loading is false
     }
     // Use filtersString as dependency to react to filter changes
-  }, [debouncedQuery, filtersString, performSearch, fetchList, filters]); 
+    // Also add initialQuery to ensure the effect runs if the prop changes (though less likely)
+  }, [debouncedQuery, filtersString, performSearch, fetchList, filters, initialQuery]); 
   
   // Function to clear the search
   const clearSearch = useCallback(() => {
