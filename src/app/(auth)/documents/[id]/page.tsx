@@ -12,7 +12,7 @@ type DocumentDetails = {
   title: string;
 };
 
-function CustomPDFViewer({ url, isMobile }: { url: string; isMobile: boolean }) {
+function CustomPDFViewer({ url }: { url: string }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +50,7 @@ function CustomPDFViewer({ url, isMobile }: { url: string; isMobile: boolean }) 
       window.removeEventListener('message', handleMessage);
       clearTimeout(timeout);
     };
-  }, [url]);
+  }, [url, isLoading]);
 
   const handleIframeLoad = () => {
     console.log('CustomPDFViewer: iframe onLoad triggered');
@@ -74,7 +74,7 @@ function CustomPDFViewer({ url, isMobile }: { url: string; isMobile: boolean }) 
     );
   }
 
-  const urlFragment = isMobile ? '#zoom=70' : '#view=FitH';
+  const urlFragment = '#view=FitH';
   const iframeSrc = `/api/document-library/pdf-viewer?url=${encodeURIComponent(url)}${urlFragment}`;
 
   return (
@@ -108,7 +108,6 @@ export default function DocumentViewPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [documentUrl, setDocumentUrl] = useState<string | null>(null);
-  const [isMobile, setIsMobile] = useState(false);
   
   useEffect(() => {
     const fetchDocumentBaseInfo = async () => {
@@ -155,15 +154,6 @@ export default function DocumentViewPage() {
     
     fetchDocumentBaseInfo();
   }, [documentId]);
-  
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
   
   const handleDownloadDocument = useCallback(() => {
     if (!documentId) return;
@@ -231,7 +221,7 @@ export default function DocumentViewPage() {
       
       <main className="flex-grow overflow-hidden relative">
         {documentUrl ? (
-          <CustomPDFViewer url={documentUrl} isMobile={isMobile} />
+          <CustomPDFViewer url={documentUrl} />
         ) : (
           <div className="flex flex-col items-center justify-center h-full bg-muted/30 text-center p-4">
              <AlertCircle className="h-10 w-10 mb-3 text-destructive" />
