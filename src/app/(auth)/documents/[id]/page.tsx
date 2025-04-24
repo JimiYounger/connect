@@ -30,9 +30,7 @@ function CustomPDFViewer({ url }: { url: string }) {
     }
     
     timeoutRef.current = setTimeout(() => {
-      if (isLoading) {
-        console.log('CustomPDFViewer: Loading is taking longer than expected');
-      }
+      console.log('CustomPDFViewer: Loading is taking longer than expected');
     }, 8000);
     
     const handleMessage = (event: MessageEvent) => {
@@ -57,7 +55,8 @@ function CustomPDFViewer({ url }: { url: string }) {
       window.removeEventListener('message', handleMessage);
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
-  }, [url, isLoading]);
+     
+  }, [url]);
 
   const handleIframeLoad = () => {
     console.log('CustomPDFViewer: iframe onLoad triggered');
