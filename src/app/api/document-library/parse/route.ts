@@ -367,6 +367,31 @@ export async function POST(req: Request) {
           } else {
             console.log('✅ Embedding function triggered for document:', documentId);
           }
+          
+          // Trigger the document summarization
+          try {
+            console.log('Triggering document summarization for document:', documentId);
+            
+            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+            const summarizationResponse = await fetch(`${baseUrl}/api/document-library/summarize/${documentId}`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            if (!summarizationResponse.ok) {
+              const errText = await summarizationResponse.text();
+              console.warn('⚠️ Document summarization failed:', errText);
+              // We log a warning but don't fail the entire parse process
+            } else {
+              console.log('✅ Document summarization triggered successfully for document:', documentId);
+            }
+          } catch (summarizationError) {
+            console.warn('⚠️ Error triggering document summarization:', summarizationError);
+            // We log a warning but don't fail the entire parse process
+          }
         }
       } catch (error) {
         console.error('Error processing document chunks:', error)

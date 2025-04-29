@@ -209,6 +209,16 @@ export function DocumentViewer({
           </div>
         </div>
         
+        {/* Content preview - displaying summary if available, otherwise contentPreview */}
+        {(document.summary || document.contentPreview) && (
+          <div className="mt-1 text-xs text-muted-foreground line-clamp-2">
+            {document.summary || document.contentPreview}
+            {document.summaryStatus === 'processing' && (
+              <Badge variant="secondary" className="ml-1 text-[10px] py-0 h-4">Summarizing...</Badge>
+            )}
+          </div>
+        )}
+        
         {/* Description tooltip on hover */}
         {document.description && (
           <div className="opacity-0 group-hover:opacity-100 absolute z-10 bg-popover text-popover-foreground border rounded-md p-3 shadow-md 
@@ -312,6 +322,7 @@ export function DocumentViewer({
         <div>
           <Skeleton className="h-5 w-36" />
           <Skeleton className="h-3 w-24 mt-1" />
+          <Skeleton className="h-3 w-40 mt-1" />
         </div>
       </div>
       

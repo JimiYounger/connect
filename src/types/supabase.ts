@@ -650,6 +650,8 @@ export type Database = {
           id: string
           order: number | null
           preview_image_url: string | null
+          summary: string | null
+          summary_status: string | null
           title: string
           updated_at: string | null
           uploaded_by: string | null
@@ -664,6 +666,8 @@ export type Database = {
           id?: string
           order?: number | null
           preview_image_url?: string | null
+          summary?: string | null
+          summary_status?: string | null
           title: string
           updated_at?: string | null
           uploaded_by?: string | null
@@ -678,6 +682,8 @@ export type Database = {
           id?: string
           order?: number | null
           preview_image_url?: string | null
+          summary?: string | null
+          summary_status?: string | null
           title?: string
           updated_at?: string | null
           uploaded_by?: string | null

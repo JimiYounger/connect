@@ -299,10 +299,12 @@ export async function POST(req: Request) {
     
     // Process the data to have a cleaner structure
     const processedData = data.map(doc => {
-      // Extract content preview (first 300 chars)
-      let contentPreview: string | null = null
+      // Use summary if available, otherwise generate contentPreview from document_content
+      let summary = doc.summary || null;
+      let contentPreview: string | null = null;
       
-      if (doc.document_content) {
+      // If no summary exists, generate contentPreview from document_content
+      if (!summary && doc.document_content) {
         // Handle document_content as a single object or array
         const content = Array.isArray(doc.document_content) 
           ? doc.document_content[0]?.content 
@@ -336,12 +338,14 @@ export async function POST(req: Request) {
         description: doc.description,
         category: doc.category,
         subcategory: doc.subcategory,
+        summary,
         contentPreview,
         tags: formattedTags,
         uploadedBy: doc.uploaded_by_user,
         createdAt: doc.created_at,
         updatedAt: doc.updated_at,
-        chunksCount
+        chunksCount,
+        summaryStatus: doc.summary_status
       }
     })
     

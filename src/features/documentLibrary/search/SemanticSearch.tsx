@@ -81,9 +81,9 @@ const ResultCard = ({
         </CardHeader>
         
         <CardContent className="px-4 py-2 pb-4">
-          {result.highlight && (
+          {(result.summary || result.highlight) && (
             <div className="text-sm text-muted-foreground mb-3">
-              <span className="italic">{result.highlight}</span>
+              <span className="italic">{result.summary || result.highlight}</span>
             </div>
           )}
           

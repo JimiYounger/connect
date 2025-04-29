@@ -30,12 +30,14 @@ export interface Document {
   description: string | null;
   category: DocumentCategory | null;
   subcategory: DocumentCategory | null;
-  contentPreview: string | null;
+  summary?: string | null;      // AI-generated document summary
+  contentPreview: string | null; // Fallback preview of content
   tags: DocumentTag[];
   uploadedBy: UserProfile | null;
   createdAt: string;
   updatedAt: string;
   chunksCount: number;
+  summaryStatus?: 'pending' | 'processing' | 'complete' | 'failed' | null;
 }
 
 // Filter parameters for document list
