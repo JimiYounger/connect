@@ -408,15 +408,15 @@ export default function SemanticSearchTestPage() {
       
       {/* Document Summary Modal */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="pr-4">
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
               {selectedDocument?.title || 'Document Details'}
             </DialogTitle>
           </DialogHeader>
           
-          <div className="py-4">
+          <div className="py-4 overflow-y-auto flex-1">
             {selectedDocument ? (
               <div className="space-y-4">
                 {/* Document Summary Section */}
@@ -424,16 +424,6 @@ export default function SemanticSearchTestPage() {
                   <h3 className="font-medium mb-3">Summary</h3>
                   <SummaryContent summary={selectedDocument.summary} />
                 </div>
-                
-                {/* Document Description Section */}
-                {selectedDocument.description && (
-                  <div className="p-4 bg-muted/10 rounded-md">
-                    <h3 className="font-medium mb-2">Description</h3>
-                    <p className="text-sm whitespace-pre-line">
-                      {formatDescription(selectedDocument.description)}
-                    </p>
-                  </div>
-                )}
                 
                 {/* Document Tags Section */}
                 {selectedDocument.tags && selectedDocument.tags.length > 0 && (
@@ -467,10 +457,10 @@ export default function SemanticSearchTestPage() {
             )}
           </div>
           
-          <DialogFooter>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-2 pt-2 border-t">
             <Button 
               variant="outline" 
-              className="gap-1"
+              className="gap-1 w-full sm:w-auto"
               onClick={handleShareClick}
             >
               {shareFeedback === 'Copied!' ? (
@@ -489,7 +479,7 @@ export default function SemanticSearchTestPage() {
                   window.open(`/documents/${selectedDocument.id}`, '_blank');
                 }
               }}
-              className="gap-1"
+              className="gap-1 w-full sm:w-auto"
             >
               <span>Open Document</span>
               <ExternalLink className="h-4 w-4" />
