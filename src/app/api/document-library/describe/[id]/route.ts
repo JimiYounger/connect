@@ -127,19 +127,19 @@ export async function POST(
       : 'Description generation failed: Unknown error occurred';
     
     // Update document status to indicate failure
-    await supabase
-      .from('documents')
-      .update({ 
-        description: errorMessage,
-        description_status: 'failed' 
-      })
-      .eq('id', documentId)
-      .then(() => {
-        console.log(`Updated document ${documentId} status to failed`);
-      })
-      .catch((err) => {
-        console.error(`Failed to update document ${documentId} status:`, err);
-      });
+    try {
+      await supabase
+        .from('documents')
+        .update({ 
+          description: errorMessage,
+          description_status: 'failed' 
+        })
+        .eq('id', documentId);
+      
+      console.log(`Updated document ${documentId} status to failed`);
+    } catch (updateError) {
+      console.error(`Failed to update document ${documentId} status:`, updateError);
+    }
 
     return NextResponse.json(
       { 
