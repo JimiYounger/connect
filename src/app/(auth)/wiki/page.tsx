@@ -7,11 +7,92 @@ import { useSearchParams } from 'next/navigation';
 import { SemanticSearch, SearchResult } from '@/features/documentLibrary/search';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { FileText, Loader2 as _Loader2 } from 'lucide-react';
+import { FileText, Loader2 as _Loader2, Share2, Check, AlertCircle, ExternalLink, Clock, CheckSquare, Info } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useDocumentFilters } from '@/features/documentLibrary/hooks';
 import { Skeleton } from '@/components/ui/skeleton';
+
+// Enhanced summary section component
+interface SummaryContentProps {
+  summary: string | null | undefined;
+}
+
+const SummaryContent: React.FC<SummaryContentProps> = ({ summary }) => {
+  if (!summary) return <p className="text-sm italic">No summary available</p>;
+  
+  // Parse the summary to identify sections
+  const sections: { title: string; content: string; icon?: React.ReactNode }[] = [];
+  
+  // First, normalize newlines
+  const normalizedSummary = summary.replace(/\\n/g, '\n');
+  
+  // Extract sections based on bullet points
+  const lines = normalizedSummary.split('•').map(line => line.trim()).filter(Boolean);
+  
+  lines.forEach(line => {
+    // Check if line contains a section header (Title:, Purpose:, etc.)
+    if (line.includes(':')) {
+      const [sectionTitle, ...rest] = line.split(':');
+      const sectionContent = rest.join(':').trim();
+      
+      // Determine icon based on section name
+      let icon = <Info className="h-4 w-4" />;
+      if (sectionTitle.toLowerCase().includes('title')) {
+        icon = <FileText className="h-4 w-4" />;
+      } else if (sectionTitle.toLowerCase().includes('purpose')) {
+        icon = <Info className="h-4 w-4" />;
+      } else if (sectionTitle.toLowerCase().includes('takeaway')) {
+        icon = <CheckSquare className="h-4 w-4" />;
+      } else if (sectionTitle.toLowerCase().includes('action')) {
+        icon = <CheckSquare className="h-4 w-4" />;
+      } else if (sectionTitle.toLowerCase().includes('time')) {
+        icon = <Clock className="h-4 w-4" />;
+      }
+      
+      sections.push({
+        title: sectionTitle.trim(),
+        content: sectionContent,
+        icon
+      });
+    } else {
+      // For plain bullet points without headers
+      sections.push({
+        title: '',
+        content: line,
+        icon: <CheckSquare className="h-4 w-4" />
+      });
+    }
+  });
+
+  return (
+    <div className="space-y-3">
+      {sections.map((section, index) => (
+        <div key={index} className="flex gap-2">
+          <div className="text-primary shrink-0 mt-0.5">
+            {section.icon}
+          </div>
+          <div>
+            {section.title && (
+              <span className="font-medium">{section.title}:</span>
+            )}
+            <span className="ml-1">{section.content}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// Helper function to format description text
+const formatDescription = (description: string | null | undefined) => {
+  if (!description) return null;
+  
+  // For descriptions, we just want to ensure paragraphs are properly separated
+  return description
+    .replace(/\n\s*\n/g, '\n\n') // Normalize multiple newlines to double newlines
+    .trim();
+};
 
 // Helper function to manage prefetch links
 const PREFETCH_LINK_SELECTOR = 'link[data-prefetch-for="wiki-search"]';
@@ -51,6 +132,7 @@ export default function SemanticSearchTestPage() {
   const [_results, setResults] = useState<SearchResult[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<SearchResult | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [shareFeedback, setShareFeedback] = useState('');
   
   // Get search params
   const searchParams = useSearchParams();
@@ -168,8 +250,9 @@ export default function SemanticSearchTestPage() {
     return filters;
   }, [selectedCategoryId, selectedSubcategoryId, selectedTagId]);
   
-  // Handle document click
-  const _handleDocumentClick = useCallback((document: SearchResult) => {
+  // Handle document selection
+  const handleDocumentSelect = useCallback((document: SearchResult) => {
+    console.log('Selected document for modal:', document);
     setSelectedDocument(document);
     setDialogOpen(true);
   }, []);
@@ -178,6 +261,39 @@ export default function SemanticSearchTestPage() {
   const handleResults = useCallback((results: SearchResult[]) => {
     setResults(results);
   }, [setResults]);
+
+  // Handle share button click
+  const handleShareClick = useCallback(async () => {
+    if (!selectedDocument) return;
+    
+    setShareFeedback('');
+    const documentUrl = `${window.location.origin}/documents/${selectedDocument.id}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: selectedDocument.title,
+          text: `Check out this document: ${selectedDocument.title}`,
+          url: documentUrl,
+        });
+        console.log('Shared successfully');
+      } catch (error) {
+        console.error('Error sharing:', error);
+      }
+    } else if (navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(documentUrl);
+        setShareFeedback('Copied!');
+        setTimeout(() => setShareFeedback(''), 2000);
+      } catch (error) {
+        console.error('Error copying to clipboard:', error);
+        setShareFeedback('Failed!');
+        setTimeout(() => setShareFeedback(''), 2000); 
+      }
+    } else {
+      alert("Sharing/Copying is not supported on your browser.");
+    }
+  }, [selectedDocument]);
   
   // Effect to prefetch top results when results change
   useEffect(() => {
@@ -281,6 +397,7 @@ export default function SemanticSearchTestPage() {
             filters={memoizedFilters}
             className="w-full"
             initialQuery={initialSearchQuery}
+            onDocumentSelect={handleDocumentSelect}
           />
         ) : (
           <div className="w-full flex items-center justify-center h-60"> 
@@ -289,24 +406,36 @@ export default function SemanticSearchTestPage() {
         )}
       </div>
       
-      {/* Document Preview Dialog */}
+      {/* Document Summary Modal */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              {selectedDocument?.title || 'Document Preview'}
+              {selectedDocument?.title || 'Document Details'}
             </DialogTitle>
           </DialogHeader>
           
           <div className="py-4">
             {selectedDocument ? (
               <div className="space-y-4">
+                {/* Document Summary Section */}
                 <div className="p-4 bg-muted/20 rounded-md">
-                  <h3 className="font-medium mb-2">Excerpt</h3>
-                  <p className="italic text-sm">{selectedDocument.highlight || 'No excerpt available'}</p>
+                  <h3 className="font-medium mb-3">Summary</h3>
+                  <SummaryContent summary={selectedDocument.summary} />
                 </div>
                 
+                {/* Document Description Section */}
+                {selectedDocument.description && (
+                  <div className="p-4 bg-muted/10 rounded-md">
+                    <h3 className="font-medium mb-2">Description</h3>
+                    <p className="text-sm whitespace-pre-line">
+                      {formatDescription(selectedDocument.description)}
+                    </p>
+                  </div>
+                )}
+                
+                {/* Document Tags Section */}
                 {selectedDocument.tags && selectedDocument.tags.length > 0 && (
                   <div>
                     <h4 className="text-sm font-medium text-muted-foreground mb-1">Tags</h4>
@@ -317,6 +446,19 @@ export default function SemanticSearchTestPage() {
                     </div>
                   </div>
                 )}
+                
+                {/* Document Metadata Section */}
+                <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+                  {selectedDocument.category_name && (
+                    <div>Category: {selectedDocument.category_name}</div>
+                  )}
+                  {selectedDocument.subcategory_name && (
+                    <div>Subcategory: {selectedDocument.subcategory_name}</div>
+                  )}
+                  {selectedDocument.created_at && (
+                    <div>Created: {new Date(selectedDocument.created_at).toLocaleDateString()}</div>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
@@ -326,18 +468,31 @@ export default function SemanticSearchTestPage() {
           </div>
           
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDialogOpen(false)}
+            <Button 
+              variant="outline" 
+              className="gap-1"
+              onClick={handleShareClick}
             >
-              Close
+              {shareFeedback === 'Copied!' ? (
+                <Check className="h-4 w-4" />
+              ) : shareFeedback === 'Failed!' ? (
+                <AlertCircle className="h-4 w-4 text-destructive" />
+              ) : (
+                <Share2 className="h-4 w-4" />
+              )}
+              <span>{shareFeedback || 'Share'}</span>
             </Button>
+            
             <Button
               onClick={() => {
-                window.open(`/documents/${selectedDocument?.id}`, '_blank');
+                if (selectedDocument) {
+                  window.open(`/documents/${selectedDocument.id}`, '_blank');
+                }
               }}
+              className="gap-1"
             >
-              Open Document
+              <span>Open Document</span>
+              <ExternalLink className="h-4 w-4" />
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -370,27 +370,152 @@ export async function POST(req: Request) {
           
           // Trigger the document summarization
           try {
-            console.log('Triggering document summarization for document:', documentId);
+            console.log('Starting direct document summarization for document:', documentId);
             
-            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-            const summarizationResponse = await fetch(`${baseUrl}/api/document-library/summarize/${documentId}`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-                'Content-Type': 'application/json'
-              }
-            });
-            
-            if (!summarizationResponse.ok) {
-              const errText = await summarizationResponse.text();
-              console.warn('⚠️ Document summarization failed:', errText);
-              // We log a warning but don't fail the entire parse process
+            // Get the document content
+            const { data: contentData, error: contentError } = await supabase
+              .from('document_content')
+              .select('content')
+              .eq('document_id', documentId)
+              .single();
+              
+            if (contentError || !contentData || !contentData.content) {
+              console.error(`Content fetch error for document ${documentId}:`, contentError);
+              await supabase
+                .from('documents')
+                .update({ 
+                  summary: 'Unable to generate summary: Document content not available.',
+                  summary_status: 'failed',
+                  description: 'Unable to generate description: Document content not available.',
+                  description_status: 'failed'
+                })
+                .eq('id', documentId);
+                
+              console.log(`Document ${documentId} marked as failed - content not found`);
+              // Continue processing - this is not fatal for the parse operation
             } else {
-              console.log('✅ Document summarization triggered successfully for document:', documentId);
+              // Update status to indicate summarization is in progress
+              await supabase
+                .from('documents')
+                .update({ summary_status: 'pending' })
+                .eq('id', documentId);
+                
+              console.log(`Document ${documentId} marked for summarization - content found (${contentData.content.length} chars)`);
+              
+              // Import the summarizeText function directly
+              const { summarizeText, describeText } = await import('@/lib/openai');
+              
+              try {
+                // Generate summary using OpenAI (with protective try/catch)
+                const summary = await summarizeText(contentData.content);
+                
+                if (!summary || summary.trim().length === 0) {
+                  console.error(`Empty summary returned for document ${documentId}`);
+                  await supabase
+                    .from('documents')
+                    .update({ 
+                      summary: 'Unable to generate summary: AI generated an empty response.',
+                      summary_status: 'failed' 
+                    })
+                    .eq('id', documentId);
+                } else {
+                  // Update document with summary and status
+                  const { error: updateError } = await supabase
+                    .from('documents')
+                    .update({
+                      summary,
+                      summary_status: 'complete'
+                    })
+                    .eq('id', documentId);
+
+                  if (updateError) {
+                    console.error(`Failed to save summary for document ${documentId}:`, updateError);
+                  } else {
+                    console.log(`Summarization completed successfully for document: ${documentId}`);
+                  }
+                }
+                
+                // Now generate description after the summary is done
+                console.log(`Starting document description generation for document: ${documentId}`);
+                
+                // Update status to indicate description generation is in progress
+                await supabase
+                  .from('documents')
+                  .update({ description_status: 'processing' })
+                  .eq('id', documentId);
+                
+                try {
+                  // Generate description using OpenAI
+                  const description = await describeText(contentData.content);
+                  
+                  if (!description || description.trim().length === 0) {
+                    console.error(`Empty description returned for document ${documentId}`);
+                    await supabase
+                      .from('documents')
+                      .update({ 
+                        description: 'Unable to generate description: AI generated an empty response.',
+                        description_status: 'failed' 
+                      })
+                      .eq('id', documentId);
+                  } else {
+                    // Update document with description and status
+                    const { error: descUpdateError } = await supabase
+                      .from('documents')
+                      .update({
+                        description,
+                        description_status: 'complete'
+                      })
+                      .eq('id', documentId);
+
+                    if (descUpdateError) {
+                      console.error(`Failed to save description for document ${documentId}:`, descUpdateError);
+                    } else {
+                      console.log(`Description generation completed successfully for document: ${documentId}`);
+                    }
+                  }
+                } catch (descError) {
+                  console.error(`Error in description generation for ${documentId}:`, descError);
+                  await supabase
+                    .from('documents')
+                    .update({ 
+                      description: descError instanceof Error 
+                        ? `Description generation failed: ${descError.message}` 
+                        : 'Description generation failed: Unknown error occurred',
+                      description_status: 'failed' 
+                    })
+                    .eq('id', documentId);
+                }
+                
+              } catch (aiError) {
+                console.error(`Error in OpenAI summarization for ${documentId}:`, aiError);
+                await supabase
+                  .from('documents')
+                  .update({ 
+                    summary: aiError instanceof Error 
+                      ? `Summarization failed: ${aiError.message}` 
+                      : 'Summarization failed: Unknown error occurred',
+                    summary_status: 'failed' 
+                  })
+                  .eq('id', documentId);
+              }
             }
           } catch (summarizationError) {
-            console.warn('⚠️ Error triggering document summarization:', summarizationError);
-            // We log a warning but don't fail the entire parse process
+            console.error('⚠️ Error in document summarization process:', 
+              summarizationError instanceof Error ? summarizationError.message : 'Unknown error');
+            
+            try {
+              await supabase
+                .from('documents')
+                .update({ 
+                  summary_status: 'failed',
+                  summary: 'Summarization processing error occurred.',
+                  description_status: 'failed',
+                  description: 'Description processing error occurred due to issues with summarization.' 
+                })
+                .eq('id', documentId);
+            } catch (updateError) {
+              console.error('Failed to update document status:', updateError);
+            }
           }
         }
       } catch (error) {

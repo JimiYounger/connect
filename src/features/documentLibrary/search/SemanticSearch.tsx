@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useEffect, useRef, KeyboardEvent, useMemo, useState } from 'react';
+import { useEffect, useRef, KeyboardEvent, useMemo, useState, useCallback } from 'react';
 import { Search, AlertCircle, FileText, ExternalLink, Share2, Check } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { 
@@ -24,10 +24,12 @@ import Link from 'next/link';
  */
 const ResultCard = ({ 
   result, 
-  viewUrlPrefix = '/documents'
+  viewUrlPrefix = '/documents',
+  onTitleClick
 }: { 
   result: SearchResult; 
   viewUrlPrefix?: string;
+  onTitleClick?: (result: SearchResult) => void;
 }) => {
   const [shareFeedback, setShareFeedback] = useState('');
   
@@ -35,6 +37,17 @@ const ResultCard = ({
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''; 
     return `${baseUrl}${viewUrlPrefix}/${result.id}`;
   }, [result.id, viewUrlPrefix]);
+  
+  // Debug log to inspect result data
+  useEffect(() => {
+    console.log('ResultCard rendering with data:', {
+      id: result.id,
+      title: result.title,
+      description: result.description,
+      summary: result.summary,
+      highlight: result.highlight
+    });
+  }, [result]);
   
   const handleShareClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -77,13 +90,18 @@ const ResultCard = ({
         className="mb-4 overflow-hidden border transition-colors hover:shadow-sm"
       >
         <CardHeader className="px-4 py-3">
-          <CardTitle className="text-base font-medium">{result.title}</CardTitle>
+          <CardTitle 
+            className="text-base font-medium cursor-pointer hover:text-primary transition-colors"
+            onClick={() => onTitleClick?.(result)}
+          >
+            {result.title}
+          </CardTitle>
         </CardHeader>
         
         <CardContent className="px-4 py-2 pb-4">
-          {(result.summary || result.highlight) && (
+          {(result.description || result.summary || result.highlight) && (
             <div className="text-sm text-muted-foreground mb-3">
-              <span className="italic">{result.summary || result.highlight}</span>
+              {result.description || result.summary || result.highlight}
             </div>
           )}
           
@@ -165,9 +183,11 @@ export function SemanticSearch({
   initialSortBy = 'similarity',
   className = '',
   documentUrlPrefix = '/documents',
-  initialQuery
+  initialQuery,
+  onDocumentSelect
 }: SemanticSearchProps & {
   documentUrlPrefix?: string;
+  onDocumentSelect?: (document: SearchResult) => void;
 }) {
   console.log('[SemanticSearch Component] Props received. initialQuery:', initialQuery);
   // Use the search hook
@@ -249,6 +269,13 @@ export function SemanticSearch({
       clearSearch();
     }
   };
+
+  // Handle document title click
+  const handleDocumentTitleClick = useCallback((document: SearchResult) => {
+    if (onDocumentSelect) {
+      onDocumentSelect(document);
+    }
+  }, [onDocumentSelect]);
   
   return (
     <div className={`w-full max-w-3xl mx-auto flex flex-col ${className}`}>
@@ -310,6 +337,7 @@ export function SemanticSearch({
                   key={result.id} 
                   result={result} 
                   viewUrlPrefix={documentUrlPrefix}
+                  onTitleClick={handleDocumentTitleClick}
                 />
               ))}
             </AnimatePresence>

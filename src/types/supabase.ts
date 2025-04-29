@@ -644,6 +644,7 @@ export type Database = {
           created_at: string | null
           current_version_id: string | null
           description: string | null
+          description_status: string | null
           document_category_id: string | null
           document_subcategory_id: string | null
           embedding_status: string | null
@@ -660,6 +661,7 @@ export type Database = {
           created_at?: string | null
           current_version_id?: string | null
           description?: string | null
+          description_status?: string | null
           document_category_id?: string | null
           document_subcategory_id?: string | null
           embedding_status?: string | null
@@ -676,6 +678,7 @@ export type Database = {
           created_at?: string | null
           current_version_id?: string | null
           description?: string | null
+          description_status?: string | null
           document_category_id?: string | null
           document_subcategory_id?: string | null
           embedding_status?: string | null

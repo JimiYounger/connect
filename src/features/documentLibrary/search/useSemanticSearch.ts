@@ -14,6 +14,8 @@ function mapListResultToSearchResult(item: any): SearchResult {
   return {
     id: item.id,
     title: item.title || 'Untitled Document',
+    description: item.description,
+    summary: item.summary,
     highlight: item.contentPreview || '', // Use content preview as highlight
     similarity: 1, // Assign a default similarity score for list items
     tags: item.tags ? item.tags.map((t: any) => t.name) : [], // Extract tag names

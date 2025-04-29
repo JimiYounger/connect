@@ -16,6 +16,7 @@ export interface SearchResult {
   id: string;
   title: string;
   description?: string;
+  summary?: string;
   similarity: number;
   highlight: string; // Snippet from the most relevant chunk
   matching_chunks: DocumentChunk[];
@@ -62,6 +63,7 @@ export interface SemanticSearchProps {
   initialSortBy?: 'similarity' | 'created_at' | 'title';
   className?: string;
   initialQuery?: string;
+  onDocumentSelect?: (document: SearchResult) => void;
 }
 
 // Error state
