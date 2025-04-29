@@ -4,9 +4,9 @@ import { summarizeText } from '@/lib/openai';
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const documentId = params.id;
+  const { id: documentId } = await params;
   
   if (!documentId) {
     return NextResponse.json(
