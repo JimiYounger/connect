@@ -7,92 +7,11 @@ import { useSearchParams } from 'next/navigation';
 import { SemanticSearch, SearchResult } from '@/features/documentLibrary/search';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { FileText, Loader2 as _Loader2, Share2, Check, AlertCircle, ExternalLink, Clock, CheckSquare, Info } from 'lucide-react';
+import { FileText, Loader2 as _Loader2, Share2, Check, AlertCircle, ExternalLink } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useDocumentFilters } from '@/features/documentLibrary/hooks';
 import { Skeleton } from '@/components/ui/skeleton';
-
-// Enhanced summary section component
-interface SummaryContentProps {
-  summary: string | null | undefined;
-}
-
-const SummaryContent: React.FC<SummaryContentProps> = ({ summary }) => {
-  if (!summary) return <p className="text-sm italic">No summary available</p>;
-  
-  // Parse the summary to identify sections
-  const sections: { title: string; content: string; icon?: React.ReactNode }[] = [];
-  
-  // First, normalize newlines
-  const normalizedSummary = summary.replace(/\\n/g, '\n');
-  
-  // Extract sections based on bullet points
-  const lines = normalizedSummary.split('•').map(line => line.trim()).filter(Boolean);
-  
-  lines.forEach(line => {
-    // Check if line contains a section header (Title:, Purpose:, etc.)
-    if (line.includes(':')) {
-      const [sectionTitle, ...rest] = line.split(':');
-      const sectionContent = rest.join(':').trim();
-      
-      // Determine icon based on section name
-      let icon = <Info className="h-4 w-4" />;
-      if (sectionTitle.toLowerCase().includes('title')) {
-        icon = <FileText className="h-4 w-4" />;
-      } else if (sectionTitle.toLowerCase().includes('purpose')) {
-        icon = <Info className="h-4 w-4" />;
-      } else if (sectionTitle.toLowerCase().includes('takeaway')) {
-        icon = <CheckSquare className="h-4 w-4" />;
-      } else if (sectionTitle.toLowerCase().includes('action')) {
-        icon = <CheckSquare className="h-4 w-4" />;
-      } else if (sectionTitle.toLowerCase().includes('time')) {
-        icon = <Clock className="h-4 w-4" />;
-      }
-      
-      sections.push({
-        title: sectionTitle.trim(),
-        content: sectionContent,
-        icon
-      });
-    } else {
-      // For plain bullet points without headers
-      sections.push({
-        title: '',
-        content: line,
-        icon: <CheckSquare className="h-4 w-4" />
-      });
-    }
-  });
-
-  return (
-    <div className="space-y-3">
-      {sections.map((section, index) => (
-        <div key={index} className="flex gap-2">
-          <div className="text-primary shrink-0 mt-0.5">
-            {section.icon}
-          </div>
-          <div>
-            {section.title && (
-              <span className="font-medium">{section.title}:</span>
-            )}
-            <span className="ml-1">{section.content}</span>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-// Helper function to format description text
-const formatDescription = (description: string | null | undefined) => {
-  if (!description) return null;
-  
-  // For descriptions, we just want to ensure paragraphs are properly separated
-  return description
-    .replace(/\n\s*\n/g, '\n\n') // Normalize multiple newlines to double newlines
-    .trim();
-};
 
 // Helper function to manage prefetch links
 const PREFETCH_LINK_SELECTOR = 'link[data-prefetch-for="wiki-search"]';
@@ -126,6 +45,52 @@ async function addPrefetchLink(documentId: string) {
     console.error(`Error prefetching ${documentId}:`, error);
   }
 }
+
+interface SummaryContentProps {
+  summary: string | null | undefined;
+}
+
+// Component to render formatted summary content
+const SummaryContent: React.FC<SummaryContentProps> = ({ summary }) => {
+  if (!summary) return <p className="text-muted-foreground italic">No summary available</p>;
+  
+  // First, preserve any existing newlines
+  let formattedText = summary.replace(/\\n/g, '\n');
+  
+  // Split by bullet points
+  const parts = formattedText.split('•');
+  
+  const formattedParts = parts
+    .map((section, index) => {
+      // Skip empty sections
+      if (!section.trim()) return null;
+      
+      // First section (before any bullets) just gets trimmed
+      if (index === 0 && section.trim()) {
+        return <p key={`section-${index}`}>{section.trim()}</p>;
+      }
+      
+      // For bullet points, format with proper indentation
+      const trimmedSection = section.trim();
+      
+      // Check if this section has a title/header (like "Title:", "Purpose:", etc.)
+      if (trimmedSection.includes(':')) {
+        const [header, ...rest] = trimmedSection.split(':');
+        return (
+          <div key={`section-${index}`} className="ml-2 mb-2">
+            <span className="font-medium">• {header.trim()}:</span> {rest.join(':').trim()}
+          </div>
+        );
+      }
+      
+      return trimmedSection ? (
+        <div key={`section-${index}`} className="ml-2 mb-2">• {trimmedSection}</div>
+      ) : null;
+    })
+    .filter(Boolean); // Remove empty sections
+  
+  return <div className="space-y-2">{formattedParts}</div>;
+};
 
 export default function SemanticSearchTestPage() {
   // State
