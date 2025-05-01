@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { useAuth } from '@/features/auth/context/auth-context'
 import { useProfile } from '@/features/users/hooks/useProfile'
 import { usePermissions } from '@/features/permissions/hooks/usePermissions'
-import { Loader2, LineChart, Activity, AlertOctagon, ImageIcon, MessageSquare, Settings, Users, BookText, Menu, X } from 'lucide-react'
+import { Loader2, LineChart, Activity, AlertOctagon, ImageIcon, MessageSquare, Settings, Users, BookText, Menu, X, Home } from 'lucide-react'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { UserProfileNav } from "@/features/users/components/UserProfileNav"
@@ -17,6 +17,7 @@ interface AdminLayoutProps {
 }
 
 const navItems = [
+  { name: "Home", icon: Home, href: "/home" },
   { name: "Dashboards", icon: LineChart, href: "/admin/dashboards" },
   { name: "Widgets", icon: Settings, href: "/admin/widgets" },
   { name: "Navigation", icon: Users, href: "/admin/navigation" },
@@ -100,33 +101,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   return (
     <div className="min-h-screen flex flex-col bg-white text-black admin-layout">
       <header className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/95 backdrop-blur-sm">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-2">
+        <div className="container mx-auto flex h-auto min-h-16 flex-col md:flex-row md:items-center justify-between px-4 py-2">
+          <div className="flex items-center justify-between">
             <Link href="/admin" className="flex items-center gap-2">
               <Image src="/connect.png" alt="Connect Logo" width={32} height={32} />
               <span className="font-semibold text-lg">Connect Admin</span>
             </Link>
-          </div>
-          
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center">
-            <ul className="flex space-x-4 mr-4">
-              {navItems.map((item) => (
-                <li key={item.href}>
-                  <Link 
-                    href={item.href} 
-                    className="flex items-center gap-1.5 rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-                  >
-                    <item.icon className="h-4 w-4" />
-                    <span>{item.name}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
-          
-          <div className="flex items-center gap-4">
-            {profile && <UserProfileNav profile={profile} />}
             
             {/* Mobile menu button */}
             <Button 
@@ -139,6 +119,29 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <span className="sr-only">Toggle menu</span>
             </Button>
           </div>
+          
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex md:flex-1 items-center justify-end">
+            <ul className="flex flex-wrap gap-x-1 lg:gap-x-3">
+              {navItems.map((item) => (
+                <li key={item.href}>
+                  <Link 
+                    href={item.href} 
+                    className="flex items-center gap-1 md:gap-1.5 rounded-md px-2 lg:px-3 py-2 text-xs lg:text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 whitespace-nowrap"
+                  >
+                    <item.icon className="h-3.5 w-3.5 lg:h-4 lg:w-4 flex-shrink-0" />
+                    <span>{item.name}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            
+            {profile && (
+              <div className="ml-3 lg:ml-4">
+                <UserProfileNav profile={profile} />
+              </div>
+            )}
+          </nav>
         </div>
         
         {/* Mobile Navigation */}

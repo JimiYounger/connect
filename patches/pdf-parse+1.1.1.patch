@@ -1,0 +1,9 @@
+const Pdf = require('./lib/pdf-parse.js');
+
+module.exports = Pdf;
+
+let isDebugMode = false; // Force debug mode to always be false
+
+//process.env.AUTO_KENT_DEBUG
+
+//process.env.AUTO_KENT_DEBUG 
