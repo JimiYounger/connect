@@ -160,17 +160,17 @@ const NavigationItemVisibility = ({ item }: { item: NavigationItemWithChildren }
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Badge variant="secondary" className="flex items-center gap-1 bg-blue-600/20 text-blue-400 border border-blue-600/30 hover:bg-blue-600/30">
+                <Badge variant="secondary" className="flex items-center gap-1 bg-blue-600/20 text-blue-600 border border-blue-600/30 hover:bg-blue-600/30">
                   <Users className="h-3 w-3" />
                   <span>{roleTypes.size}</span>
                 </Badge>
               </TooltipTrigger>
               <TooltipContent side="top" className="p-0 overflow-hidden">
-                <div className="bg-zinc-950 text-white p-3 rounded-md max-w-xs">
+                <div className="bg-white text-black p-3 rounded-md max-w-xs border border-gray-200 shadow-md">
                   <div className="font-medium mb-2">Visible to roles:</div>
                   <div className="flex flex-wrap gap-2">
                     {Array.from(roleTypes).map(role => (
-                      <Badge key={`role-${role}`} variant="outline" className="border-white/30 text-white">
+                      <Badge key={`role-${role}`} variant="outline" className="border-gray-300 text-gray-800">
                         {role}
                       </Badge>
                     ))}
@@ -185,17 +185,17 @@ const NavigationItemVisibility = ({ item }: { item: NavigationItemWithChildren }
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Badge variant="secondary" className="flex items-center gap-1 bg-purple-600/20 text-purple-400 border border-purple-600/30 hover:bg-purple-600/30">
+                <Badge variant="secondary" className="flex items-center gap-1 bg-purple-600/20 text-purple-600 border border-purple-600/30 hover:bg-purple-600/30">
                   <Users className="h-3 w-3" />
                   <span>{teams.size}</span>
                 </Badge>
               </TooltipTrigger>
               <TooltipContent side="top" className="p-0 overflow-hidden">
-                <div className="bg-zinc-950 text-white p-3 rounded-md max-w-xs">
+                <div className="bg-white text-black p-3 rounded-md max-w-xs border border-gray-200 shadow-md">
                   <div className="font-medium mb-2">Visible to teams:</div>
                   <div className="flex flex-wrap gap-2">
                     {Array.from(teams).map(team => (
-                      <Badge key={`team-${team}`} variant="outline" className="border-white/30 text-white">
+                      <Badge key={`team-${team}`} variant="outline" className="border-gray-300 text-gray-800">
                         {team}
                       </Badge>
                     ))}
@@ -210,17 +210,17 @@ const NavigationItemVisibility = ({ item }: { item: NavigationItemWithChildren }
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Badge variant="secondary" className="flex items-center gap-1 bg-amber-600/20 text-amber-400 border border-amber-600/30 hover:bg-amber-600/30">
+                <Badge variant="secondary" className="flex items-center gap-1 bg-amber-600/20 text-amber-600 border border-amber-600/30 hover:bg-amber-600/30">
                   <MapPin className="h-3 w-3" />
                   <span>{areas.size}</span>
                 </Badge>
               </TooltipTrigger>
               <TooltipContent side="top" className="p-0 overflow-hidden">
-                <div className="bg-zinc-950 text-white p-3 rounded-md max-w-xs">
+                <div className="bg-white text-black p-3 rounded-md max-w-xs border border-gray-200 shadow-md">
                   <div className="font-medium mb-2">Visible to areas:</div>
                   <div className="flex flex-wrap gap-2">
                     {Array.from(areas).map(area => (
-                      <Badge key={`area-${area}`} variant="outline" className="border-white/30 text-white">
+                      <Badge key={`area-${area}`} variant="outline" className="border-gray-300 text-gray-800">
                         {area}
                       </Badge>
                     ))}
@@ -235,17 +235,17 @@ const NavigationItemVisibility = ({ item }: { item: NavigationItemWithChildren }
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Badge variant="secondary" className="flex items-center gap-1 bg-teal-600/20 text-teal-400 border border-teal-600/30 hover:bg-teal-600/30">
+                <Badge variant="secondary" className="flex items-center gap-1 bg-teal-600/20 text-teal-600 border border-teal-600/30 hover:bg-teal-600/30">
                   <Globe className="h-3 w-3" />
                   <span>{regions.size}</span>
                 </Badge>
               </TooltipTrigger>
               <TooltipContent side="top" className="p-0 overflow-hidden">
-                <div className="bg-zinc-950 text-white p-3 rounded-md max-w-xs">
+                <div className="bg-white text-black p-3 rounded-md max-w-xs border border-gray-200 shadow-md">
                   <div className="font-medium mb-2">Visible to regions:</div>
                   <div className="flex flex-wrap gap-2">
                     {Array.from(regions).map(region => (
-                      <Badge key={`region-${region}`} variant="outline" className="border-white/30 text-white">
+                      <Badge key={`region-${region}`} variant="outline" className="border-gray-300 text-gray-800">
                         {region}
                       </Badge>
                     ))}
@@ -354,12 +354,12 @@ const SortableItem = ({
     <div 
       ref={setNodeRef}
       style={style}
-      className="flex flex-col bg-zinc-900 text-white rounded-[14px]"
+      className="flex flex-col bg-gray-50 text-black rounded-[14px] border border-gray-200"
     >
-      <div className="flex items-center justify-between p-6 hover:bg-zinc-800 transition-colors">
+      <div className="flex items-center justify-between p-6 hover:bg-gray-100 transition-colors">
         <div className="flex items-center gap-3">
           <div 
-            className="touch-none cursor-grab active:cursor-grabbing text-zinc-500 hover:text-white"
+            className="touch-none cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
             {...attributes}
             {...listeners}
           >
@@ -370,7 +370,7 @@ const SortableItem = ({
             onClick={toggleExpand}
           >
             {hasChildren && (
-              <span className="text-zinc-400">
+              <span className="text-gray-500">
                 {expanded ? (
                   <ChevronDown className="h-4 w-4" />
                 ) : (
@@ -388,7 +388,7 @@ const SortableItem = ({
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-8 w-8 text-white"
+            className="h-8 w-8 text-gray-600"
             onClick={(e) => {
               e.stopPropagation();
               onDelete();
@@ -408,13 +408,13 @@ const SortableItem = ({
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
           </Button>
           <div 
-            className="h-8 w-8 bg-white rounded-full flex items-center justify-center cursor-pointer"
+            className="h-8 w-8 bg-gray-800 rounded-full flex items-center justify-center cursor-pointer hover:bg-gray-700"
             onClick={(e) => {
               e.stopPropagation();
               onView();
             }}
           >
-            <ChevronRight className="h-5 w-5 text-black" />
+            <ChevronRight className="h-5 w-5 text-white" />
           </div>
         </div>
       </div>
@@ -464,11 +464,11 @@ const ChildItem = ({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center justify-between p-3 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition-colors"
+      className="flex items-center justify-between p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors border border-gray-200"
     >
       <div className="flex items-center gap-3">
         <div 
-          className="touch-none cursor-grab active:cursor-grabbing text-zinc-500 hover:text-white"
+          className="touch-none cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
           {...attributes}
           {...listeners}
         >
@@ -485,7 +485,7 @@ const ChildItem = ({
         <Button 
           variant="ghost" 
           size="icon" 
-          className="h-6 w-6 text-white"
+          className="h-6 w-6 text-gray-600"
           onClick={(e) => {
             e.stopPropagation();
             onDelete();
@@ -688,11 +688,11 @@ export default function EditNavigationMenuPage() {
   // Loading state for menu data
   if (isLoadingMenu || isLoadingItems) {
     return (
-      <div className="max-w-5xl mx-auto py-8 px-4 bg-black">
+      <div className="max-w-5xl mx-auto py-8 px-4">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-white mx-auto"></div>
-            <p className="mt-4 text-lg text-white">Loading navigation menu...</p>
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-600 mx-auto"></div>
+            <p className="mt-4 text-lg text-gray-600">Loading navigation menu...</p>
           </div>
         </div>
       </div>
@@ -702,11 +702,11 @@ export default function EditNavigationMenuPage() {
   // Menu not found
   if (!menu) {
     return (
-      <div className="max-w-5xl mx-auto py-8 px-4 bg-black">
-        <div className="max-w-md mx-auto bg-zinc-900 rounded-[14px] shadow-md p-8 text-center">
-          <h2 className="text-2xl font-semibold mb-4 text-red-400">Menu Not Found</h2>
-          <p className="mb-6 text-zinc-400">The navigation menu you&apos;re looking for doesn&apos;t exist or has been removed.</p>
-          <Button asChild size="lg" className="bg-white text-black hover:bg-zinc-200">
+      <div className="max-w-5xl mx-auto py-8 px-4">
+        <div className="max-w-md mx-auto bg-white rounded-[14px] shadow-md p-8 text-center border border-gray-200">
+          <h2 className="text-2xl font-semibold mb-4 text-red-600">Menu Not Found</h2>
+          <p className="mb-6 text-gray-500">The navigation menu you&apos;re looking for doesn&apos;t exist or has been removed.</p>
+          <Button asChild size="lg" className="bg-gray-800 text-white hover:bg-gray-700">
             <Link href="/admin/navigation">Back to Navigation</Link>
           </Button>
         </div>
@@ -895,39 +895,39 @@ export default function EditNavigationMenuPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto py-8 px-4 bg-black text-white min-h-screen">
+    <div className="max-w-5xl mx-auto py-8 px-4 min-h-screen">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-12">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild className="shrink-0 text-white">
+          <Button variant="ghost" size="icon" asChild className="shrink-0 text-gray-700">
             <Link href="/admin/navigation">
               <ArrowLeft className="h-5 w-5" />
             </Link>
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-white">{menu.name}</h1>
-            <p className="text-zinc-400 mt-1">{menu.description || 'No description'}</p>
+            <h1 className="text-3xl font-bold text-gray-900">{menu.name}</h1>
+            <p className="text-gray-500 mt-1">{menu.description || 'No description'}</p>
           </div>
           <Badge variant={menu.is_active ? 'default' : 'secondary'} className="ml-2">
             {menu.is_active ? 'Active' : 'Inactive'}
           </Badge>
         </div>
-        <Button onClick={() => setIsAddingItem(true)} size="lg" className="shrink-0 bg-white text-black hover:bg-zinc-200">
+        <Button onClick={() => setIsAddingItem(true)} size="lg" className="shrink-0 bg-gray-800 text-white hover:bg-gray-700">
           <Plus className="mr-2 h-5 w-5" />
           Add Navigation Item
         </Button>
       </div>
 
       {/* Main Content */}
-      <Card className="shadow-md bg-black text-white border-0 rounded-[14px]">
+      <Card className="shadow-md bg-white text-black border-gray-200 rounded-[14px]">
         <CardHeader>
-          <CardTitle className="text-white">Navigation Items</CardTitle>
-          <CardDescription className="text-zinc-400">
+          <CardTitle className="text-gray-900">Navigation Items</CardTitle>
+          <CardDescription className="text-gray-500">
             Drag and drop to reorder items. Click an item to expand and see child links.
             Hover over the badges to see role visibility details.
           </CardDescription>
         </CardHeader>
-        <CardContent className="bg-black">
+        <CardContent>
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -951,9 +951,9 @@ export default function EditNavigationMenuPage() {
                   />
                 ))}
                 {!items?.length && (
-                  <div className="flex flex-col items-center justify-center py-16 bg-zinc-900 text-white rounded-[14px] border border-zinc-700">
-                    <p className="text-zinc-400 mb-4">No items in this menu</p>
-                    <Button variant="outline" onClick={() => setIsAddingItem(true)} className="bg-transparent border-white text-white hover:bg-zinc-800">
+                  <div className="flex flex-col items-center justify-center py-16 bg-gray-50 rounded-[14px] border border-gray-200">
+                    <p className="text-gray-500 mb-4">No items in this menu</p>
+                    <Button variant="outline" onClick={() => setIsAddingItem(true)} className="border-gray-400 text-gray-700 hover:bg-gray-100">
                       <Plus className="mr-2 h-4 w-4" />
                       Add Your First Item
                     </Button>

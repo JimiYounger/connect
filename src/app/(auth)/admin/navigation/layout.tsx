@@ -8,7 +8,7 @@ export default function AdminNavigationLayout({
   children: ReactNode
 }) {
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-white text-black">
       {children}
     </div>
   )

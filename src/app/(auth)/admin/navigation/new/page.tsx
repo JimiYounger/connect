@@ -76,107 +76,113 @@ export default function NewNavigationMenuPage() {
   }
 
   return (
-    <div className="page-container">
-      <div className="page-header">
-        <div className="flex items-center space-x-4">
-          <Button variant="outline" size="icon" asChild>
+    <div className="max-w-5xl mx-auto py-8 px-4 min-h-screen">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-12">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild className="shrink-0 text-gray-700">
             <Link href="/admin/navigation">
-              <ArrowLeft className="h-4 w-4" />
+              <ArrowLeft className="h-5 w-5" />
             </Link>
           </Button>
           <div>
-            <h1 className="page-title">New Navigation Menu</h1>
-            <p className="page-description">Create a new navigation menu</p>
+            <h1 className="text-3xl font-bold text-gray-900">New Navigation Menu</h1>
+            <p className="text-gray-500 mt-1">Create a new navigation menu</p>
           </div>
         </div>
       </div>
 
-      <div className="grid gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Menu Details</CardTitle>
-            <CardDescription>
-              Enter the details for your new navigation menu
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Name</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Enter menu name" />
-                      </FormControl>
+      {/* Main Content */}
+      <Card className="shadow-md bg-white text-black border-gray-200 rounded-[14px]">
+        <CardHeader>
+          <CardTitle className="text-gray-900">Menu Details</CardTitle>
+          <CardDescription className="text-gray-500">
+            Enter the details for your new navigation menu
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Enter menu name" className="max-w-md" />
+                    </FormControl>
+                    <FormDescription>
+                      A unique name for this navigation menu
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        {...field}
+                        placeholder="Enter menu description (optional)"
+                        className="max-w-md"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Provide additional details about this menu
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="is_active"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border border-gray-200 p-4 max-w-md">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">Active Status</FormLabel>
                       <FormDescription>
-                        A unique name for this navigation menu
+                        Enable or disable this navigation menu
                       </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
 
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          {...field}
-                          placeholder="Enter menu description (optional)"
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Provide additional details about this menu
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="is_active"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-base">Active Status</FormLabel>
-                        <FormDescription>
-                          Enable or disable this navigation menu
-                        </FormDescription>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-
-                <div className="flex justify-end space-x-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => router.push('/admin/navigation')}
-                    type="button"
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? 'Creating...' : 'Create Menu'}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-      </div>
+              <div className="flex justify-end space-x-4 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => router.push('/admin/navigation')}
+                  type="button"
+                  className="border-gray-300 text-gray-700"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={isSubmitting}
+                  className="bg-gray-800 text-white hover:bg-gray-700"
+                >
+                  {isSubmitting ? 'Creating...' : 'Create Menu'}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
     </div>
   )
 } 
