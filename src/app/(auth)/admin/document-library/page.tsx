@@ -22,17 +22,29 @@ function DocumentLibraryContent() {
   // Check if user is admin
   useEffect(() => {
     async function checkAdminStatus() {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (user) {
-        const { data } = await supabase
-          .from('user_profiles')
-          .select('role_type')
-          .eq('user_id', user.id)
-          .single();
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
         
-        setIsAdmin(data?.role_type?.toLowerCase() === 'admin');
+        if (user) {
+          const { data } = await supabase
+            .from('user_profiles')
+            .select('role_type')
+            .eq('user_id', user.id)
+            .single();
+          
+          // Case-insensitive check for "admin"
+          const adminStatus = data?.role_type?.toLowerCase() === 'admin';
+          console.log('Admin check:', { 
+            roleType: data?.role_type, 
+            isAdmin: adminStatus 
+          });
+          
+          setIsAdmin(adminStatus);
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+        setIsAdmin(false);
       }
     }
     
