@@ -6,18 +6,33 @@ import Image from 'next/image'
 import { useAuth } from '@/features/auth/context/auth-context'
 import { useProfile } from '@/features/users/hooks/useProfile'
 import { usePermissions } from '@/features/permissions/hooks/usePermissions'
-import { Loader2 } from 'lucide-react'
+import { Loader2, LineChart, Activity, AlertOctagon, ImageIcon, MessageSquare, Settings, Users, BookText, Menu, X } from 'lucide-react'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { UserProfileNav } from "@/features/users/components/UserProfileNav"
+import { cn } from '@/lib/utils'
 
 interface AdminLayoutProps {
   children: React.ReactNode
 }
+
+const navItems = [
+  { name: "Dashboards", icon: LineChart, href: "/admin/dashboards" },
+  { name: "Widgets", icon: Settings, href: "/admin/widgets" },
+  { name: "Navigation", icon: Users, href: "/admin/navigation" },
+  { name: "Messaging", icon: MessageSquare, href: "/admin/messaging" },
+  { name: "Carousel", icon: ImageIcon, href: "/admin/carousel" },
+  { name: "Documents", icon: BookText, href: "/admin/document-library" },
+  { name: "Activities", icon: Activity, href: "/admin/activities" },
+  { name: "Errors", icon: AlertOctagon, href: "/admin/errors" },
+]
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const { session, loading, signOut } = useAuth()
   const { profile, isLoading: isProfileLoading } = useProfile(session)
   const { can, isLoading: isPermissionLoading } = usePermissions(profile)
   const [hasAdminAccess, setHasAdminAccess] = useState<boolean | null>(null)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     let isMounted = true
@@ -92,35 +107,64 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <span className="font-semibold text-lg">Connect Admin</span>
             </Link>
           </div>
+          
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center">
+            <ul className="flex space-x-4 mr-4">
+              {navItems.map((item) => (
+                <li key={item.href}>
+                  <Link 
+                    href={item.href} 
+                    className="flex items-center gap-1.5 rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.name}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+          
           <div className="flex items-center gap-4">
-            <nav className="hidden md:flex">
-              <ul className="flex space-x-4">
-                <li>
-                  <Link href="/admin/dashboards" className="text-sm text-gray-700 hover:text-gray-900">Dashboards</Link>
-                </li>
-                <li>
-                  <Link href="/admin/widgets" className="text-sm text-gray-700 hover:text-gray-900">Widgets</Link>
-                </li>
-                <li>
-                  <Link href="/admin/navigation" className="text-sm text-gray-700 hover:text-gray-900">Navigation</Link>
-                </li>
-                <li>
-                  <Link href="/admin/messaging" className="text-sm text-gray-700 hover:text-gray-900">Messaging</Link>
-                </li>
-                <li>
-                  <Link href="/admin/carousel" className="text-sm text-gray-700 hover:text-gray-900">Carousel</Link>
-                </li>
-              </ul>
-            </nav>
-            <button 
-              onClick={() => signOut()}
-              className="px-3 py-1.5 rounded-md border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50"
+            {profile && <UserProfileNav profile={profile} />}
+            
+            {/* Mobile menu button */}
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="md:hidden"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
-              Sign Out
-            </button>
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              <span className="sr-only">Toggle menu</span>
+            </Button>
           </div>
         </div>
+        
+        {/* Mobile Navigation */}
+        <div className={cn(
+          "md:hidden overflow-hidden transition-all duration-300",
+          mobileMenuOpen ? "max-h-[500px] border-t border-gray-200" : "max-h-0"
+        )}>
+          <nav className="container mx-auto px-4 py-2">
+            <ul className="grid grid-cols-2 gap-2">
+              {navItems.map((item) => (
+                <li key={item.href}>
+                  <Link 
+                    href={item.href} 
+                    className="flex items-center gap-2 rounded-md p-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.name}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </div>
       </header>
+      
       <main className="flex-1">
         {children}
       </main>

@@ -1,14 +1,13 @@
 // src/app/(auth)/admin/page.tsx
 'use client'
 
-import { UserProfileNav } from "@/features/users/components/UserProfileNav"
 import { useAuth } from "@/features/auth/context/auth-context"
 import { useProfile } from "@/features/users/hooks/useProfile"
 import { usePermissions } from "@/features/permissions/hooks/usePermissions"
 import { hasPermissionLevel } from "@/features/permissions/constants/roles"
 import { Card } from "@/components/ui/card"
 import Link from "next/link"
-import { LineChart, Activity, AlertOctagon, ImageIcon, TrendingUp, TrendingDown } from "lucide-react"
+import { LineChart, Activity, AlertOctagon, ImageIcon, TrendingUp, TrendingDown, BookText, MessageSquare, Settings, Users } from "lucide-react"
 import { LucideIcon } from 'lucide-react'
 
 type TrendDirection = 'up' | 'down'
@@ -115,24 +114,16 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-2rem)]">
-      <div className="border-b bg-white/50 backdrop-blur-sm sticky top-0 z-10 mb-8">
-        <div className="px-4 sm:px-6 lg:px-8 max-w-[1400px] mx-auto">  {/* Added max-width and auto margins */}
-          <div className="flex justify-between items-center h-16">
-            <div className="space-y-1">
-              <h1 className="text-2xl font-semibold tracking-tight">Admin Dashboard</h1>
-              <p className="text-sm text-muted-foreground">
-                Welcome back, {profile.first_name}
-              </p>
-            </div>
-            <UserProfileNav profile={profile} />
-          </div>
+    <div className="min-h-[calc(100vh-4rem)] p-6">
+      <div className="max-w-[1400px] mx-auto"> 
+        <div className="mb-8">
+          <h1 className="text-2xl font-semibold tracking-tight mb-2">Admin Dashboard</h1>
+          <p className="text-sm text-muted-foreground">
+            Welcome back, {profile.first_name}
+          </p>
         </div>
-      </div>
 
-      
-    <div className="px-4 sm:px-6 lg:px-8 max-w-[1400px] mx-auto"> 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <StatCard 
             title="Daily Active Users"
             icon={Activity}
@@ -159,8 +150,41 @@ export default function AdminDashboard() {
           />
         </div>
 
+        <h2 className="text-xl font-medium mb-6">Admin Tools</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
+            {
+              title: "Dashboards",
+              icon: LineChart,
+              href: "/admin/dashboards",
+              color: "text-indigo-500",
+              bgColor: "bg-indigo-50",
+              description: "Manage application dashboards"
+            },
+            {
+              title: "Widgets",
+              icon: Settings,
+              href: "/admin/widgets",
+              color: "text-amber-500",
+              bgColor: "bg-amber-50",
+              description: "Configure dashboard widgets"
+            },
+            {
+              title: "Navigation",
+              icon: Users,
+              href: "/admin/navigation",
+              color: "text-sky-500",
+              bgColor: "bg-sky-50",
+              description: "Manage site navigation menu"
+            },
+            {
+              title: "Messaging",
+              icon: MessageSquare,
+              href: "/admin/messaging",
+              color: "text-violet-500",
+              bgColor: "bg-violet-50",
+              description: "Configure messaging settings"
+            },
             {
               title: "Carousel Editor",
               icon: ImageIcon,
@@ -168,6 +192,14 @@ export default function AdminDashboard() {
               color: "text-blue-500",
               bgColor: "bg-blue-50",
               description: "Manage homepage carousel content"
+            },
+            {
+              title: "Document Library",
+              icon: BookText,
+              href: "/admin/document-library",
+              color: "text-emerald-500",
+              bgColor: "bg-emerald-50",
+              description: "Manage document resources"
             },
             {
               title: "Activity Log",
