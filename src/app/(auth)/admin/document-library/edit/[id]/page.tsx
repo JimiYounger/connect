@@ -35,6 +35,8 @@ interface DocumentData {
   id: string
   title: string
   description: string | null
+  summary: string | null
+  summary_status: 'pending' | 'processing' | 'complete' | 'failed' | null
   document_category_id: string
   // TODO: Add document_subcategory_id when implemented
   current_version_id: string
@@ -92,6 +94,8 @@ export default function DocumentEditPage() {
           id,
           title,
           description,
+          summary,
+          summary_status,
           document_category_id,
           current_version_id,
           uploaded_by,
@@ -656,8 +660,66 @@ export default function DocumentEditPage() {
             <CardContent className="space-y-4">
               <h2 className="text-xl font-semibold">{document?.title}</h2>
               
-              <div className="text-sm text-muted-foreground">
-                {document?.description || 'No description provided.'}
+              <div className="text-sm text-muted-foreground overflow-y-auto max-h-80">
+                {document?.summary_status === 'processing' && (
+                  <div className="flex items-center">
+                    <span className="mr-2">Generating summary...</span>
+                    <div className="animate-spin h-4 w-4 border-2 border-primary rounded-full border-t-transparent"></div>
+                  </div>
+                )}
+                {document?.summary_status === 'pending' && (
+                  <div>Summary queued for generation...</div>
+                )}
+                {document?.summary_status === 'failed' && (
+                  <div>Summary generation failed. {document?.summary || 'Please try regenerating the summary.'}</div>
+                )}
+                {document?.summary_status === 'complete' && document?.summary 
+                  ? (
+                    <div className="whitespace-pre-line">
+                      {document.summary.split('\n')
+                        // Filter out the Title: line since we already show the title
+                        .filter(line => !line.trim().startsWith('Title:') && !line.trim().startsWith('• Title:'))
+                        .map((line, i) => {
+                        // Check for section titles (usually followed by colon)
+                        if (line.includes(':') && line.split(':')[0].length < 30 && line.split(':')[0].length > 2) {
+                          const [title, content] = line.split(':');
+                          return (
+                            <div key={i} className="mt-2">
+                              <span className="font-medium">{title}:</span>
+                              <span>{content}</span>
+                            </div>
+                          );
+                        }
+                        // Process bullet points
+                        else if (line.trim().startsWith('•')) {
+                          return (
+                            <div key={i} className="flex mt-1">
+                              <span className="mr-1 flex-shrink-0">•</span>
+                              <span>{line.trim().substring(1).trim()}</span>
+                            </div>
+                          );
+                        } 
+                        // Process dashes
+                        else if (line.trim().startsWith('-')) {
+                          return (
+                            <div key={i} className="flex mt-1 ml-2">
+                              <span className="mr-1 flex-shrink-0">-</span>
+                              <span>{line.trim().substring(1).trim()}</span>
+                            </div>
+                          );
+                        } 
+                        // Regular text
+                        else if (line.trim().length > 0) {
+                          return <div key={i} className="mt-1">{line}</div>;
+                        } 
+                        // Empty line for spacing
+                        else {
+                          return <div key={i} className="h-2"></div>;
+                        }
+                      })}
+                    </div>
+                  ) 
+                  : (!document?.summary_status ? 'No summary available.' : '')}
               </div>
               
               <div className="flex flex-wrap gap-1 mt-2">

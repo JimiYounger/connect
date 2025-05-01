@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label'
 import { CategoryManagementModal } from '../management/CategoryManagementModal'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { useToast } from '@/hooks/use-toast'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 export interface DocumentViewerProps {
   initialFilters?: DocumentFilters
@@ -196,7 +197,7 @@ export function DocumentViewer({
   const renderDocumentListItem = (document: Document) => (
     <div className="grid grid-cols-12 gap-3 p-3 border-b hover:bg-accent/5 transition-colors group relative">
       {/* Document title and category */}
-      <div className="col-span-4 flex flex-col justify-center relative">
+      <div className="col-span-4 flex flex-col justify-center">
         <div className="flex items-center">
           <div className="mr-2 text-muted-foreground">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -204,11 +205,34 @@ export function DocumentViewer({
               <polyline points="14 2 14 8 20 8"/>
             </svg>
           </div>
-          <div>
-            <h3 className="font-medium truncate group-hover:underline cursor-pointer">
-              {document.title}
+          <div className="flex items-center">
+            <h3 className="font-medium truncate">
+              <Link href={`/admin/document-library/edit/${document.id}`} className="hover:underline">
+                {document.title}
+              </Link>
             </h3>
-            <div className="text-xs text-muted-foreground">
+            
+            {/* Info icon with tooltip for description */}
+            {document.description && (
+              <TooltipProvider delayDuration={0}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="ml-2 cursor-help text-muted-foreground hover:text-primary">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                      </svg>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="max-w-xs text-xs bg-popover text-popover-foreground border shadow-md">
+                    <p>{document.description}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+            
+            <div className="text-xs text-muted-foreground ml-2">
               {document.category && (
                 <span 
                   className={`hover:underline cursor-pointer ${
@@ -239,24 +263,6 @@ export function DocumentViewer({
             </div>
           </div>
         </div>
-        
-        {/* Content preview - displaying summary if available, otherwise contentPreview */}
-        {(document.summary || document.contentPreview) && (
-          <div className="mt-1 text-xs text-muted-foreground line-clamp-2">
-            {document.summary || document.contentPreview}
-            {document.summaryStatus === 'processing' && (
-              <Badge variant="secondary" className="ml-1 text-[10px] py-0 h-4">Summarizing...</Badge>
-            )}
-          </div>
-        )}
-        
-        {/* Description tooltip on hover */}
-        {document.description && (
-          <div className="opacity-0 group-hover:opacity-100 absolute z-10 bg-popover text-popover-foreground border rounded-md p-3 shadow-md 
-                        top-full left-0 mt-1 w-64 transition-opacity duration-200 pointer-events-none">
-            <p className="text-sm">{document.description}</p>
-          </div>
-        )}
       </div>
       
       {/* Tags */}
@@ -390,7 +396,6 @@ export function DocumentViewer({
         <div>
           <Skeleton className="h-5 w-36" />
           <Skeleton className="h-3 w-24 mt-1" />
-          <Skeleton className="h-3 w-40 mt-1" />
         </div>
       </div>
       
@@ -420,204 +425,206 @@ export function DocumentViewer({
   )
 
   return (
-    <div className="container mx-auto p-4">
-      {/* Filters and Search */}
-      <div className="bg-card rounded-lg shadow p-4 mb-6">
-        <h2 className="text-lg font-semibold mb-4">Document Library</h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-          {/* Category Filter */}
-          <div>
-            <div className="flex items-center gap-1 mb-1">
-              <Label htmlFor="category-filter" className="text-sm font-medium">Category</Label>
-              {isAdmin && <CategoryManagementModal type="categories" />}
+    <TooltipProvider delayDuration={0}>
+      <div className="container mx-auto p-4">
+        {/* Filters and Search */}
+        <div className="bg-card rounded-lg shadow p-4 mb-6">
+          <h2 className="text-lg font-semibold mb-4">Document Library</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+            {/* Category Filter */}
+            <div>
+              <div className="flex items-center gap-1 mb-1">
+                <Label htmlFor="category-filter" className="text-sm font-medium">Category</Label>
+                {isAdmin && <CategoryManagementModal type="categories" />}
+              </div>
+              <Select 
+                value={filters.document_category_id || 'all'} 
+                onValueChange={handleCategoryChange}
+              >
+                <SelectTrigger id="category-filter" className="w-full">
+                  <SelectValue placeholder="All categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All categories</SelectItem>
+                  {categories.map(category => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <Select 
-              value={filters.document_category_id || 'all'} 
-              onValueChange={handleCategoryChange}
-            >
-              <SelectTrigger id="category-filter" className="w-full">
-                <SelectValue placeholder="All categories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All categories</SelectItem>
-                {categories.map(category => (
-                  <SelectItem key={category.id} value={category.id}>
-                    {category.name}
-                  </SelectItem>
+            
+            {/* Subcategory Filter */}
+            <div>
+              <div className="flex items-center gap-1 mb-1">
+                <Label htmlFor="subcategory-filter" className="text-sm font-medium">Subcategory</Label>
+                {isAdmin && <CategoryManagementModal type="subcategories" />}
+              </div>
+              <Select 
+                value={filters.document_subcategory_id || 'all'} 
+                onValueChange={handleSubcategoryChange}
+              >
+                <SelectTrigger id="subcategory-filter" className="w-full">
+                  <SelectValue placeholder={filters.document_category_id ? "All subcategories" : "Select a category first"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All subcategories</SelectItem>
+                  {filteredSubcategories.map(subcategory => (
+                    <SelectItem key={subcategory.id} value={subcategory.id}>
+                      {subcategory.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Search */}
+            <div className="md:col-span-2">
+              <label className="text-sm font-medium mb-1 block">Search in document content</label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Search documents..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyDown={handleKeyPress}
+                />
+                <Button onClick={handleSearch} variant="secondary">Search</Button>
+              </div>
+            </div>
+            
+            {/* Reset Filters */}
+            <div className="flex items-end">
+              <Button 
+                onClick={resetFilters} 
+                variant="outline" 
+                className="w-full"
+                disabled={!filters.document_category_id && !filters.document_subcategory_id && !filters.tags?.length && !filters.searchQuery}
+              >
+                Reset Filters
+              </Button>
+            </div>
+          </div>
+          
+          {/* Tag Filters */}
+          {availableTags.length > 0 && (
+            <div className="mt-4">
+              <label className="text-sm font-medium mb-1 block">Filter by tags</label>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {availableTags.map(tag => (
+                  <Badge 
+                    key={tag.id} 
+                    variant={filters.tags?.includes(tag.id) ? "default" : "outline"}
+                    className="cursor-pointer"
+                    onClick={() => handleTagSelect(tag.id)}
+                  >
+                    {tag.name}
+                  </Badge>
                 ))}
-              </SelectContent>
-            </Select>
-          </div>
-          
-          {/* Subcategory Filter */}
-          <div>
-            <div className="flex items-center gap-1 mb-1">
-              <Label htmlFor="subcategory-filter" className="text-sm font-medium">Subcategory</Label>
-              {isAdmin && <CategoryManagementModal type="subcategories" />}
+              </div>
             </div>
-            <Select 
-              value={filters.document_subcategory_id || 'all'} 
-              onValueChange={handleSubcategoryChange}
-            >
-              <SelectTrigger id="subcategory-filter" className="w-full">
-                <SelectValue placeholder={filters.document_category_id ? "All subcategories" : "Select a category first"} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All subcategories</SelectItem>
-                {filteredSubcategories.map(subcategory => (
-                  <SelectItem key={subcategory.id} value={subcategory.id}>
-                    {subcategory.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          
-          {/* Search */}
-          <div className="md:col-span-2">
-            <label className="text-sm font-medium mb-1 block">Search in document content</label>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Search documents..."
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                onKeyDown={handleKeyPress}
-              />
-              <Button onClick={handleSearch} variant="secondary">Search</Button>
-            </div>
-          </div>
-          
-          {/* Reset Filters */}
-          <div className="flex items-end">
-            <Button 
-              onClick={resetFilters} 
-              variant="outline" 
-              className="w-full"
-              disabled={!filters.document_category_id && !filters.document_subcategory_id && !filters.tags?.length && !filters.searchQuery}
-            >
-              Reset Filters
-            </Button>
-          </div>
-        </div>
-        
-        {/* Tag Filters */}
-        {availableTags.length > 0 && (
-          <div className="mt-4">
-            <label className="text-sm font-medium mb-1 block">Filter by tags</label>
-            <div className="flex flex-wrap gap-1 mt-1">
-              {availableTags.map(tag => (
-                <Badge 
-                  key={tag.id} 
-                  variant={filters.tags?.includes(tag.id) ? "default" : "outline"}
-                  className="cursor-pointer"
-                  onClick={() => handleTagSelect(tag.id)}
-                >
-                  {tag.name}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-      
-      {/* Results Summary */}
-      <div className="flex justify-between items-center mb-4">
-        <div>
-          {!isLoading && (
-            <p className="text-sm text-muted-foreground">
-              {pagination.total === 0 ? 'No documents found' : 
-               `Showing ${documents.length} of ${pagination.total} documents`}
-            </p>
           )}
         </div>
-      </div>
-      
-      {/* Document List Table View */}
-      <div className="w-full bg-card border rounded-md overflow-hidden">
-        {/* Table Header */}
-        <div className="grid grid-cols-12 gap-3 bg-muted p-3 border-b font-medium text-sm">
-          <div className="col-span-4">Document</div>
-          <div className="col-span-3">Tags</div>
-          <div className="col-span-2">Uploaded</div>
-          <div className="col-span-3 text-right">Actions</div>
+        
+        {/* Results Summary */}
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            {!isLoading && (
+              <p className="text-sm text-muted-foreground">
+                {pagination.total === 0 ? 'No documents found' : 
+                 `Showing ${documents.length} of ${pagination.total} documents`}
+              </p>
+            )}
+          </div>
         </div>
         
-        {isLoading ? (
-          // Loading skeletons
-          Array.from({ length: 5 }).map((_, i) => (
-            <div key={i}>{renderSkeletonListItem()}</div>
-          ))
-        ) : isError ? (
-          // Error state
-          <div className="w-full text-center py-8">
-            <div className="text-red-500 mb-2">Error loading documents</div>
-            <p className="text-sm text-muted-foreground mb-4">
-              {error && typeof error === 'object' && 'message' in error ? error.message : 'Unknown error occurred'}
-            </p>
-            <Button onClick={() => refetch()}>Try Again</Button>
+        {/* Document List Table View */}
+        <div className="w-full bg-card border rounded-md overflow-hidden">
+          {/* Table Header */}
+          <div className="grid grid-cols-12 gap-3 bg-muted p-3 border-b font-medium text-sm">
+            <div className="col-span-4">Document</div>
+            <div className="col-span-3">Tags</div>
+            <div className="col-span-2">Uploaded</div>
+            <div className="col-span-3 text-right">Actions</div>
           </div>
-        ) : documents.length === 0 ? (
-          // Empty state
-          <div className="w-full text-center py-8">
-            <h3 className="text-lg font-medium mb-2">No documents found</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Try adjusting your filters or uploading new documents
-            </p>
-            <Button onClick={resetFilters} variant="outline">Reset Filters</Button>
+          
+          {isLoading ? (
+            // Loading skeletons
+            Array.from({ length: 5 }).map((_, i) => (
+              <div key={i}>{renderSkeletonListItem()}</div>
+            ))
+          ) : isError ? (
+            // Error state
+            <div className="w-full text-center py-8">
+              <div className="text-red-500 mb-2">Error loading documents</div>
+              <p className="text-sm text-muted-foreground mb-4">
+                {error && typeof error === 'object' && 'message' in error ? error.message : 'Unknown error occurred'}
+              </p>
+              <Button onClick={() => refetch()}>Try Again</Button>
+            </div>
+          ) : documents.length === 0 ? (
+            // Empty state
+            <div className="w-full text-center py-8">
+              <h3 className="text-lg font-medium mb-2">No documents found</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Try adjusting your filters or uploading new documents
+              </p>
+              <Button onClick={resetFilters} variant="outline">Reset Filters</Button>
+            </div>
+          ) : (
+            // Document list items
+            documents.map(doc => renderDocumentListItem(doc))
+          )}
+        </div>
+        
+        {/* Pagination */}
+        {!isLoading && pagination.totalPages > 1 && (
+          <div className="flex justify-center mt-6">
+            <div className="flex gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(1)}
+                disabled={pagination.page === 1}
+              >
+                First
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(pagination.page - 1)}
+                disabled={pagination.page === 1}
+              >
+                Previous
+              </Button>
+              
+              <div className="flex items-center px-4 text-sm">
+                Page {pagination.page} of {pagination.totalPages}
+              </div>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(pagination.page + 1)}
+                disabled={pagination.page === pagination.totalPages}
+              >
+                Next
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(pagination.totalPages)}
+                disabled={pagination.page === pagination.totalPages}
+              >
+                Last
+              </Button>
+            </div>
           </div>
-        ) : (
-          // Document list items
-          documents.map(doc => renderDocumentListItem(doc))
         )}
       </div>
-      
-      {/* Pagination */}
-      {!isLoading && pagination.totalPages > 1 && (
-        <div className="flex justify-center mt-6">
-          <div className="flex gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handlePageChange(1)}
-              disabled={pagination.page === 1}
-            >
-              First
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handlePageChange(pagination.page - 1)}
-              disabled={pagination.page === 1}
-            >
-              Previous
-            </Button>
-            
-            <div className="flex items-center px-4 text-sm">
-              Page {pagination.page} of {pagination.totalPages}
-            </div>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handlePageChange(pagination.page + 1)}
-              disabled={pagination.page === pagination.totalPages}
-            >
-              Next
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handlePageChange(pagination.totalPages)}
-              disabled={pagination.page === pagination.totalPages}
-            >
-              Last
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
+    </TooltipProvider>
   )
 }
