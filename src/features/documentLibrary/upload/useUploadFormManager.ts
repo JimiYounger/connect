@@ -4,6 +4,7 @@ import { useState, ChangeEvent } from 'react'
 import type { RoleAssignments } from '@/features/carousel/types'
 
 type DocumentFormData = {
+  title: string
   selectedTags: string[]
   visibility: RoleAssignments
   selectedCategoryId?: string
@@ -14,6 +15,13 @@ export type DocumentForm = {
   id: string
   file: File
   data: DocumentFormData
+}
+
+/**
+ * Removes the file extension from a filename
+ */
+export function removeFileExtension(filename: string): string {
+  return filename.replace(/\.[^/.]+$/, '')
 }
 
 export function useUploadFormManager() {
@@ -29,6 +37,7 @@ export function useUploadFormManager() {
       id: `${file.name}-${Date.now()}`,
       file,
       data: {
+        title: removeFileExtension(file.name), // Auto-populate title without extension
         selectedTags: [],
         selectedCategoryId: undefined,
         selectedSubcategoryId: undefined,
@@ -62,6 +71,7 @@ export function useUploadFormManager() {
   
   return {
     documentForms,
+    setDocumentForms,
     handleFileChange,
     removeFile,
     updateFormData,

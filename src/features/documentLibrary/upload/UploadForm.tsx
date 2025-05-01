@@ -2,7 +2,7 @@
 
 'use client'
 
-import { useRef, useState, useCallback, useEffect } from 'react'
+import { useRef, useState, useCallback, useEffect, ChangeEvent } from 'react'
 import { X, Upload, File as FileIcon, AlertTriangle, Plus, Search, Tag } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -18,7 +18,7 @@ import { toast } from '@/hooks/use-toast'
 import { useDebounce } from '@/hooks/use-debounce'
 import { RoleSelector } from '@/features/carousel/components/RoleSelector'
 import { DocumentUploadSchema, DocumentUploadInput } from './schema'
-import { useUploadFormManager } from './useUploadFormManager'
+import { useUploadFormManager, removeFileExtension } from './useUploadFormManager'
 import { handleUploadDocuments } from './handleUploadDocuments'
 import { Progress } from '@/components/ui/progress'
 
@@ -193,10 +193,12 @@ function SubcategorySelectWithCreate({
   const inputRef = useRef<HTMLInputElement>(null);
   const { subcategories, loading, error, refetch } = useSubcategories(categoryId);
   
-  // Debug logging
+  // Enhanced debugging logging
   console.log(`SubcategorySelectWithCreate for ${formEntryId}:`, {
     categoryId,
     value,
+    valueType: typeof value,
+    isDefined: value !== undefined,
     subcategories,
     loading,
     error
@@ -433,7 +435,7 @@ function SubcategorySelectWithCreate({
         <input 
           type="hidden" 
           name="document_subcategory_id" 
-          value={value || ''} 
+          value={value || '_none'} 
         />
       </div>
     );
@@ -450,7 +452,10 @@ function SubcategorySelectWithCreate({
           if (value === '_create_new') {
             handleCreateTrigger();
           } else {
-            onChange(value === '_none' ? '' : value);
+            // Set empty value if '_none' is selected, otherwise pass the actual subcategory ID
+            const finalValue = value === '_none' ? '' : value;
+            console.log('🔍 Setting subcategory to:', finalValue);
+            onChange(finalValue);
           }
         }}
       >
@@ -648,7 +653,7 @@ function CategorySelectWithCreate({
         <input 
           type="hidden" 
           name="document_category_id" 
-          value={value || ''} 
+          value={value || '_none'} 
         />
       </div>
     );
@@ -713,16 +718,112 @@ export function UploadForm({ categories, allTags, userId, onUploadSuccess, onCat
   const [localCategories, setLocalCategories] = useState(categories);
   const { 
     documentForms, 
-    handleFileChange, 
+    setDocumentForms,
+    handleFileChange: originalHandleFileChange, 
     removeFile, 
     updateFormData, 
     clearAll 
   } = useUploadFormManager()
   
+  // Add states for the pre-selected category and subcategory
+  const [preSelectedCategoryId, setPreSelectedCategoryId] = useState<string>("_none");
+  const [preSelectedSubcategoryId, setPreSelectedSubcategoryId] = useState<string>("_none");
+  
+  // Use the subcategories hook for the pre-selected category
+  const { 
+    subcategories: preSelectedSubcategories, 
+    loading: preSelectedSubcategoriesLoading 
+  } = useSubcategories(preSelectedCategoryId === "_none" ? undefined : preSelectedCategoryId);
+  
   // Update local categories when prop changes
   useEffect(() => {
     setLocalCategories(categories);
   }, [categories]);
+  
+  // Create an enhanced file change handler that applies pre-selections immediately 
+  const handleFileChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.length) {
+      return;
+    }
+    
+    // Get the file list
+    const newFiles = Array.from(e.target.files);
+    
+    // If we have pre-selections, apply them to all new document forms
+    if (preSelectedCategoryId && preSelectedCategoryId !== "_none") {
+      // Log the values being applied to help with debugging
+      console.log("Applying to new documents:", {
+        category: preSelectedCategoryId,
+        subcategory: preSelectedSubcategoryId,
+        useSubcategory: preSelectedSubcategoryId !== "_none"
+      });
+      
+      // Create a form entry for each new file with pre-selected values already applied
+      const newFormEntries = newFiles.map(file => {
+        // For debugging
+        const entryId = `${file.name}-${Date.now()}`;
+        
+        // Use empty string when selecting "_none", allows the subcategory field to be empty when displayed
+        const subcatValue = preSelectedSubcategoryId !== "_none" ? preSelectedSubcategoryId : "";
+        
+        console.log(`Creating form for ${file.name} with subcategory:`, subcatValue);
+        
+        return {
+          id: entryId,
+          file,
+          data: {
+            title: removeFileExtension(file.name), // Auto-populate title without extension
+            selectedTags: [],
+            selectedCategoryId: preSelectedCategoryId,
+            selectedSubcategoryId: subcatValue,
+            visibility: {
+              roleTypes: [],
+              teams: [],
+              areas: [],
+              regions: []
+            }
+          }
+        };
+      });
+      
+      // Add new forms with pre-selected values to the state
+      setDocumentForms(prev => {
+        const newForms = [...prev, ...newFormEntries];
+        console.log("Document forms after update:", newForms);
+        return newForms;
+      });
+      
+      // Clear the file input to allow selecting the same files again if needed
+      e.target.value = '';
+    } else {
+      // If no pre-selections, use the original handler
+      originalHandleFileChange(e);
+    }
+  }, [preSelectedCategoryId, preSelectedSubcategoryId, originalHandleFileChange, setDocumentForms]);
+  
+  // Keep the Apply to All button functionality for applying changes to existing documents
+  const applyPreSelectionsToAll = useCallback(() => {
+    if (!preSelectedCategoryId || preSelectedCategoryId === "_none") {
+      toast({
+        title: "No category selected",
+        description: "Please select a category first.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    documentForms.forEach(form => {
+      updateFormData(form.id, { 
+        selectedCategoryId: preSelectedCategoryId,
+        selectedSubcategoryId: preSelectedSubcategoryId === "_none" ? undefined : preSelectedSubcategoryId
+      });
+    });
+    
+    toast({
+      title: "Applied to all documents",
+      description: `Category and subcategory applied to all ${documentForms.length} documents.`
+    });
+  }, [preSelectedCategoryId, preSelectedSubcategoryId, documentForms, updateFormData]);
   
   // Add state for tracking upload progress
   const [isUploading, setIsUploading] = useState(false);
@@ -814,20 +915,33 @@ export function UploadForm({ categories, allTags, userId, onUploadSuccess, onCat
         
         if (!formEntry) continue
         
+        // Log the form entry data for debugging
+        console.log("Form entry data for submission:", {
+          id: formId,
+          selectedCategoryId: formEntry.data.selectedCategoryId,
+          selectedSubcategoryId: formEntry.data.selectedSubcategoryId
+        });
+        
         // Get form data - since we're not using actual form elements anymore, we need to collect values differently
-        const title = formControl.querySelector<HTMLInputElement>('input[name="title"]')?.value || '';
+        const title = formControl.querySelector<HTMLInputElement>('input[name="title"]')?.value || formEntry.data.title || '';
         const description = formControl.querySelector<HTMLTextAreaElement>('textarea[name="description"]')?.value || '';
         const document_category_id = formControl.querySelector<HTMLInputElement>('input[name="document_category_id"]')?.value || 
                                     formEntry.data.selectedCategoryId || '';
         
-        let document_subcategory_id = formControl.querySelector<HTMLInputElement>('input[name="document_subcategory_id"]')?.value || 
-                                    formEntry.data.selectedSubcategoryId || undefined;
+        // First try to get subcategory from form data, then fallback to the input element if available
+        let document_subcategory_id = formEntry.data.selectedSubcategoryId;
+        
+        if (!document_subcategory_id) {
+          document_subcategory_id = formControl.querySelector<HTMLInputElement>('input[name="document_subcategory_id"]')?.value || undefined;
+        }
         
         // Convert empty string or "_none" value to undefined
         if (!document_subcategory_id || document_subcategory_id === "" || document_subcategory_id === "_none") {
           console.log('🔄 Converting document_subcategory_id to undefined:', document_subcategory_id);
           document_subcategory_id = undefined;
         }
+        
+        console.log('Final subcategory value used:', document_subcategory_id);
         
         const versionLabel = formControl.querySelector<HTMLInputElement>('input[name="versionLabel"]')?.value || '';
         
@@ -1009,6 +1123,75 @@ export function UploadForm({ categories, allTags, userId, onUploadSuccess, onCat
   
   return (
     <div className="w-full max-w-4xl mx-auto">
+      {/* Add pre-selection dropdowns for category and subcategory */}
+      <div className="mb-6 p-4 border rounded-lg bg-muted/20">
+        <h3 className="text-lg font-medium mb-4">Pre-select for all documents</h3>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <Label htmlFor="pre-select-category">Category</Label>
+            <Select 
+              value={preSelectedCategoryId}
+              onValueChange={(value) => {
+                setPreSelectedCategoryId(value);
+                // Reset subcategory when category changes
+                setPreSelectedSubcategoryId("_none");
+              }}
+            >
+              <SelectTrigger id="pre-select-category">
+                <SelectValue placeholder="Select a category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_none">None</SelectItem>
+                {localCategories.map(category => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          {preSelectedCategoryId && preSelectedCategoryId !== "_none" && (
+            <div>
+              <Label htmlFor="pre-select-subcategory">Subcategory</Label>
+              <Select 
+                value={preSelectedSubcategoryId}
+                onValueChange={setPreSelectedSubcategoryId}
+                disabled={preSelectedSubcategoriesLoading}
+              >
+                <SelectTrigger id="pre-select-subcategory">
+                  <SelectValue placeholder="Select a subcategory" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">None</SelectItem>
+                  {preSelectedSubcategories.map(subcategory => (
+                    <SelectItem key={subcategory.id} value={subcategory.id}>
+                      {subcategory.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+        
+        {documentForms.length > 0 && preSelectedCategoryId && preSelectedCategoryId !== "_none" && (
+          <div className="mt-4">
+            <Button 
+              type="button" 
+              onClick={applyPreSelectionsToAll}
+              className="w-full"
+            >
+              Apply to Existing {documentForms.length} Document{documentForms.length > 1 ? 's' : ''}
+            </Button>
+            <p className="text-xs text-muted-foreground mt-1 text-center">
+              New documents automatically use pre-selected values. 
+              Use this button to update existing documents.
+            </p>
+          </div>
+        )}
+      </div>
+      
       <div className="mb-6 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-12">
         <Upload className="h-12 w-12 text-gray-400 mb-4" />
         <h2 className="text-xl font-semibold mb-2">Upload Documents</h2>
@@ -1052,7 +1235,13 @@ export function UploadForm({ categories, allTags, userId, onUploadSuccess, onCat
                   <CardContent className="grid gap-4">
                     <div className="grid gap-2">
                       <Label htmlFor={`title-${formEntry.id}`}>Title <span className="text-red-500">*</span></Label>
-                      <Input id={`title-${formEntry.id}`} name="title" placeholder="Document title" required />
+                      <Input 
+                        id={`title-${formEntry.id}`} 
+                        name="title" 
+                        placeholder="Document title" 
+                        required 
+                        defaultValue={formEntry.data.title}
+                      />
                     </div>
                     
                     <div className="grid gap-2">
@@ -1079,16 +1268,22 @@ export function UploadForm({ categories, allTags, userId, onUploadSuccess, onCat
                       
                       {/* Subcategory field - only shown if a category is selected */}
                       {formEntry.data.selectedCategoryId && (
-                        <SubcategorySelectWithCreate
-                          formEntryId={formEntry.id}
-                          categoryId={formEntry.data.selectedCategoryId}
-                          value={formEntry.data.selectedSubcategoryId}
-                          onChange={(value) => {
-                            console.log('🔍 Subcategory changed to:', value);
-                            updateFormData(formEntry.id, { selectedSubcategoryId: value });
-                            console.log('🔍 Form data updated with new subcategory:', value);
-                          }}
-                        />
+                        <>
+                          {/* Add debug info */}
+                          {/* <div className="text-xs text-muted-foreground mt-1 mb-2">
+                            Debug: Subcategory ID: {JSON.stringify(formEntry.data.selectedSubcategoryId)}
+                          </div> */}
+                          <SubcategorySelectWithCreate
+                            formEntryId={formEntry.id}
+                            categoryId={formEntry.data.selectedCategoryId}
+                            value={formEntry.data.selectedSubcategoryId}
+                            onChange={(value) => {
+                              console.log('🔍 Subcategory changed to:', value);
+                              updateFormData(formEntry.id, { selectedSubcategoryId: value });
+                              console.log('🔍 Form data after update:', documentForms.find(f => f.id === formEntry.id)?.data);
+                            }}
+                          />
+                        </>
                       )}
                     </div>
                     
