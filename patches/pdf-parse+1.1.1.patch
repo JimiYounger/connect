@@ -1,4 +1,0 @@
-const Pdf = require('./lib/pdf-parse.js');
-
-// Export only the module without the debug test
-module.exports = Pdf; 

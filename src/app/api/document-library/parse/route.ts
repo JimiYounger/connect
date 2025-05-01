@@ -1,7 +1,8 @@
 // /src/app/api/document-library/parse/route.ts
 import { createClient } from '@/lib/supabase-server'
 import { NextResponse } from 'next/server'
-import pdfParse from 'pdf-parse'
+// Import directly from the library's core implementation to avoid the problematic test code
+import pdfParse from 'pdf-parse/lib/pdf-parse.js'
 import mammoth from 'mammoth'
 import { createWorker } from 'tesseract.js'
 
