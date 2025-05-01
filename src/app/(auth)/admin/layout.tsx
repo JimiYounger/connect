@@ -28,7 +28,7 @@ const navItems = [
 ]
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
-  const { session, loading, signOut } = useAuth()
+  const { session, loading } = useAuth()
   const { profile, isLoading: isProfileLoading } = useProfile(session)
   const { can, isLoading: isPermissionLoading } = usePermissions(profile)
   const [hasAdminAccess, setHasAdminAccess] = useState<boolean | null>(null)
