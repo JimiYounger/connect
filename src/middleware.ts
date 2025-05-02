@@ -41,7 +41,7 @@ export async function middleware(request: NextRequest) {
     const authFlowUrls = ['/auth/callback', '/auth/processing', '/auth/error'] 
     
     // Service API routes that use their own API key auth, not session auth
-    const serviceApiRoutes = ['/api/cron', '/api/sync/profiles']
+    const serviceApiRoutes = ['/api/cron', '/api/sync/profiles', '/api/rag-chat',]
     
     const isServiceApiRoute = serviceApiRoutes.some(route => 
       request.nextUrl.pathname === route || request.nextUrl.pathname.startsWith(route + '/')
