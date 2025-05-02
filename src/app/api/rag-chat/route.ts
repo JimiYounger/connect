@@ -151,12 +151,12 @@ export async function POST(request: Request) {
     // 4. Generate embedding for query
     let queryEmbedding: number[];
     try {
-      const embeddingResponse = await timeOperation('embedding_generation', () => 
-        openai.embeddings.create({
+      const embeddingResponse = await timeOperation('embedding_generation', async () => {
+        return openai.embeddings.create({
           model: EMBEDDING_MODEL,
           input: query,
-        })
-      );
+        });
+      });
       
       queryEmbedding = embeddingResponse.data[0].embedding;
     } catch (embeddingError) {
@@ -170,8 +170,8 @@ export async function POST(request: Request) {
     // 5. Search for similar chunks
     let matchedDocs: DocumentChunk[];
     try {
-      const { data, error: searchError } = await timeOperation('vector_search', () => 
-        supabase.rpc<DocumentChunk[]>(
+      const { data, error: searchError } = await timeOperation('vector_search', async () => {
+        return supabase.rpc<DocumentChunk[]>(
           'search_similar_chunks',
           {
             query_embedding: queryEmbedding,
@@ -179,8 +179,8 @@ export async function POST(request: Request) {
             threshold: SIMILARITY_THRESHOLD,
             match_count: MATCH_COUNT
           }
-        )
-      );
+        );
+      });
       
       if (searchError) {
         console.error('Error searching documents:', searchError);
@@ -245,8 +245,8 @@ export async function POST(request: Request) {
     // 11. Call ChatGPT for answer
     let answer: string;
     try {
-      const chatResponse = await timeOperation('chat_completion', () => 
-        openai.chat.completions.create({
+      const chatResponse = await timeOperation('chat_completion', async () => {
+        return openai.chat.completions.create({
           model: CHAT_MODEL,
           temperature: CHAT_TEMPERATURE,
           max_tokens: CHAT_MAX_TOKENS,
@@ -260,8 +260,8 @@ export async function POST(request: Request) {
               content: `Context information:\n${contextMessages}\n\nQuestion: ${query}`
             }
           ]
-        })
-      );
+        });
+      });
       
       answer = chatResponse.choices[0].message.content || '';
     } catch (chatError) {
