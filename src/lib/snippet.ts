@@ -1,11 +1,13 @@
+// my-app/src/lib/snippet.ts
+
 /**
  * Utility functions for creating text snippets from content
  */
 
-const SNIPPET_LENGTH = 200;
+const SNIPPET_LENGTH = 500;
 
 /**
- * Extract a ~200 character snippet around the first occurrence of any query term,
+ * Extract a ~500 character snippet around the first occurrence of any query term,
  * attempting to trim at sentence boundaries for readability
  */
 export function createHighlight(content: string, query: string): string {

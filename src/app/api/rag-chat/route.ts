@@ -13,11 +13,11 @@ if (!process.env.OPENAI_API_KEY) {
 }
 
 // Configuration constants
-const SIMILARITY_THRESHOLD = 0.75;
+const SIMILARITY_THRESHOLD = 0.85;
 const MATCH_COUNT = 3;
-const EMBEDDING_MODEL = "text-embedding-ada-002";
-const CHAT_MODEL = "gpt-3.5-turbo";
-const CHAT_TEMPERATURE = 0.2;
+const EMBEDDING_MODEL = "text-embedding-3-large";
+const CHAT_MODEL = "gpt-4o-mini";
+const CHAT_TEMPERATURE = 0.5;
 const CHAT_MAX_TOKENS = 500;
 const _RATE_LIMIT_INTERVAL_MS = 1000; // 1 second between requests per user
 

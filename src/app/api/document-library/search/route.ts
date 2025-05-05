@@ -214,7 +214,7 @@ export async function POST(req: Request) {
     try {
       console.log('Generating embedding for query')
       const embeddingResponse = await openai.embeddings.create({
-        model: 'text-embedding-ada-002',
+        model: 'text-embedding-3-large',
         input: sanitizedQuery
       })
       
