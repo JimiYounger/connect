@@ -27,6 +27,16 @@ const nextConfig: NextConfig = {
         hostname: 'vumbnail.com',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lh3.google.com',
+        pathname: '/**',
+      },
     ],
   },
   // Removed HTTP to HTTPS redirect to prevent conflicts with hosting platform
