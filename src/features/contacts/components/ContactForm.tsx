@@ -2,7 +2,7 @@
 
 'use client';
 
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw, X, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -22,22 +22,81 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import { 
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 import { useContactForm } from '../hooks/useContactForm';
+import { useState } from 'react';
 
-export default function ContactForm() {
+interface ContactFormProps {
+  contactId?: string;
+}
+
+export default function ContactForm({ contactId }: ContactFormProps) {
   const {
     form,
     departments,
+    tags,
     isSyncing,
     isSubmitting,
+    isLoading,
+    isCreatingTag,
     syncWithGoogle,
+    createTag,
     onSubmit
-  } = useContactForm();
+  } = useContactForm(contactId);
+  
+  const [tagSearchValue, setTagSearchValue] = useState('');
+  const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
+  
+  const selectedTagIds = form.watch('selectedTagIds');
+  const selectedTags = tags.filter(tag => selectedTagIds.includes(tag.id));
+  
+  const toggleTag = (tagId: string) => {
+    const currentSelectedTagIds = form.getValues('selectedTagIds');
+    const newSelectedTagIds = currentSelectedTagIds.includes(tagId)
+      ? currentSelectedTagIds.filter(id => id !== tagId)
+      : [...currentSelectedTagIds, tagId];
+    
+    form.setValue('selectedTagIds', newSelectedTagIds);
+  };
+  
+  const handleCreateTag = async () => {
+    if (!tagSearchValue.trim()) return;
+    
+    const tagId = await createTag(tagSearchValue.trim());
+    if (tagId) {
+      // Add the new tag to selected tags
+      const currentSelectedTagIds = form.getValues('selectedTagIds');
+      form.setValue('selectedTagIds', [...currentSelectedTagIds, tagId]);
+      setTagSearchValue('');
+    }
+  };
+  
+  if (isLoading) {
+    return (
+      <div className="flex justify-center p-12">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
           {/* First Name */}
           <FormField
             control={form.control}
@@ -67,32 +126,33 @@ export default function ContactForm() {
               </FormItem>
             )}
           />
-        </div>
-
-        {/* Google Sync Button */}
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            onClick={syncWithGoogle}
-            disabled={
-              isSyncing || 
-              !form.getValues('first_name') || 
-              !form.getValues('last_name')
-            }
-            variant="outline"
-          >
-            {isSyncing ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Syncing...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Sync with Google
-              </>
-            )}
-          </Button>
+          
+          {/* Google Sync Button */}
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              onClick={syncWithGoogle}
+              disabled={
+                isSyncing || 
+                !form.getValues('first_name') || 
+                !form.getValues('last_name')
+              }
+              variant="outline"
+              className="w-full md:w-auto"
+            >
+              {isSyncing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Syncing...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Sync with Google
+                </>
+              )}
+            </Button>
+          </div>
         </div>
 
         {/* Email */}
@@ -169,6 +229,178 @@ export default function ContactForm() {
           )}
         />
 
+        {/* Tags Field */}
+        <FormField
+          control={form.control}
+          name="selectedTagIds"
+          render={() => (
+            <FormItem>
+              <FormLabel>Tags</FormLabel>
+              <div className="space-y-2">
+                <Popover open={tagPopoverOpen} onOpenChange={setTagPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <div className="flex">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          role="combobox"
+                          className={cn(
+                            "w-full justify-between relative",
+                            !selectedTagIds.length && "text-muted-foreground"
+                          )}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setTagPopoverOpen(true);
+                          }}
+                        >
+                          <span>
+                            {selectedTagIds.length > 0
+                              ? `${selectedTagIds.length} tag${selectedTagIds.length > 1 ? 's' : ''} selected`
+                              : "Select tags"}
+                          </span>
+                          <Search className="h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </div>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0">
+                    <Command>
+                      <div className="flex items-center border-b px-3">
+                        <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                        <CommandInput 
+                          placeholder="Search tags..." 
+                          value={tagSearchValue}
+                          onValueChange={setTagSearchValue}
+                          className="flex-1 border-0 focus:ring-0"
+                        />
+                        {tagSearchValue && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 px-2 text-xs"
+                            onClick={handleCreateTag}
+                            disabled={isCreatingTag || !tagSearchValue.trim()}
+                          >
+                            {isCreatingTag ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Plus className="h-3 w-3" />
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                      <CommandList>
+                        <CommandEmpty className="py-3 text-center text-sm">
+                          No tags found
+                          
+                          {tagSearchValue && (
+                            <div className="mt-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="mx-auto flex items-center"
+                                onClick={handleCreateTag}
+                                disabled={isCreatingTag}
+                              >
+                                {isCreatingTag ? (
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Plus className="mr-2 h-4 w-4" />
+                                )}
+                                Create &quot;{tagSearchValue}&quot; tag
+                              </Button>
+                            </div>
+                          )}
+                        </CommandEmpty>
+                        
+                        <CommandGroup heading="Available Tags" className="max-h-60 overflow-auto">
+                          {tags
+                            .filter(tag => 
+                              tagSearchValue 
+                                ? tag.name.toLowerCase().includes(tagSearchValue.toLowerCase())
+                                : true
+                            )
+                            .map((tag) => (
+                              <CommandItem
+                                key={tag.id}
+                                value={tag.name}
+                                onSelect={() => {
+                                  toggleTag(tag.id);
+                                }}
+                              >
+                                <div
+                                  className={cn(
+                                    "mr-2 h-4 w-4 rounded-sm border border-primary",
+                                    selectedTagIds.includes(tag.id)
+                                      ? "bg-primary text-primary-foreground"
+                                      : "opacity-50 [&_svg]:invisible"
+                                  )}
+                                >
+                                  {selectedTagIds.includes(tag.id) && (
+                                    <span className="flex h-full items-center justify-center text-xs">✓</span>
+                                  )}
+                                </div>
+                                <span>{tag.name}</span>
+                              </CommandItem>
+                            ))}
+                        </CommandGroup>
+                        
+                        {tagSearchValue && 
+                         tags.length > 0 && 
+                         tags.filter(tag => tag.name.toLowerCase().includes(tagSearchValue.toLowerCase())).length === 0 && (
+                          <div className="p-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="w-full justify-start"
+                              onClick={handleCreateTag}
+                              disabled={isCreatingTag}
+                            >
+                              {isCreatingTag ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <Plus className="mr-2 h-4 w-4" />
+                              )}
+                              Create &quot;{tagSearchValue}&quot; tag
+                            </Button>
+                          </div>
+                        )}
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                
+                {/* Display selected tags */}
+                {selectedTags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {selectedTags.map(tag => (
+                      <Badge key={tag.id} variant="secondary" className="px-2 py-1">
+                        {tag.name}
+                        <button
+                          type="button"
+                          className="ml-1 rounded-full outline-none focus:ring-2"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            toggleTag(tag.id);
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+                <FormMessage />
+              </div>
+            </FormItem>
+          )}
+        />
+
         {/* Can Text Toggle */}
         <FormField
           control={form.control}
@@ -192,16 +424,16 @@ export default function ContactForm() {
         />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Work ID - Read only after sync */}
+          {/* Company ID - Read only after sync */}
           <FormField
             control={form.control}
-            name="work_id"
+            name="company_id"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Work ID</FormLabel>
+                <FormLabel>Company ID</FormLabel>
                 <FormControl>
                   <Input 
-                    placeholder="Work ID" 
+                    placeholder="Company ID" 
                     {...field} 
                     value={field.value || ''} 
                     readOnly={!!field.value}
@@ -256,9 +488,25 @@ export default function ContactForm() {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Timezone</FormLabel>
-                <FormControl>
-                  <Input placeholder="Timezone" {...field} value={field.value || ''} />
-                </FormControl>
+                <Select 
+                  onValueChange={field.onChange} 
+                  value={field.value || ''}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a timezone" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="America/Adak">Hawaii-Aleutian Time (HST)</SelectItem>
+                    <SelectItem value="America/Anchorage">Alaska Time (AKT)</SelectItem>
+                    <SelectItem value="America/Los_Angeles">Pacific Time (PT)</SelectItem>
+                    <SelectItem value="America/Phoenix">Arizona Time (No DST)</SelectItem>
+                    <SelectItem value="America/Denver">Mountain Time (MT)</SelectItem>
+                    <SelectItem value="America/Chicago">Central Time (CT)</SelectItem>
+                    <SelectItem value="America/New_York">Eastern Time (ET)</SelectItem>
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}
@@ -270,10 +518,10 @@ export default function ContactForm() {
           {isSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Creating...
+              {contactId ? 'Updating...' : 'Creating...'}
             </>
           ) : (
-            'Create Contact'
+            contactId ? 'Update Contact' : 'Create Contact'
           )}
         </Button>
       </form>

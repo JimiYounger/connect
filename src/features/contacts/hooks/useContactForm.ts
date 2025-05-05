@@ -18,11 +18,11 @@ export const contactFormSchema = z.object({
   phone: z.string().optional().nullable(),
   job_title: z.string().optional().nullable(),
   department_id: z.string().optional().nullable(),
-  tags: z.array(z.string()).optional().default([]),
+  selectedTagIds: z.array(z.string()).default([]),
   can_text: z.boolean().default(false),
   profile_image_url: z.string().optional().nullable(),
   google_user_id: z.string().optional().nullable(),
-  work_id: z.string().optional().nullable(),
+  company_id: z.string().optional().nullable(),
   location: z.string().optional().nullable(),
   timezone: z.string().optional().nullable(),
 });
@@ -39,11 +39,13 @@ export interface Tag {
   name: string;
 }
 
-export function useContactForm() {
+export function useContactForm(contactId?: string) {
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [tags, _setTags] = useState<Tag[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(contactId ? true : false);
+  const [isCreatingTag, setIsCreatingTag] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
   const supabase = createClient();
@@ -58,19 +60,19 @@ export function useContactForm() {
       phone: '',
       job_title: '',
       department_id: '',
-      tags: [],
+      selectedTagIds: [],
       can_text: false,
       profile_image_url: '',
       google_user_id: '',
-      work_id: '',
+      company_id: '',
       location: '',
       timezone: '',
     },
   });
   
-  // Load departments on component mount
+  // Load departments and tags on component mount
   useEffect(() => {
-    const fetchDepartments = async () => {
+    const fetchData = async () => {
       try {
         // Fetch departments
         const { data: departmentsData, error: departmentsError } = await supabase
@@ -81,22 +83,115 @@ export function useContactForm() {
         if (departmentsError) throw departmentsError;
         setDepartments(departmentsData || []);
         
-        // We're removing the tags query since the table doesn't exist yet
-        // You'll need to create this table in Supabase before adding this code back
+        // Fetch available tags
+        const { data: tagsData, error: tagsError } = await supabase
+          .from('contact_tags')
+          .select('id, name')
+          .order('name');
         
+        if (tagsError) throw tagsError;
+        setTags(tagsData || []);
+        
+        // If editing an existing contact, fetch its data
+        if (contactId) {
+          // Fetch contact data using API
+          const response = await fetch(`/api/contacts/${contactId}`);
+          
+          if (!response.ok) {
+            throw new Error('Failed to fetch contact details');
+          }
+          
+          const contact = await response.json();
+          
+          if (contact) {
+            // Populate form with contact data
+            form.reset({
+              first_name: contact.first_name,
+              last_name: contact.last_name,
+              email: contact.email,
+              phone: contact.phone,
+              job_title: contact.job_title,
+              department_id: contact.department_id,
+              can_text: contact.can_text,
+              profile_image_url: contact.profile_image_url,
+              google_user_id: contact.google_user_id,
+              company_id: contact.company_id,
+              location: contact.location,
+              timezone: contact.timezone,
+              // Extract tag IDs from the tags array
+              selectedTagIds: contact.tags?.map((tag: { id: string; name: string }) => tag.id) || [],
+            });
+          }
+        }
+        
+        setIsLoading(false);
       } catch (error) {
-        console.error('Error fetching departments:', error);
+        console.error('Error fetching data:', error);
         toast({
           title: 'Error',
-          description: 'Failed to load departments',
+          description: 'Failed to load data',
           variant: 'destructive',
         });
+        setIsLoading(false);
       }
     };
 
-    fetchDepartments();
-  }, [supabase, toast]);
+    fetchData();
+  }, [contactId, form, supabase, toast]);
   
+  // Create a new tag function
+  const createTag = async (name: string): Promise<string | null> => {
+    setIsCreatingTag(true);
+    try {
+      // Check if tag with the same name already exists
+      const { data: existingTags, error: existingTagsError } = await supabase
+        .from('contact_tags')
+        .select('id')
+        .ilike('name', name)
+        .limit(1);
+      
+      if (existingTagsError) throw existingTagsError;
+      
+      // If the tag already exists, return it
+      if (existingTags && existingTags.length > 0) {
+        toast({
+          title: 'Tag exists',
+          description: `Tag "${name}" already exists and has been selected`,
+        });
+        return existingTags[0].id;
+      }
+      
+      // Insert new tag
+      const { data: newTag, error: insertError } = await supabase
+        .from('contact_tags')
+        .insert({ name })
+        .select('id, name')
+        .single();
+      
+      if (insertError) throw insertError;
+      
+      // Add to local tags list
+      setTags(prevTags => [...prevTags, newTag]);
+      
+      toast({
+        title: 'Success',
+        description: `Tag "${name}" created successfully`,
+      });
+      
+      return newTag.id;
+    } catch (error) {
+      console.error('Error creating tag:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to create tag',
+        variant: 'destructive',
+      });
+      return null;
+    } finally {
+      setIsCreatingTag(false);
+    }
+  };
+
   // Sync with Google function
   const syncWithGoogle = async () => {
     const { first_name, last_name } = form.getValues();
@@ -133,7 +228,7 @@ export function useContactForm() {
       form.setValue('job_title', data.job_title || '');
       form.setValue('profile_image_url', data.profile_image_url || '');
       form.setValue('google_user_id', data.google_user_id || '');
-      form.setValue('work_id', data.work_id || '');
+      form.setValue('company_id', data.company_id || '');
       form.setValue('location', data.location || '');
       form.setValue('timezone', data.timezone || '');
       
@@ -162,40 +257,57 @@ export function useContactForm() {
   const onSubmit = async (values: ContactFormValues) => {
     setIsSubmitting(true);
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      let response;
       
-      if (!user) {
-        throw new Error('User not authenticated');
+      // If updating an existing contact
+      if (contactId) {
+        // Call the update API
+        response = await fetch(`/api/contacts/update/${contactId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(values),
+        });
+      } 
+      // Creating a new contact
+      else {
+        // Call the create API
+        response = await fetch('/api/contacts/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(values),
+        });
       }
       
-      // Insert contact into database
-      const { error } = await supabase
-        .from('contacts')
-        .insert({
-          ...values,
-          created_by: user.id,
-          updated_by: user.id,
-        })
-        .select()
-        .single();
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save contact');
+      }
       
-      if (error) throw error;
+      await response.json();
       
       toast({
         title: 'Success',
-        description: 'Contact created successfully',
+        description: contactId ? 'Contact updated successfully' : 'Contact created successfully',
       });
       
       // Redirect to contacts list
       router.push('/admin/contacts');
       router.refresh();
     } catch (error) {
-      console.error('Error creating contact:', error);
+      console.error('Error saving contact:', error);
+      let errorMessage = 'Unknown error';
+      
+      if (error && typeof error === 'object' && 'message' in error) {
+        errorMessage = typeof error.message === 'string' ? error.message : 'Unknown error';
+      }
+      
       toast({
         title: 'Error',
-        description: 'Failed to create contact',
+        description: `Failed to save contact: ${errorMessage}`,
         variant: 'destructive',
       });
     } finally {
@@ -209,7 +321,10 @@ export function useContactForm() {
     tags,
     isSyncing,
     isSubmitting,
+    isLoading,
+    isCreatingTag,
     syncWithGoogle,
+    createTag,
     onSubmit
   };
 } 

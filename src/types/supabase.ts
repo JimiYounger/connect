@@ -210,6 +210,183 @@ export type Database = {
           },
         ]
       }
+      contact_tag_assignments: {
+        Row: {
+          contact_id: string
+          created_at: string | null
+          id: string
+          tag_id: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string | null
+          id?: string
+          tag_id: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string | null
+          id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_tag_assignments_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_tag_assignments_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "contact_tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_tags: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      contact_visibility: {
+        Row: {
+          area: string | null
+          contact_id: string
+          id: string
+          region: string | null
+          role_type: string | null
+          team: string | null
+        }
+        Insert: {
+          area?: string | null
+          contact_id: string
+          id?: string
+          region?: string | null
+          role_type?: string | null
+          team?: string | null
+        }
+        Update: {
+          area?: string | null
+          contact_id?: string
+          id?: string
+          region?: string | null
+          role_type?: string | null
+          team?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_visibility_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contacts: {
+        Row: {
+          can_text: boolean | null
+          company_id: string | null
+          created_at: string | null
+          created_by: string | null
+          department_id: string | null
+          email: string
+          first_name: string
+          google_user_id: string | null
+          id: string
+          job_title: string | null
+          last_name: string
+          last_updated_at: string | null
+          location: string | null
+          order_index: number
+          phone: string | null
+          profile_image_url: string | null
+          timezone: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          can_text?: boolean | null
+          company_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          department_id?: string | null
+          email: string
+          first_name: string
+          google_user_id?: string | null
+          id?: string
+          job_title?: string | null
+          last_name: string
+          last_updated_at?: string | null
+          location?: string | null
+          order_index?: number
+          phone?: string | null
+          profile_image_url?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          can_text?: boolean | null
+          company_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          department_id?: string | null
+          email?: string
+          first_name?: string
+          google_user_id?: string | null
+          id?: string
+          job_title?: string | null
+          last_name?: string
+          last_updated_at?: string | null
+          location?: string | null
+          order_index?: number
+          phone?: string | null
+          profile_image_url?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contacts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contacts_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contacts_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dashboard_drafts: {
         Row: {
           created_at: string | null
@@ -334,6 +511,30 @@ export type Database = {
         }
         Relationships: []
       }
+      departments: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          order_index: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          order_index?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          order_index?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       document_categories: {
         Row: {
           id: string
@@ -353,6 +554,41 @@ export type Database = {
         Relationships: []
       }
       document_chunks: {
+        Row: {
+          chunk_index: number
+          content: string
+          created_at: string | null
+          document_id: string | null
+          embedding: string | null
+          id: string
+        }
+        Insert: {
+          chunk_index: number
+          content: string
+          created_at?: string | null
+          document_id?: string | null
+          embedding?: string | null
+          id?: string
+        }
+        Update: {
+          chunk_index?: number
+          content?: string
+          created_at?: string | null
+          document_id?: string | null
+          embedding?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_chunks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_chunks_old: {
         Row: {
           chunk_index: number
           content: string
@@ -1656,6 +1892,10 @@ export type Database = {
         Args: { "": string } | { "": unknown }
         Returns: unknown
       }
+      cosine_similarity_3072: {
+        Args: { a: string; b: string }
+        Returns: number
+      }
       delete_category_and_reassign: {
         Args: {
           p_category_id: string
@@ -1841,11 +2081,17 @@ export type Database = {
         Returns: string
       }
       match_chunks: {
-        Args: {
-          query_embedding: string
-          match_count?: number
-          similarity_threshold?: number
-        }
+        Args:
+          | {
+              query_embedding: string
+              match_count?: number
+              similarity_threshold?: number
+            }
+          | {
+              query_embedding: string
+              similarity_threshold?: number
+              match_count?: number
+            }
         Returns: {
           id: string
           document_id: string
@@ -1856,8 +2102,8 @@ export type Database = {
       match_documents: {
         Args: {
           query_embedding: string
-          match_threshold: number
-          match_count: number
+          match_threshold?: number
+          match_count?: number
         }
         Returns: {
           document_id: string
@@ -1879,6 +2125,21 @@ export type Database = {
       reorder_documents: {
         Args: { p_documents: Json }
         Returns: Json
+      }
+      search_similar_chunks: {
+        Args: {
+          query_embedding: string
+          user_filters: Json
+          threshold?: number
+          match_count?: number
+        }
+        Returns: {
+          chunk_id: string
+          document_id: string
+          chunk_index: number
+          content: string
+          similarity: number
+        }[]
       }
       set_widget_configuration: {
         Args: { p_widget_id: string; p_config: Json; p_created_by?: string }
@@ -1920,6 +2181,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      test_vector_dimensions: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      update_contact_order: {
+        Args: {
+          contact_updates: Database["public"]["CompositeTypes"]["contact_order_update"][]
+        }
+        Returns: undefined
+      }
       vector_avg: {
         Args: { "": number[] }
         Returns: string
@@ -1949,7 +2220,12 @@ export type Database = {
       [_ in never]: never
     }
     CompositeTypes: {
-      [_ in never]: never
+      contact_order_update: {
+        id: string | null
+        order_index: number | null
+        updated_by: string | null
+        updated_at: string | null
+      }
     }
   }
 }

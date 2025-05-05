@@ -70,10 +70,10 @@ export async function POST(request: NextRequest) {
       job_title: user.job_title || null,
       department_id,
       google_user_id: user.google_user_id || null,
-      work_id: user.work_id || null,
+      company_id: user.work_id || null, // Using work_id from Make for our company_id
       profile_image_url: user.profile_image_url || null,
       location: user.location || null,
-      timezone: null, // Not available yet
+      timezone: null, // Will be set from location if possible
     }
     
     console.log('[SYNC_GOOGLE] Final response object:', JSON.stringify(responseObj, null, 2))
