@@ -8,6 +8,7 @@ import { useContactsDirectory } from '../hooks/useContactsDirectory';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 
 interface Tag {
   id: string;
@@ -79,10 +80,13 @@ export function ContactsDirectory({
     
     if (navigator.share) {
       try {
+        // Generate a URL pointing to the contact's detail page
+        const contactDetailUrl = `${window.location.origin}/contacts/${contact.id}`;
+        
         await navigator.share({
-          title: fullName,
+          title: `Contact: ${fullName}`,
           text: `Contact information for ${fullName}${contact.job_title ? ` - ${contact.job_title}` : ''}`,
-          url: window.location.href,
+          url: contactDetailUrl
         });
         
         setShareSuccess(contact.id);
@@ -138,7 +142,9 @@ export function ContactsDirectory({
                   
                   <div className="flex-grow min-w-0">
                     <h3 className="font-medium text-slate-800 text-sm md:text-base">
-                      {contact.first_name} {contact.last_name}
+                      <Link href={`/contacts/${contact.id}`} className="hover:text-blue-600 hover:underline">
+                        {contact.first_name} {contact.last_name}
+                      </Link>
                     </h3>
                     {contact.job_title && (
                       <p className="text-xs md:text-sm text-slate-500 truncate">

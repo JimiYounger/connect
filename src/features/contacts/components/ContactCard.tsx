@@ -46,10 +46,24 @@ export function ContactCard({ contact }: ContactCardProps) {
     // Only proceed if Web Share API is available
     if (navigator.share) {
       try {
+        // Ensure we have a valid contact ID
+        if (!contact.id) {
+          console.error('No contact ID available for sharing:', contact);
+          return;
+        }
+        
+        // Create a URL to the contact's detail page
+        const contactId = contact.id.toString();
+        const detailUrl = `${window.location.origin}/contacts/${contactId}`;
+        console.log('Sharing contact:', contact);
+        console.log('Contact ID:', contactId);
+        console.log('Sharing URL:', detailUrl);
+        
+        // Format the share data with URL embedded in text for better visibility in some platforms
         await navigator.share({
-          title: fullName,
-          text: `Contact information for ${fullName}${contact.job_title ? ` - ${contact.job_title}` : ''}`,
-          url: window.location.href,
+          title: `Contact: ${fullName}`,
+          text: `Contact information for ${fullName}${contact.job_title ? ` - ${contact.job_title}` : ''}\n\nView contact at: ${detailUrl}`,
+          url: detailUrl
         });
         setShowShareSuccess(true);
         setTimeout(() => setShowShareSuccess(false), 2000);
