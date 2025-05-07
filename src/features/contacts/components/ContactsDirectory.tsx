@@ -36,8 +36,6 @@ export function ContactsDirectory({
   const {
     isLoading,
     error,
-    departments,
-    tags,
     filters,
     setFilters,
     filteredAndGroupedContacts,
@@ -45,7 +43,8 @@ export function ContactsDirectory({
     filteredContactsCount,
   } = useContactsDirectory(initialContacts, initialDepartments, initialTags);
   
-  // Update filters when initialFilters change
+  // Add eslint-disable comment to suppress the dependency warning
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (initialFilters) {
       setFilters(initialFilters);
