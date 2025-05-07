@@ -11,6 +11,7 @@ import { useUserContent } from '@/features/content/hooks/useUserContent'
 import { useAuth } from '@/features/auth/context/auth-context'
 import { useProfile } from '@/features/users/hooks/useProfile'
 import { useEffect, useState } from 'react'
+import { cn } from '@/lib/utils'
 
 // Sleek, high-end animation styles
 const premiumAnimationStyles = `
@@ -57,7 +58,7 @@ const premiumAnimationStyles = `
   }
 `;
 
-export function HomePage() {
+export function HomePage({ theme = 'dark' }: { theme?: 'dark' | 'light' }) {
   console.log('HomePage component - Rendering');
   
   const { session, isAuthenticated } = useAuth();
@@ -69,6 +70,7 @@ export function HomePage() {
   const content = useUserContent();
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [scrolled, setScrolled] = useState(false);
 
   // Set a timeout to prevent infinite loading screen
   useEffect(() => {
@@ -118,6 +120,21 @@ export function HomePage() {
     (isAuthenticated && 
      (content.loading.carousel || content.loading.navigation || content.loading.dashboard))) && 
     !loadingTimeout;
+
+  // Add scroll listener
+  useEffect(() => {
+    const handleScroll = () => {
+      const offset = window.scrollY;
+      if (offset > 20) {
+        setScrolled(true);
+      } else {
+        setScrolled(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Loading State
   if (isLoading) {
@@ -219,7 +236,10 @@ export function HomePage() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-black text-white">
+    <div className={cn(
+      "flex flex-col h-full", 
+      theme === 'dark' ? 'bg-black text-white' : 'bg-white text-black'
+    )}>
       {/* Preload the connect.png image */}
       <div className="hidden">
         <Image 
@@ -233,7 +253,15 @@ export function HomePage() {
       
       <>
         {/* Navigation wrapper with enhanced PWA compatibility */}
-        <div className="navigation-wrapper relative bg-black" id="navigation-wrapper" style={{ marginBottom: '-2px' }}>
+        <div 
+          className={cn(
+            "navigation-wrapper sticky top-0 z-50 transition-colors duration-200",
+            theme === 'dark' ? 'bg-black text-white' : 'bg-white text-black',
+            scrolled ? 'bg-opacity-90 backdrop-blur-sm' : 'bg-opacity-100'
+          )} 
+          id="navigation-wrapper" 
+          style={{ marginBottom: '-2px' }}
+        >
           {/* Menu positioned with consistent class and enhanced accessibility */}
           <div 
             className="absolute nav-menu-positioner" 
@@ -244,7 +272,7 @@ export function HomePage() {
             id="nav-menu-container"
             data-testid="nav-menu-container"
           >
-            <Navigation />
+            <Navigation className={theme === 'light' ? 'invert' : ''} />
           </div>
           
           {/* Logo positioned with consistent class and enhanced touch handling */}

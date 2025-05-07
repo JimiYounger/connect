@@ -33,6 +33,9 @@ export function Navigation({ className }: NavigationProps) {
   const { session } = useAuth()
   const { profile } = useProfile(session)
   
+  // Determine if we're using light theme based on className
+  const isLightTheme = className?.includes('invert')
+  
   // Preload the image when component mounts
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -127,9 +130,9 @@ export function Navigation({ className }: NavigationProps) {
           aria-label="Open navigation menu"
         >
           {/* Three lines with 6px spacing */}
-          <span className="w-[30px] h-[3px] bg-white mb-[6px]"></span>
-          <span className="w-[30px] h-[3px] bg-white mb-[6px]"></span>
-          <span className="w-[30px] h-[3px] bg-white"></span>
+          <span className={cn("w-[30px] h-[3px] mb-[6px]", isLightTheme ? "bg-black" : "bg-white")}></span>
+          <span className={cn("w-[30px] h-[3px] mb-[6px]", isLightTheme ? "bg-black" : "bg-white")}></span>
+          <span className={cn("w-[30px] h-[3px]", isLightTheme ? "bg-black" : "bg-white")}></span>
         </button>
       </SheetTrigger>
       <SheetContent side="left" className="p-0 bg-black text-white border-0" style={{ width: '409px' }}>
