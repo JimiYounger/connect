@@ -2,6 +2,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 const { v4: uuidv4 } = require('uuid')
 
 // This is a mock API endpoint to simulate Google sync
@@ -15,6 +16,12 @@ export async function POST(request: NextRequest) {
     
     // Initialize Supabase client for departments lookup
     const supabase = await createClient()
+    
+    // Also create a service role client for storage operations that need to bypass RLS
+    const supabaseAdmin = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+    )
     
     // Call the Make.com webhook
     const makeWebhookUrl = process.env.MAKE_GOOGLE_SYNC_WEBHOOK_URL
@@ -69,7 +76,8 @@ export async function POST(request: NextRequest) {
     if (profile_image_url && isGoogleImageUrl(profile_image_url)) {
       try {
         console.log('[SYNC_GOOGLE] Detected Google profile image:', profile_image_url)
-        const storedImageUrl = await fetchAndStoreProfileImage(profile_image_url, user.google_user_id, supabase)
+        // Pass the admin client for storage operations to bypass RLS
+        const storedImageUrl = await fetchAndStoreProfileImage(profile_image_url, user.google_user_id, supabaseAdmin)
         if (storedImageUrl) {
           console.log('[SYNC_GOOGLE] Successfully stored profile image at:', storedImageUrl)
           profile_image_url = storedImageUrl
