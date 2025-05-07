@@ -16,14 +16,14 @@ export default function ContactsLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className={`${inter.className} bg-background text-foreground min-h-screen`}>
+    <div className={`${inter.className} bg-slate-50 text-foreground min-h-screen`}>
       <div className="bg-white">
-        <header className="border-b">
-          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-            <h1 className="text-xl font-bold text-primary">Team Directory</h1>
+        <header className="border-b border-slate-200">
+          <div className="container mx-auto px-4 md:px-8 py-4">
+            <h1 className="text-2xl font-bold text-slate-900">Team Directory</h1>
           </div>
         </header>
-        <main className="min-h-[calc(100vh-65px)]">
+        <main>
           {children}
         </main>
       </div>

@@ -1,3 +1,5 @@
+// my-app/src/features/contacts/components/ContactCard.tsx
+
 'use client';
 
 import { Mail, Phone, MessageSquare, Share2 } from 'lucide-react';
@@ -9,9 +11,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import Image from 'next/image';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Contact } from '../types';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 // Google Chat icon component
 const GChatIcon = () => (
@@ -36,16 +38,8 @@ interface ContactCardProps {
 
 export function ContactCard({ contact }: ContactCardProps) {
   const [showShareSuccess, setShowShareSuccess] = useState(false);
-  const [imageError, setImageError] = useState(false);
   const fullName = `${contact.first_name} ${contact.last_name}`;
   const initials = `${contact.first_name.charAt(0)}${contact.last_name.charAt(0)}`.toUpperCase();
-  
-  // Log contact data to debug
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`Contact ${contact.id} profile image:`, contact.profile_image_url);
-    }
-  }, [contact.id, contact.profile_image_url]);
   
   // Handle sharing contact on supported browsers
   const handleShare = async () => {
@@ -68,41 +62,16 @@ export function ContactCard({ contact }: ContactCardProps) {
   // Helper to check if device is touch-based (for tooltip behavior)
   const isTouchDevice = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
   
-  // Handle image loading error
-  const handleImageError = () => {
-    console.log(`Image failed to load for ${fullName}`);
-    setImageError(true);
-  };
-  
-  // Check if we have a valid image URL to display
-  const hasValidImage = contact.profile_image_url && !imageError;
-  
-  // Default placeholder image for when profile_image_url is null or fails to load
-  const defaultImageUrl = '/images/default-avatar.png';
-  
   return (
     <Card className="p-4 flex flex-col md:flex-row gap-4 hover:bg-slate-50 transition-colors relative overflow-hidden border border-slate-200 shadow-sm">
       {/* Left accent border */}
       <div className="absolute top-0 left-0 h-full w-1 bg-blue-500" />
       
       <div className="relative flex-shrink-0 mx-auto md:mx-0 ml-2">
-        {hasValidImage ? (
-          <div className="h-16 w-16 overflow-hidden rounded-full">
-            <Image
-              src={contact.profile_image_url || defaultImageUrl}
-              alt={fullName}
-              width={64}
-              height={64}
-              className="h-full w-full object-cover"
-              onError={handleImageError}
-              priority
-            />
-          </div>
-        ) : (
-          <div className="h-16 w-16 rounded-full flex items-center justify-center bg-blue-100 text-blue-600 font-semibold text-lg">
-            {initials}
-          </div>
-        )}
+        <Avatar className="h-16 w-16">
+          <AvatarImage src={contact.profile_image_url || undefined} alt={fullName} />
+          <AvatarFallback>{initials}</AvatarFallback>
+        </Avatar>
       </div>
       
       <div className="flex-1 text-center md:text-left">
@@ -166,17 +135,17 @@ export function ContactCard({ contact }: ContactCardProps) {
               <TooltipTrigger asChild>
                 <Button variant="outline" size="icon" className="h-9 w-9 md:h-8 md:w-auto md:px-3 bg-white hover:bg-blue-50 border-slate-200 text-slate-700 hover:text-blue-600" asChild>
                   <a 
-                    href={`https://chat.google.com/dm/${contact.email}`} 
+                    href={`https://contacts.google.com/${contact.email}`} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    aria-label={`GChat with ${fullName}`}
+                    aria-label={`Google Contacts - ${fullName}`}
                   >
                     <GChatIcon />
-                    <span className="sr-only md:not-sr-only md:inline ml-1">GChat</span>
+                    <span className="sr-only md:not-sr-only md:inline ml-1">Contacts</span>
                   </a>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom" className="md:hidden">GChat</TooltipContent>
+              <TooltipContent side="bottom" className="md:hidden">Contacts</TooltipContent>
             </Tooltip>
           )}
           
