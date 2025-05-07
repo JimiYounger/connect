@@ -3,7 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
-const { v4: uuidv4 } = require('uuid')
+const { v4: _uuidv4 } = require('uuid')
 
 // This is a mock API endpoint to simulate Google sync
 export async function POST(request: NextRequest) {

@@ -1,26 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Mail, Phone, MessageSquare, Share2, ArrowLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Mail, Phone, MessageSquare, Share2, ArrowLeft, AlertCircle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-import { 
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Contact } from '@/features/contacts/types';
-import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function ContactDetailPage() {
-  const router = useRouter();
   const params = useParams();
   const id = params.id as string;
   
@@ -79,9 +70,6 @@ export default function ContactDetailPage() {
       }
     }
   };
-  
-  // Helper to check if device is touch-based (for tooltip behavior)
-  const isTouchDevice = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
   
   if (loading) {
     return (

@@ -42,9 +42,10 @@ import { useState } from 'react';
 
 interface ContactFormProps {
   contactId?: string;
+  onGoogleSync?: (data: any) => void;
 }
 
-export default function ContactForm({ contactId }: ContactFormProps) {
+export default function ContactForm({ contactId, onGoogleSync }: ContactFormProps) {
   const {
     form,
     departments,
@@ -56,7 +57,7 @@ export default function ContactForm({ contactId }: ContactFormProps) {
     syncWithGoogle,
     createTag,
     onSubmit
-  } = useContactForm(contactId);
+  } = useContactForm(contactId, onGoogleSync);
   
   const [tagSearchValue, setTagSearchValue] = useState('');
   const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
@@ -154,6 +155,19 @@ export default function ContactForm({ contactId }: ContactFormProps) {
             </Button>
           </div>
         </div>
+
+        {/* Profile Image URL (Hidden) */}
+        <FormField
+          control={form.control}
+          name="profile_image_url"
+          render={({ field }) => (
+            <FormItem className="hidden">
+              <FormControl>
+                <Input type="hidden" {...field} value={field.value || ''} />
+              </FormControl>
+            </FormItem>
+          )}
+        />
 
         {/* Email */}
         <FormField

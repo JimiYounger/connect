@@ -44,13 +44,11 @@ export function ContactsDirectory({
     filteredContactsCount,
   } = useContactsDirectory(initialContacts, initialDepartments, initialTags);
   
-  // Add eslint-disable comment to suppress the dependency warning
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (initialFilters) {
       setFilters(initialFilters);
     }
-  }, [initialFilters]);
+  }, [initialFilters, setFilters]);
   
   if (isLoading) {
     return (
