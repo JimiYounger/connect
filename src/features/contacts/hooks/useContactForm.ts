@@ -39,7 +39,7 @@ export interface Tag {
   name: string;
 }
 
-export function useContactForm(contactId?: string) {
+export function useContactForm(contactId?: string, onGoogleSync?: (data: any) => void) {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -235,6 +235,17 @@ export function useContactForm(contactId?: string) {
       // If department_id is returned from API, set it
       if (data.department_id) {
         form.setValue('department_id', data.department_id);
+      }
+      
+      // Call the onGoogleSync callback if provided
+      if (onGoogleSync && typeof onGoogleSync === 'function') {
+        const syncPreviewData = {
+          profile_image_url: data.profile_image_url,
+          first_name,
+          last_name,
+          ...data
+        };
+        onGoogleSync(syncPreviewData);
       }
       
       toast({

@@ -2,6 +2,8 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
+const { v4: _uuidv4 } = require('uuid')
 
 // This is a mock API endpoint to simulate Google sync
 export async function POST(request: NextRequest) {
@@ -14,6 +16,12 @@ export async function POST(request: NextRequest) {
     
     // Initialize Supabase client for departments lookup
     const supabase = await createClient()
+    
+    // Also create a service role client for storage operations that need to bypass RLS
+    const supabaseAdmin = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+    )
     
     // Call the Make.com webhook
     const makeWebhookUrl = process.env.MAKE_GOOGLE_SYNC_WEBHOOK_URL
@@ -63,6 +71,27 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Handle profile image if it's from Google
+    let profile_image_url = user.profile_image_url || null
+    if (profile_image_url && isGoogleImageUrl(profile_image_url)) {
+      try {
+        console.log('[SYNC_GOOGLE] Detected Google profile image:', profile_image_url)
+        // Pass the admin client for storage operations to bypass RLS
+        const storedImageUrl = await fetchAndStoreProfileImage(profile_image_url, user.google_user_id, supabaseAdmin)
+        if (storedImageUrl) {
+          console.log('[SYNC_GOOGLE] Successfully stored profile image at:', storedImageUrl)
+          profile_image_url = storedImageUrl
+        } else {
+          console.log('[SYNC_GOOGLE] Failed to store image, keeping original URL:', profile_image_url)
+        }
+      } catch (error) {
+        console.error('[SYNC_GOOGLE] Error storing profile image:', error)
+        // Continue with original URL if upload fails
+      }
+    } else {
+      console.log('[SYNC_GOOGLE] No Google profile image to process:', profile_image_url)
+    }
+
     // Build the response object with the actual fields from Make.com
     const responseObj = {
       email: user.email || null,
@@ -71,7 +100,7 @@ export async function POST(request: NextRequest) {
       department_id,
       google_user_id: user.google_user_id || null,
       company_id: user.work_id || null, // Using work_id from Make for our company_id
-      profile_image_url: user.profile_image_url || null,
+      profile_image_url, // Updated URL after storage if successful
       location: user.location || null,
       timezone: null, // Will be set from location if possible
     }
@@ -88,7 +117,7 @@ export async function POST(request: NextRequest) {
 
 // Helper function to find or create a department
 async function findOrCreateDepartment(departmentName: string, supabase: any) {
-  if (!departmentName) return null
+  if (!departmentName || departmentName.trim() === '') return null
   
   try {
     // Normalize department name: trim whitespace and convert to lowercase
@@ -122,6 +151,85 @@ async function findOrCreateDepartment(departmentName: string, supabase: any) {
     return newDepartment.id
   } catch (error) {
     console.error('Error handling department:', error)
-    throw error
+    return null // Return null instead of throwing to prevent UUID errors
+  }
+}
+
+// Check if a URL is from Google's image hosting
+function isGoogleImageUrl(url: string): boolean {
+  if (!url) return false
+  return url.includes('lh3.google.com') || url.includes('googleusercontent.com')
+}
+
+// Fetch and store profile image in Supabase Storage
+async function fetchAndStoreProfileImage(imageUrl: string, googleUserId: string | null, supabase: any): Promise<string | null> {
+  try {
+    if (!imageUrl) {
+      console.log('[SYNC_GOOGLE] No image URL provided')
+      return null
+    }
+
+    // Fetch the image from Google with no-cors to avoid CORS issues
+    console.log('[SYNC_GOOGLE] Fetching image from:', imageUrl)
+    const imageResponse = await fetch(imageUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      }
+    })
+    
+    if (!imageResponse.ok) {
+      throw new Error(`Failed to fetch image: ${imageResponse.status} ${imageResponse.statusText}`)
+    }
+    
+    // Get content type from response headers or default to jpeg
+    const contentType = imageResponse.headers.get('content-type') || 'image/jpeg'
+    const fileExtension = contentType.includes('png') ? 'png' : 'jpg'
+    
+    // Generate a filename using google_user_id or UUID
+    let filename
+    if (googleUserId) {
+      filename = `${googleUserId}.${fileExtension}`
+    } else {
+      filename = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExtension}`
+    }
+    
+    const storagePath = `avatars/${filename}`
+    
+    // Convert the image to ArrayBuffer
+    const imageBuffer = await imageResponse.arrayBuffer()
+    if (!imageBuffer || imageBuffer.byteLength === 0) {
+      throw new Error('Received empty image data')
+    }
+    
+    console.log('[SYNC_GOOGLE] Got image buffer with size:', imageBuffer.byteLength)
+    
+    // Upload to Supabase Storage
+    console.log('[SYNC_GOOGLE] Uploading image to Supabase path:', storagePath)
+    const { data: uploadData, error: uploadError } = await supabase
+      .storage
+      .from('avatars')
+      .upload(storagePath, imageBuffer, {
+        contentType,
+        upsert: true // Overwrite if file exists
+      })
+    
+    if (uploadError) {
+      console.error('[SYNC_GOOGLE] Upload error:', uploadError)
+      throw uploadError
+    }
+    
+    console.log('[SYNC_GOOGLE] Upload successful:', uploadData)
+    
+    // Get the public URL
+    const { data: urlData } = supabase
+      .storage
+      .from('avatars')
+      .getPublicUrl(storagePath)
+    
+    console.log('[SYNC_GOOGLE] Generated public URL:', urlData.publicUrl)
+    return urlData.publicUrl
+  } catch (error) {
+    console.error('[SYNC_GOOGLE] Error in fetchAndStoreProfileImage:', error)
+    return null
   }
 }

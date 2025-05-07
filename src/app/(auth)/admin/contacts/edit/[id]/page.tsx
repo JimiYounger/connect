@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, User } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import ContactForm from '@/features/contacts/components/ContactForm';
 import { DeleteContactDialog } from '@/features/contacts/components/DeleteContactDialog';
 
@@ -14,7 +15,7 @@ export default function EditContactPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [contact, setContact] = useState<{ id: string; first_name: string; last_name: string } | null>(null);
+  const [contact, setContact] = useState<any | null>(null);
   const contactId = typeof params.id === 'string' ? params.id : 
                    Array.isArray(params.id) ? params.id[0] : '';
   
@@ -39,11 +40,7 @@ export default function EditContactPage() {
         }
         
         const data = await response.json();
-        setContact({
-          id: data.id,
-          first_name: data.first_name,
-          last_name: data.last_name
-        });
+        setContact(data);
         setIsLoading(false);
       } catch (err) {
         console.error('Error fetching contact:', err);
@@ -98,6 +95,7 @@ export default function EditContactPage() {
   }
   
   const contactName = `${contact.first_name} ${contact.last_name}`;
+  const initials = `${contact.first_name?.[0] || ''}${contact.last_name?.[0] || ''}`.toUpperCase();
   
   return (
     <div className="container mx-auto py-8">
@@ -112,7 +110,16 @@ export default function EditContactPage() {
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
-          <h1 className="text-2xl font-bold">Edit Contact: {contactName}</h1>
+          
+          <div className="flex items-center gap-4">
+            <Avatar className="h-12 w-12 border">
+              {contact.profile_image_url ? (
+                <AvatarImage src={contact.profile_image_url} alt={contactName} />
+              ) : null}
+              <AvatarFallback className="text-lg">{initials || <User className="h-6 w-6" />}</AvatarFallback>
+            </Avatar>
+            <h1 className="text-2xl font-bold">Edit Contact: {contactName}</h1>
+          </div>
         </div>
         <DeleteContactDialog 
           contactId={contactId} 
