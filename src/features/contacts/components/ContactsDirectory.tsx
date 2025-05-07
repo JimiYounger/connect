@@ -48,7 +48,7 @@ export function ContactsDirectory({
     if (initialFilters) {
       setFilters(initialFilters);
     }
-  }, [initialFilters, setFilters]);
+  }, [initialFilters]);
   
   if (isLoading) {
     return (
@@ -122,7 +122,7 @@ export function ContactsDirectory({
             </Badge>
           </div>
           
-          <div className="space-y-1">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1">
             {department.contacts.map((contact) => (
               <div key={contact.id} className="bg-white border border-slate-200 rounded-md shadow-sm overflow-hidden relative">
                 {shareSuccess === contact.id && (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Contact, Department } from '../types';
 
 interface Tag {
@@ -49,12 +49,12 @@ export function useContactsDirectory(
     selectedTags: [],
   });
   
-  const setFilters = (newFilters: Partial<ContactsDirectoryFilters>) => {
+  const setFilters = useCallback((newFilters: Partial<ContactsDirectoryFilters>) => {
     setFiltersState((prev) => ({
       ...prev,
       ...newFilters,
     }));
-  };
+  }, []);
   
   useEffect(() => {
     // Skip fetching if data was provided as props
