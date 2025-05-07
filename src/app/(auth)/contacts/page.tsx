@@ -68,7 +68,7 @@ export default function ContactsDirectoryPage() {
   };
 
   return (
-    <div className="container mx-auto py-6 px-4 md:px-8">
+    <div className="container mx-auto py-6 px-4 md:px-8 lg:max-w-6xl">
       <div className="mb-6">
         <p className="text-slate-600">
           Find and connect with team members across all departments
@@ -86,12 +86,12 @@ export default function ContactsDirectoryPage() {
           />
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-2 md:gap-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Department</label>
+            <label className="block text-sm font-medium mb-1 md:mb-2 text-xs md:text-sm">Department</label>
             <div className="relative">
               <select 
-                className="w-full rounded-md border border-slate-200 py-2 pl-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none"
+                className="w-full rounded-md border border-slate-200 py-1 md:py-2 pl-2 md:pl-3 pr-8 md:pr-10 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none"
                 value={selectedDepartment || ''}
                 onChange={handleDepartmentChange}
               >
@@ -102,15 +102,15 @@ export default function ContactsDirectoryPage() {
                   </option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4 pointer-events-none" />
+              <ChevronDown className="absolute right-2 md:right-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-3 w-3 md:h-4 md:w-4 pointer-events-none" />
             </div>
           </div>
           
           <div>
-            <label className="block text-sm font-medium mb-2">Tags</label>
+            <label className="block text-sm font-medium mb-1 md:mb-2 text-xs md:text-sm">Tags</label>
             <div className="relative">
               <select 
-                className="w-full rounded-md border border-slate-200 py-2 pl-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none"
+                className="w-full rounded-md border border-slate-200 py-1 md:py-2 pl-2 md:pl-3 pr-8 md:pr-10 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none"
                 value={selectedTags[0] || ''}
                 onChange={handleTagChange}
               >
@@ -121,7 +121,7 @@ export default function ContactsDirectoryPage() {
                   </option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4 pointer-events-none" />
+              <ChevronDown className="absolute right-2 md:right-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-3 w-3 md:h-4 md:w-4 pointer-events-none" />
             </div>
           </div>
         </div>
