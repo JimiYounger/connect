@@ -6,6 +6,7 @@ import Image from "next/image"
 import { LoginButtonWrapper } from "@/features/auth/components/LoginButtonWrapper"
 import { createBrowserClient } from "@supabase/ssr"
 import { motion } from "framer-motion"
+import { HomePage } from "@/features/homepage/components/HomePage"
 
 export default function Home() {
   const router = useRouter()
@@ -80,6 +81,41 @@ export default function Home() {
     );
   }
 
+  if (!isLoading && isLoaded) {
+    // Using HomePage with light theme for the public landing page
+    return (
+      <div className="min-h-screen bg-white">
+        <HomePage theme="light" />
+        
+        {/* Additional public page content */}
+        <div className="container mx-auto px-4 py-20 text-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
+            className="mt-8"
+          >
+            <div className="flex justify-center">
+              <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} className="inline-block">
+                <LoginButtonWrapper />
+              </motion.div>
+            </div>
+          </motion.div>
+          
+          {/* Footer */}
+          <motion.div
+            className="mt-16 text-gray-500 text-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.7 }}
+            transition={{ duration: 1 }}
+          >
+            © {new Date().getFullYear()} CONNECT X Younger Creatives
+          </motion.div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="relative flex flex-col items-center justify-center w-full min-h-screen bg-black overflow-hidden">
       {/* Background gradient effect */}
@@ -121,68 +157,15 @@ export default function Home() {
       <div className="relative z-10 container mx-auto px-4 flex flex-col items-center">
         {/* Main content */}
         <div className="max-w-4xl mx-auto text-center">
-          {isLoading ? (
-            <div className="flex items-center justify-center">
-              <motion.div
-                className="h-16 w-16 rounded-full border-t-2 border-l-2 border-[#c4ff33]"
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1.5, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
-              />
-            </div>
-          ) : (
-            <>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={isLoaded ? { opacity: 1, y: 0 } : {}}
-                transition={{ duration: 0.8, delay: 0.2 }}
-              >
-                <h2 className="text-zinc-400 text-xl md:text-2xl font-book mb-2">Welcome to</h2>
-                <div className="mb-6 flex justify-center items-center">
-                  <LogoImage />
-                </div>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                animate={isLoaded ? { opacity: 1, y: 0 } : {}}
-                transition={{ duration: 0.8, delay: 0.5 }}
-              >
-                <h2 className="text-white text-3xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-2">
-                  Navigate your tools
-                </h2>
-                <h2 className="text-white text-3xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-16">
-                  <span className="text-[#c4ff33]">easier</span> than ever.
-                </h2>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={isLoaded ? { opacity: 1, scale: 1 } : {}}
-                transition={{ duration: 0.5, delay: 1 }}
-                className="mt-8"
-              >
-                <div className="flex justify-center">
-                  <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} className="inline-block">
-                    <LoginButtonWrapper />
-                  </motion.div>
-                </div>
-              </motion.div>
-            </>
-          )}
+          <div className="flex items-center justify-center">
+            <motion.div
+              className="h-16 w-16 rounded-full border-t-2 border-l-2 border-[#c4ff33]"
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1.5, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+            />
+          </div>
         </div>
       </div>
-
-      {/* Footer */}
-      {!isLoading && (
-        <motion.div
-          className="absolute bottom-8 left-0 right-0 text-center text-zinc-500 text-sm"
-          initial={{ opacity: 0 }}
-          animate={isLoaded ? { opacity: 0.7 } : {}}
-          transition={{ duration: 1, delay: 1.5 }}
-        >
-          © {new Date().getFullYear()} CONNECT X Younger Creatives
-        </motion.div>
-      )}
     </div>
   )
 }
