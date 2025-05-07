@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import Image from "next/image"
 import { LoginButtonWrapper } from "@/features/auth/components/LoginButtonWrapper"
 import { createBrowserClient } from "@supabase/ssr"
 import { motion } from "framer-motion"
@@ -12,7 +11,6 @@ export default function Home() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
   const [isLoaded, setIsLoaded] = useState(false)
-  const [imageError, setImageError] = useState(false)
 
   // Check for session on the client side
   useEffect(() => {
@@ -45,41 +43,6 @@ export default function Home() {
 
     checkSession()
   }, [router])
-
-  // This component handles image loading inline with fallback
-  const LogoImage = () => {
-    // Fallback to text if there's an image error
-    if (imageError) {
-      return (
-        <h1 className="text-white text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight">
-          CONNECT<span className="text-[#c4ff33]">®</span>
-        </h1>
-      )
-    }
-    
-    // The path should be relative to the public directory
-    const imagePath = "/connect.png"; // This should point to my-app/public/connect.png
-    
-    return (
-      <div className="inline-block relative h-[60px] md:h-[80px] lg:h-[90px] pl-2">
-        <Image 
-          src={imagePath}
-          alt="CONNECT" 
-          width={280}
-          height={90}
-          className="h-full w-auto object-contain"
-          priority
-          onError={(_e) => {
-            console.error("Failed to load image:", imagePath);
-            setImageError(true);
-          }}
-          onLoad={() => {
-            console.log("Image loaded successfully");
-          }}
-        />
-      </div>
-    );
-  }
 
   if (!isLoading && isLoaded) {
     // Using HomePage with light theme for the public landing page

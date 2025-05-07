@@ -48,7 +48,7 @@ export function ContactsDirectory({
     if (initialFilters) {
       setFilters(initialFilters);
     }
-  }, [initialFilters]);
+  }, [initialFilters, setFilters]);
   
   if (isLoading) {
     return (
