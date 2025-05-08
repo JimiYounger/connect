@@ -62,6 +62,259 @@ export type Database = {
           },
         ]
       }
+      audio_chunks: {
+        Row: {
+          audio_file_id: string | null
+          chunk_index: number
+          content: string
+          created_at: string | null
+          embedding: string | null
+          end_time: number | null
+          id: string
+          start_time: number | null
+        }
+        Insert: {
+          audio_file_id?: string | null
+          chunk_index: number
+          content: string
+          created_at?: string | null
+          embedding?: string | null
+          end_time?: number | null
+          id?: string
+          start_time?: number | null
+        }
+        Update: {
+          audio_file_id?: string | null
+          chunk_index?: number
+          content?: string
+          created_at?: string | null
+          embedding?: string | null
+          end_time?: number | null
+          id?: string
+          start_time?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audio_chunks_audio_file_id_fkey"
+            columns: ["audio_file_id"]
+            isOneToOne: false
+            referencedRelation: "audio_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audio_files: {
+        Row: {
+          audio_series_id: string | null
+          created_at: string | null
+          created_by: string | null
+          current_version_id: string | null
+          description: string | null
+          embedding_status: string | null
+          id: string
+          preview_image_url: string | null
+          summary: string | null
+          summary_status: string | null
+          title: string
+          updated_at: string | null
+          visibility_conditions: Json | null
+        }
+        Insert: {
+          audio_series_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          current_version_id?: string | null
+          description?: string | null
+          embedding_status?: string | null
+          id?: string
+          preview_image_url?: string | null
+          summary?: string | null
+          summary_status?: string | null
+          title: string
+          updated_at?: string | null
+          visibility_conditions?: Json | null
+        }
+        Update: {
+          audio_series_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          current_version_id?: string | null
+          description?: string | null
+          embedding_status?: string | null
+          id?: string
+          preview_image_url?: string | null
+          summary?: string | null
+          summary_status?: string | null
+          title?: string
+          updated_at?: string | null
+          visibility_conditions?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audio_files_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audio_listens: {
+        Row: {
+          audio_file_id: string | null
+          created_at: string | null
+          events: Json | null
+          id: string
+          percent_complete: number | null
+          played_seconds: number | null
+          user_id: string | null
+        }
+        Insert: {
+          audio_file_id?: string | null
+          created_at?: string | null
+          events?: Json | null
+          id?: string
+          percent_complete?: number | null
+          played_seconds?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          audio_file_id?: string | null
+          created_at?: string | null
+          events?: Json | null
+          id?: string
+          percent_complete?: number | null
+          played_seconds?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audio_listens_audio_file_id_fkey"
+            columns: ["audio_file_id"]
+            isOneToOne: false
+            referencedRelation: "audio_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audio_listens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audio_series: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      audio_transcripts: {
+        Row: {
+          audio_file_id: string | null
+          content: string
+          created_at: string | null
+          id: string
+        }
+        Insert: {
+          audio_file_id?: string | null
+          content: string
+          created_at?: string | null
+          id?: string
+        }
+        Update: {
+          audio_file_id?: string | null
+          content?: string
+          created_at?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audio_transcripts_audio_file_id_fkey"
+            columns: ["audio_file_id"]
+            isOneToOne: false
+            referencedRelation: "audio_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audio_versions: {
+        Row: {
+          audio_file_id: string | null
+          file_path: string
+          file_type: string
+          id: string
+          uploaded_at: string | null
+          version_label: string | null
+        }
+        Insert: {
+          audio_file_id?: string | null
+          file_path: string
+          file_type: string
+          id?: string
+          uploaded_at?: string | null
+          version_label?: string | null
+        }
+        Update: {
+          audio_file_id?: string | null
+          file_path?: string
+          file_type?: string
+          id?: string
+          uploaded_at?: string | null
+          version_label?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audio_versions_audio_file_id_fkey"
+            columns: ["audio_file_id"]
+            isOneToOne: false
+            referencedRelation: "audio_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audio_visibility: {
+        Row: {
+          audio_file_id: string | null
+          conditions: Json
+          id: string
+        }
+        Insert: {
+          audio_file_id?: string | null
+          conditions?: Json
+          id?: string
+        }
+        Update: {
+          audio_file_id?: string | null
+          conditions?: Json
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audio_visibility_audio_file_id_fkey"
+            columns: ["audio_file_id"]
+            isOneToOne: false
+            referencedRelation: "audio_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bulk_messages: {
         Row: {
           content: string
@@ -1895,6 +2148,17 @@ export type Database = {
       cosine_similarity_3072: {
         Args: { a: string; b: string }
         Returns: number
+      }
+      create_audio_file_with_version: {
+        Args: {
+          p_title: string
+          p_description: string
+          p_audio_series_id: string
+          p_created_by: string
+          p_file_path: string
+          p_file_type: string
+        }
+        Returns: Json
       }
       delete_category_and_reassign: {
         Args: {
