@@ -40,6 +40,7 @@ export interface UploadAudioRequest {
   description?: string;
   audio_series_id?: string;
   file_url: string;
+  file_path: string; // Internal storage path for backend processing
   file_type: string;
   user_id: string;
 }

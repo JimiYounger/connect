@@ -9,7 +9,8 @@ export type UploadAudioRequest = {
   title: string;
   description?: string;
   audio_series_id?: string;
-  file_url: string;
+  file_url: string; // Public URL for client-side playback
+  file_path: string; // Internal storage path for backend processing
   file_type: string;
   user_id: string;
 };

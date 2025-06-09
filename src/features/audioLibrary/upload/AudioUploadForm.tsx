@@ -1,3 +1,5 @@
+"use client"
+
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -97,6 +99,18 @@ export function AudioUploadForm({
         title: 'Error',
         description: 'Please select an audio file',
         variant: 'destructive',
+      })
+      return
+    }
+    
+    // Check file size before upload
+    const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
+    if (data.file.size > MAX_FILE_SIZE) {
+      toast({
+        title: 'File too large',
+        description: `File size exceeds the 25MB limit. Your file is ${Math.round(data.file.size / (1024 * 1024))}MB. For larger files, please split them into smaller segments using tools like Audacity before uploading.`,
+        variant: 'destructive',
+        duration: 7000, // Longer duration to give users time to read the guidance
       })
       return
     }
@@ -245,7 +259,7 @@ export function AudioUploadForm({
                 </div>
               </FormControl>
               <FormDescription>
-                Upload an audio file (MP3, WAV, etc.)
+                Upload an audio file (MP3, WAV, AAC, etc.) up to 25MB. For larger files, please split them into smaller segments using software like Audacity.
               </FormDescription>
               <FormMessage />
             </FormItem>

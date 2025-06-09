@@ -13,12 +13,24 @@ const validFileSchema = FileSchema
     { message: 'File is required' }
   )
   .refine(
-    (file): file is File => file.size > 0,
+    (file): file is File => file !== null && file.size > 0,
     { message: 'File cannot be empty' }
   )
   .refine(
-    (file): file is File => file.type.startsWith('audio/'),
-    { message: 'File must be an audio file' }
+    (file): file is File => {
+      // Check if it's a valid audio file including AAC
+      return file !== null && (
+        file.type.startsWith('audio/') || 
+        file.type === 'audio/aac'  // Explicitly allow AAC files
+      );
+    },
+    { message: 'File must be an audio file (MP3, WAV, AAC, etc.)' }
+  )
+  .refine(
+    (file): file is File => file !== null && file.size <= 25 * 1024 * 1024, 
+    { 
+      message: 'File size must be less than 25MB. For larger files, please split them into smaller segments using tools like Audacity before uploading.' 
+    }
   );
 
 /**
