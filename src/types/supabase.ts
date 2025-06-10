@@ -1818,6 +1818,599 @@ export type Database = {
           },
         ]
       }
+      video_categories: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          order_index: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          order_index?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          order_index?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      video_chunks: {
+        Row: {
+          chunk_index: number
+          confidence_score: number | null
+          content: string
+          created_at: string | null
+          embedding: string | null
+          end_time: number | null
+          id: string
+          speaker: string | null
+          start_time: number | null
+          video_file_id: string
+          video_transcript_id: string | null
+          word_count: number | null
+        }
+        Insert: {
+          chunk_index: number
+          confidence_score?: number | null
+          content: string
+          created_at?: string | null
+          embedding?: string | null
+          end_time?: number | null
+          id?: string
+          speaker?: string | null
+          start_time?: number | null
+          video_file_id: string
+          video_transcript_id?: string | null
+          word_count?: number | null
+        }
+        Update: {
+          chunk_index?: number
+          confidence_score?: number | null
+          content?: string
+          created_at?: string | null
+          embedding?: string | null
+          end_time?: number | null
+          id?: string
+          speaker?: string | null
+          start_time?: number | null
+          video_file_id?: string
+          video_transcript_id?: string | null
+          word_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_chunks_video_file_id_fkey"
+            columns: ["video_file_id"]
+            isOneToOne: false
+            referencedRelation: "video_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_chunks_video_transcript_id_fkey"
+            columns: ["video_transcript_id"]
+            isOneToOne: false
+            referencedRelation: "video_transcripts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_files: {
+        Row: {
+          admin_selected: boolean | null
+          created_at: string | null
+          created_by: string | null
+          current_version_id: string | null
+          description: string | null
+          embedding_status: string | null
+          id: string
+          library_status: string | null
+          order_index: number | null
+          preview_image_url: string | null
+          summary: string | null
+          summary_status: string | null
+          title: string
+          transcript_status: string | null
+          updated_at: string | null
+          video_category_id: string | null
+          video_series_id: string | null
+          video_subcategory_id: string | null
+          vimeo_duration: number | null
+          vimeo_id: string | null
+          vimeo_metadata: Json | null
+          vimeo_thumbnail_url: string | null
+          vimeo_uri: string | null
+          visibility_conditions: Json | null
+        }
+        Insert: {
+          admin_selected?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          current_version_id?: string | null
+          description?: string | null
+          embedding_status?: string | null
+          id?: string
+          library_status?: string | null
+          order_index?: number | null
+          preview_image_url?: string | null
+          summary?: string | null
+          summary_status?: string | null
+          title: string
+          transcript_status?: string | null
+          updated_at?: string | null
+          video_category_id?: string | null
+          video_series_id?: string | null
+          video_subcategory_id?: string | null
+          vimeo_duration?: number | null
+          vimeo_id?: string | null
+          vimeo_metadata?: Json | null
+          vimeo_thumbnail_url?: string | null
+          vimeo_uri?: string | null
+          visibility_conditions?: Json | null
+        }
+        Update: {
+          admin_selected?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          current_version_id?: string | null
+          description?: string | null
+          embedding_status?: string | null
+          id?: string
+          library_status?: string | null
+          order_index?: number | null
+          preview_image_url?: string | null
+          summary?: string | null
+          summary_status?: string | null
+          title?: string
+          transcript_status?: string | null
+          updated_at?: string | null
+          video_category_id?: string | null
+          video_series_id?: string | null
+          video_subcategory_id?: string | null
+          vimeo_duration?: number | null
+          vimeo_id?: string | null
+          vimeo_metadata?: Json | null
+          vimeo_thumbnail_url?: string | null
+          vimeo_uri?: string | null
+          visibility_conditions?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_files_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_files_current_version_id_fkey"
+            columns: ["current_version_id"]
+            isOneToOne: false
+            referencedRelation: "video_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_files_video_category_id_fkey"
+            columns: ["video_category_id"]
+            isOneToOne: false
+            referencedRelation: "video_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_files_video_series_id_fkey"
+            columns: ["video_series_id"]
+            isOneToOne: false
+            referencedRelation: "video_series"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_files_video_subcategory_id_fkey"
+            columns: ["video_subcategory_id"]
+            isOneToOne: false
+            referencedRelation: "video_subcategories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_search_logs: {
+        Row: {
+          created_at: string | null
+          embedding_used: string | null
+          id: string
+          results_count: number | null
+          search_context: Json | null
+          search_duration_ms: number | null
+          search_query: string
+          search_type: string | null
+          top_result_video_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          embedding_used?: string | null
+          id?: string
+          results_count?: number | null
+          search_context?: Json | null
+          search_duration_ms?: number | null
+          search_query: string
+          search_type?: string | null
+          top_result_video_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          embedding_used?: string | null
+          id?: string
+          results_count?: number | null
+          search_context?: Json | null
+          search_duration_ms?: number | null
+          search_query?: string
+          search_type?: string | null
+          top_result_video_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_search_logs_top_result_video_id_fkey"
+            columns: ["top_result_video_id"]
+            isOneToOne: false
+            referencedRelation: "video_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_search_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_series: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          order_index: number | null
+          parent_series_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          order_index?: number | null
+          parent_series_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          order_index?: number | null
+          parent_series_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_series_parent_series_id_fkey"
+            columns: ["parent_series_id"]
+            isOneToOne: false
+            referencedRelation: "video_series"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_subcategories: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          order_index: number | null
+          updated_at: string | null
+          video_category_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          order_index?: number | null
+          updated_at?: string | null
+          video_category_id: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          order_index?: number | null
+          updated_at?: string | null
+          video_category_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_subcategories_video_category_id_fkey"
+            columns: ["video_category_id"]
+            isOneToOne: false
+            referencedRelation: "video_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_tag_assignments: {
+        Row: {
+          created_at: string | null
+          id: string
+          tag_id: string
+          video_file_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          tag_id: string
+          video_file_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          tag_id?: string
+          video_file_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_tag_assignments_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "video_tags"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_tag_assignments_video_file_id_fkey"
+            columns: ["video_file_id"]
+            isOneToOne: false
+            referencedRelation: "video_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_tags: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      video_transcripts: {
+        Row: {
+          confidence_score: number | null
+          created_at: string | null
+          full_transcript: string
+          id: string
+          language: string | null
+          metadata: Json | null
+          source: string | null
+          updated_at: string | null
+          video_file_id: string
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string | null
+          full_transcript: string
+          id?: string
+          language?: string | null
+          metadata?: Json | null
+          source?: string | null
+          updated_at?: string | null
+          video_file_id: string
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string | null
+          full_transcript?: string
+          id?: string
+          language?: string | null
+          metadata?: Json | null
+          source?: string | null
+          updated_at?: string | null
+          video_file_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_transcripts_video_file_id_fkey"
+            columns: ["video_file_id"]
+            isOneToOne: false
+            referencedRelation: "video_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_versions: {
+        Row: {
+          change_summary: string | null
+          changed_by: string | null
+          created_at: string | null
+          description: string | null
+          duration: number | null
+          id: string
+          is_current: boolean | null
+          thumbnail_url: string | null
+          title: string
+          version_number: number
+          video_file_id: string
+          vimeo_id: string | null
+        }
+        Insert: {
+          change_summary?: string | null
+          changed_by?: string | null
+          created_at?: string | null
+          description?: string | null
+          duration?: number | null
+          id?: string
+          is_current?: boolean | null
+          thumbnail_url?: string | null
+          title: string
+          version_number: number
+          video_file_id: string
+          vimeo_id?: string | null
+        }
+        Update: {
+          change_summary?: string | null
+          changed_by?: string | null
+          created_at?: string | null
+          description?: string | null
+          duration?: number | null
+          id?: string
+          is_current?: boolean | null
+          thumbnail_url?: string | null
+          title?: string
+          version_number?: number
+          video_file_id?: string
+          vimeo_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_versions_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_versions_video_file_id_fkey"
+            columns: ["video_file_id"]
+            isOneToOne: false
+            referencedRelation: "video_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_visibility: {
+        Row: {
+          conditions: Json
+          created_at: string | null
+          id: string
+          updated_at: string | null
+          video_file_id: string
+        }
+        Insert: {
+          conditions: Json
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+          video_file_id: string
+        }
+        Update: {
+          conditions?: Json
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+          video_file_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_visibility_video_file_id_fkey"
+            columns: ["video_file_id"]
+            isOneToOne: false
+            referencedRelation: "video_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_watches: {
+        Row: {
+          completed: boolean | null
+          completed_at: string | null
+          created_at: string | null
+          device_type: string | null
+          events: Json | null
+          id: string
+          last_position: number | null
+          percent_complete: number | null
+          total_duration: number | null
+          updated_at: string | null
+          user_agent: string | null
+          user_id: string
+          video_file_id: string
+          watched_seconds: number | null
+        }
+        Insert: {
+          completed?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          device_type?: string | null
+          events?: Json | null
+          id?: string
+          last_position?: number | null
+          percent_complete?: number | null
+          total_duration?: number | null
+          updated_at?: string | null
+          user_agent?: string | null
+          user_id: string
+          video_file_id: string
+          watched_seconds?: number | null
+        }
+        Update: {
+          completed?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          device_type?: string | null
+          events?: Json | null
+          id?: string
+          last_position?: number | null
+          percent_complete?: number | null
+          total_duration?: number | null
+          updated_at?: string | null
+          user_agent?: string | null
+          user_id?: string
+          video_file_id?: string
+          watched_seconds?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_watches_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_watches_video_file_id_fkey"
+            columns: ["video_file_id"]
+            isOneToOne: false
+            referencedRelation: "video_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       widget_analytics: {
         Row: {
           created_at: string | null
@@ -2160,6 +2753,15 @@ export type Database = {
         }
         Returns: Json
       }
+      create_video_chunks_from_transcript: {
+        Args: {
+          video_id: string
+          transcript_id: string
+          full_transcript: string
+          chunk_duration?: number
+        }
+        Returns: number
+      }
       delete_category_and_reassign: {
         Args: {
           p_category_id: string
@@ -2273,6 +2875,19 @@ export type Database = {
           role_details: Json
           depth: number
           path: string[]
+        }[]
+      }
+      get_user_video_progress: {
+        Args: { user_profile_id: string; video_id?: string }
+        Returns: {
+          video_file_id: string
+          video_title: string
+          watched_seconds: number
+          total_duration: number
+          percent_complete: number
+          last_position: number
+          completed: boolean
+          last_watched: string
         }[]
       }
       halfvec_avg: {
@@ -2405,6 +3020,23 @@ export type Database = {
           similarity: number
         }[]
       }
+      search_video_content: {
+        Args: {
+          query_embedding: string
+          match_threshold?: number
+          match_count?: number
+        }
+        Returns: {
+          video_id: string
+          chunk_id: string
+          content: string
+          start_time: number
+          end_time: number
+          similarity: number
+          video_title: string
+          vimeo_id: string
+        }[]
+      }
       set_widget_configuration: {
         Args: { p_widget_id: string; p_config: Json; p_created_by?: string }
         Returns: Json
@@ -2445,6 +3077,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      test_function: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       test_vector_dimensions: {
         Args: Record<PropertyKey, never>
         Returns: boolean
@@ -2452,6 +3088,20 @@ export type Database = {
       update_contact_order: {
         Args: {
           contact_updates: Database["public"]["CompositeTypes"]["contact_order_update"][]
+        }
+        Returns: undefined
+      }
+      update_video_processing_status: {
+        Args: { video_id: string; status_type: string; status_value: string }
+        Returns: undefined
+      }
+      update_video_watch_progress: {
+        Args: {
+          user_profile_id: string
+          video_id: string
+          current_position: number
+          video_duration: number
+          event_data?: Json
         }
         Returns: undefined
       }
