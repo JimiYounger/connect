@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -53,6 +54,9 @@ export function VideoLibraryViewer({ refetchRef }: VideoLibraryViewerProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [showImportModal, setShowImportModal] = useState(false)
+  const [searchMode, setSearchMode] = useState<'basic' | 'semantic'>('basic')
+  const [semanticResults, setSemanticResults] = useState<any[]>([])
+  const [semanticLoading, setSemanticLoading] = useState(false)
 
   // Fetch videos
   const fetchVideos = useCallback(async () => {
@@ -87,6 +91,45 @@ export function VideoLibraryViewer({ refetchRef }: VideoLibraryViewerProps) {
     }
   }, [searchQuery, statusFilter])
 
+  // Semantic search function
+  const performSemanticSearch = useCallback(async () => {
+    if (!searchQuery.trim()) {
+      setSemanticResults([])
+      return
+    }
+
+    try {
+      setSemanticLoading(true)
+      const response = await fetch('/api/video-library/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: searchQuery,
+          match_threshold: 0.7,
+          match_count: 20,
+          log_search: true
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Semantic search failed: ${response.status}`)
+      }
+
+      const data = await response.json()
+      if (data.success) {
+        setSemanticResults(data.results || [])
+        setError(null)
+      } else {
+        setError(data.error || 'Semantic search failed')
+      }
+    } catch (err) {
+      console.error('Error performing semantic search:', err)
+      setError(err instanceof Error ? err.message : 'Semantic search error')
+    } finally {
+      setSemanticLoading(false)
+    }
+  }, [searchQuery])
+
   // Set up refetch function
   useEffect(() => {
     refetchRef.refetch = fetchVideos
@@ -96,6 +139,13 @@ export function VideoLibraryViewer({ refetchRef }: VideoLibraryViewerProps) {
   useEffect(() => {
     fetchVideos()
   }, [fetchVideos])
+
+  // Trigger search based on mode
+  useEffect(() => {
+    if (searchMode === 'semantic' && searchQuery.trim()) {
+      performSemanticSearch()
+    }
+  }, [searchMode, performSemanticSearch])
 
   // Process video (trigger transcript extraction, etc.)
   const processVideo = async (videoId: string) => {
@@ -173,12 +223,26 @@ export function VideoLibraryViewer({ refetchRef }: VideoLibraryViewerProps) {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="Search videos..."
+              placeholder={searchMode === 'semantic' ? "Semantic search (AI-powered)..." : "Search videos..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && searchMode === 'semantic') {
+                  performSemanticSearch()
+                }
+              }}
               className="pl-10"
             />
           </div>
+          <Select value={searchMode} onValueChange={(value: 'basic' | 'semantic') => setSearchMode(value)}>
+            <SelectTrigger className="w-36">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="basic">Basic Search</SelectItem>
+              <SelectItem value="semantic">AI Search</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-40">
               <Filter className="h-4 w-4 mr-2" />
@@ -194,14 +258,29 @@ export function VideoLibraryViewer({ refetchRef }: VideoLibraryViewerProps) {
           </Select>
         </div>
         
-        <Button onClick={() => setShowImportModal(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Import from Vimeo
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/admin/video-library/search-test">
+              <Search className="h-4 w-4 mr-2" />
+              Test AI Search
+            </Link>
+          </Button>
+          <Button onClick={() => setShowImportModal(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Import from Vimeo
+          </Button>
+        </div>
       </div>
 
       {/* Videos Grid */}
-      {videos.length === 0 ? (
+      {searchMode === 'semantic' && semanticLoading && (
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-3"></div>
+          <span className="text-gray-600">Searching with AI...</span>
+        </div>
+      )}
+      
+      {(searchMode === 'basic' ? videos : semanticResults).length === 0 && !semanticLoading ? (
         <div className="text-center py-12">
           <Play className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-gray-900 mb-2">No Videos Found</h3>
@@ -213,7 +292,24 @@ export function VideoLibraryViewer({ refetchRef }: VideoLibraryViewerProps) {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {videos.map((video) => {
+          {(searchMode === 'basic' ? videos : semanticResults).map((item) => {
+            const video = searchMode === 'semantic' ? {
+              id: item.id,
+              title: item.title,
+              description: item.description,
+              vimeoId: item.vimeo_id,
+              vimeoUri: item.vimeo_uri,
+              vimeoDuration: item.vimeo_duration,
+              vimeoThumbnailUrl: item.vimeo_thumbnail_url,
+              adminSelected: true,
+              libraryStatus: 'completed',
+              transcriptStatus: 'completed',
+              embeddingStatus: item.embedding_status || 'completed',
+              summaryStatus: 'completed',
+              createdAt: item.created_at,
+              updatedAt: item.updated_at,
+              chunksCount: item.matching_chunks?.length || 0
+            } : item
             const libraryBadge = getStatusBadge(video.libraryStatus)
             const transcriptBadge = getStatusBadge(video.transcriptStatus)
             const embeddingBadge = getStatusBadge(video.embeddingStatus)
@@ -242,6 +338,31 @@ export function VideoLibraryViewer({ refetchRef }: VideoLibraryViewerProps) {
                         <p className="text-sm text-gray-600 line-clamp-2 mt-1">{video.description}</p>
                       )}
                     </div>
+
+                    {/* Semantic search specific info */}
+                    {searchMode === 'semantic' && item.similarity && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            {Math.round(item.similarity * 100)}% match
+                          </Badge>
+                        </div>
+                        {item.highlight && (
+                          <div className="p-2 bg-gray-50 rounded-md">
+                            <p className="text-xs text-gray-600 font-medium mb-1">Best Match:</p>
+                            <p className="text-sm text-gray-700 italic">"{item.highlight}"</p>
+                          </div>
+                        )}
+                        {item.matching_chunks && item.matching_chunks.length > 0 && (
+                          <div className="text-xs text-gray-500">
+                            Found in {item.matching_chunks.length} video segment{item.matching_chunks.length > 1 ? 's' : ''}
+                            {item.matching_chunks[0].timestamp_start && (
+                              <span> • Starting at {Math.round(item.matching_chunks[0].timestamp_start)}s</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <div className="flex items-center gap-2 text-sm text-gray-500">
                       <Clock className="h-4 w-4" />

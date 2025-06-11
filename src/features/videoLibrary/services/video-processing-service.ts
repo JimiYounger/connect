@@ -97,53 +97,59 @@ function transcriptToChunks(transcriptText: string, videoFileId: string, videoDu
 
   console.log(`Starting chunking process with MAX_CHUNK_SIZE: ${MAX_CHUNK_SIZE}`)
   
-  // Split text into sentences for more natural chunking
-  const sentences = transcriptText.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  // Improved text splitting - handle different punctuation and word boundaries
+  const words = transcriptText.split(/\s+/).filter(w => w.trim().length > 0);
   const chunks = []
   let currentChunk = '';
+  let currentWordIndex = 0;
   let chunkIndex = 0;
 
-  for (const sentence of sentences) {
-    const trimmedSentence = sentence.trim();
-    if (!trimmedSentence) continue;
-
-    const potentialLength = (currentChunk + ' ' + trimmedSentence).length;
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
+    const potentialChunk = currentChunk ? `${currentChunk} ${word}` : word;
     
-    if (potentialLength > MAX_CHUNK_SIZE && currentChunk.length > 0) {
+    if (potentialChunk.length > MAX_CHUNK_SIZE && currentChunk.length > 0) {
       // Finish current chunk
-      const startTime = videoDuration ? (chunkIndex / (sentences.length / videoDuration)) : chunkIndex * 30;
-      const endTime = videoDuration ? ((chunkIndex + 1) / (sentences.length / videoDuration)) : (chunkIndex + 1) * 30;
+      const chunkStartRatio = currentWordIndex / words.length;
+      const chunkEndRatio = i / words.length;
+      
+      const startTime = videoDuration ? chunkStartRatio * videoDuration : chunkIndex * 30;
+      const endTime = videoDuration ? chunkEndRatio * videoDuration : (chunkIndex + 1) * 30;
       
       chunks.push({
         id: uuidv4(),
         video_file_id: videoFileId,
+        video_transcript_id: null, // Will be set after transcript is created
         chunk_index: chunkIndex,
-        timestamp_start: Math.floor(startTime),
-        timestamp_end: Math.floor(endTime),
+        start_time: Math.round(startTime * 100) / 100, // Round to 2 decimal places
+        end_time: Math.round(endTime * 100) / 100,
         content: currentChunk.trim(),
         created_at: new Date().toISOString()
       });
       
       // Start new chunk
-      currentChunk = trimmedSentence;
+      currentChunk = word;
+      currentWordIndex = i;
       chunkIndex++;
     } else {
       // Add to current chunk
-      currentChunk += (currentChunk ? '. ' : '') + trimmedSentence;
+      currentChunk = potentialChunk;
     }
   }
 
   // Add the last chunk if it has content
   if (currentChunk.trim().length > 0) {
-    const startTime = videoDuration ? (chunkIndex / (sentences.length / videoDuration)) : chunkIndex * 30;
+    const chunkStartRatio = currentWordIndex / words.length;
+    const startTime = videoDuration ? chunkStartRatio * videoDuration : chunkIndex * 30;
     const endTime = videoDuration || (chunkIndex + 1) * 30;
     
     chunks.push({
       id: uuidv4(),
       video_file_id: videoFileId,
+      video_transcript_id: null, // Will be set after transcript is created
       chunk_index: chunkIndex,
-      timestamp_start: Math.floor(startTime),
-      timestamp_end: Math.floor(endTime),
+      start_time: Math.round(startTime * 100) / 100,
+      end_time: Math.round(endTime * 100) / 100,
       content: currentChunk.trim(),
       created_at: new Date().toISOString()
     });
@@ -154,20 +160,132 @@ function transcriptToChunks(transcriptText: string, videoFileId: string, videoDu
 }
 
 /**
- * Extract transcript from Vimeo video
- * This is a placeholder - you'll need to implement actual Vimeo transcript extraction
+ * Extract transcript from Vimeo video using Text Tracks API
  */
 async function extractVimeoTranscript(vimeoId: string): Promise<string | null> {
-  // TODO: Implement actual Vimeo transcript extraction
-  // This could involve:
-  // 1. Checking if Vimeo has captions/transcript available
-  // 2. Downloading audio track and transcribing with Whisper
-  // 3. Using Vimeo's text tracks API if available
+  try {
+    if (!process.env.VIMEO_ACCESS_TOKEN) {
+      console.log('No Vimeo access token available for transcript extraction')
+      return null;
+    }
+
+    console.log(`Attempting to extract transcript from Vimeo ID: ${vimeoId}`)
+
+    // Step 1: Get available text tracks
+    const textTracksResponse = await fetch(`https://api.vimeo.com/videos/${vimeoId}/texttracks`, {
+      headers: {
+        'Authorization': `bearer ${process.env.VIMEO_ACCESS_TOKEN}`,
+        'Accept': 'application/vnd.vimeo.*+json;version=3.4'
+      }
+    });
+
+    if (!textTracksResponse.ok) {
+      console.log(`No text tracks available for video ${vimeoId}: ${textTracksResponse.status}`)
+      return null;
+    }
+
+    const textTracksData = await textTracksResponse.json();
+    
+    if (!textTracksData.data || textTracksData.data.length === 0) {
+      console.log(`No text tracks found for video ${vimeoId}`)
+      return null;
+    }
+
+    // Step 2: Find the best text track (prefer English, then any language)
+    let selectedTrack = textTracksData.data.find((track: any) => 
+      track.language === 'en' || track.language === 'en-US'
+    ) || textTracksData.data[0];
+
+    if (!selectedTrack || !selectedTrack.link) {
+      console.log(`No usable text track found for video ${vimeoId}`)
+      return null;
+    }
+
+    console.log(`Found text track: ${selectedTrack.name} (${selectedTrack.language})`)
+
+    // Step 3: Download the transcript content
+    const transcriptResponse = await fetch(selectedTrack.link, {
+      headers: {
+        'Authorization': `bearer ${process.env.VIMEO_ACCESS_TOKEN}`,
+      }
+    });
+
+    if (!transcriptResponse.ok) {
+      console.log(`Failed to download transcript for video ${vimeoId}: ${transcriptResponse.status}`)
+      return null;
+    }
+
+    const transcriptContent = await transcriptResponse.text();
+    
+    // Step 4: Parse transcript based on format
+    let extractedText = '';
+    
+    if (selectedTrack.type === 'captions' || transcriptContent.includes('WEBVTT')) {
+      // Parse WebVTT format
+      extractedText = parseWebVTT(transcriptContent);
+    } else if (transcriptContent.includes('<transcript>') || transcriptContent.includes('<?xml')) {
+      // Parse XML transcript format
+      extractedText = parseXMLTranscript(transcriptContent);
+    } else {
+      // Assume plain text
+      extractedText = transcriptContent.trim();
+    }
+
+    if (extractedText && extractedText.length > 10) {
+      console.log(`Successfully extracted transcript: ${extractedText.length} characters`)
+      return extractedText;
+    } else {
+      console.log(`Transcript content too short or empty for video ${vimeoId}`)
+      return null;
+    }
+
+  } catch (error) {
+    console.error(`Error extracting transcript for video ${vimeoId}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Parse WebVTT caption format to extract text
+ */
+function parseWebVTT(content: string): string {
+  const lines = content.split('\n');
+  const textLines: string[] = [];
   
-  console.log(`[PLACEHOLDER] Extracting transcript for Vimeo ID: ${vimeoId}`)
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    
+    // Skip WebVTT headers, timestamps, and empty lines
+    if (line === '' || 
+        line === 'WEBVTT' || 
+        line.includes('-->') || 
+        line.match(/^\d+$/)) {
+      continue;
+    }
+    
+    // Remove HTML tags and add text
+    const cleanText = line.replace(/<[^>]*>/g, '').trim();
+    if (cleanText) {
+      textLines.push(cleanText);
+    }
+  }
   
-  // For now, return null to indicate transcript extraction is not yet implemented
-  return null;
+  return textLines.join(' ').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Parse XML transcript format to extract text
+ */
+function parseXMLTranscript(content: string): string {
+  // Simple XML parsing - extract text between tags
+  const textMatches = content.match(/>([^<]+)</g);
+  if (!textMatches) return '';
+  
+  const textLines = textMatches
+    .map(match => match.slice(1, -1).trim())
+    .filter(text => text && !text.match(/^\d+$/));
+  
+  return textLines.join(' ').replace(/\s+/g, ' ').trim();
 }
 
 /**
@@ -294,15 +412,22 @@ export async function processVideoFile(
     
     // Extract transcript from Vimeo
     let transcriptText: string = '';
+    let transcriptSource: 'vimeo' | 'manual' = 'manual';
+    
     if (vimeoId) {
       console.log(`Attempting to extract transcript from Vimeo ID: ${vimeoId}`)
       const extractedTranscript = await extractVimeoTranscript(vimeoId);
-      transcriptText = extractedTranscript || '';
+      if (extractedTranscript) {
+        transcriptText = extractedTranscript;
+        transcriptSource = 'vimeo';
+        console.log(`Successfully extracted Vimeo transcript: ${transcriptText.length} characters`)
+      }
     }
 
     // If no transcript was extracted, create a placeholder based on title/description
     if (!transcriptText && (title || description)) {
       transcriptText = [title, description].filter(Boolean).join('. ');
+      transcriptSource = 'manual';
       console.log(`No transcript available, using title/description as content: ${transcriptText.substring(0, 100)}...`)
     }
 
@@ -320,8 +445,11 @@ export async function processVideoFile(
       .insert({
         id: transcriptId,
         video_file_id: videoFileId,
-        transcript_text: transcriptText,
-        created_at: new Date().toISOString()
+        full_transcript: transcriptText,
+        language: 'en',
+        source: transcriptSource, // 'vimeo' if extracted from Vimeo, 'manual' if using title/description
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       })
 
     if (transcriptError) {
@@ -335,11 +463,17 @@ export async function processVideoFile(
     const chunks = transcriptToChunks(transcriptText, videoFileId, vimeoDuration || undefined)
     console.log(`Generated ${chunks.length} chunks from transcript`)
 
+    // Update chunks with transcript ID
+    const chunksWithTranscriptId = chunks.map(chunk => ({
+      ...chunk,
+      video_transcript_id: transcriptId
+    }))
+
     // Insert the chunks into the database
     console.log(`Inserting ${chunks.length} chunks into video_chunks table`)
     const { error: chunksError } = await supabase
       .from('video_chunks')
-      .insert(chunks)
+      .insert(chunksWithTranscriptId)
 
     if (chunksError) {
       console.error('Error creating chunks:', chunksError)
@@ -409,9 +543,11 @@ export async function processVideoFile(
       
       if (!response.ok) {
         const responseText = await response.text();
-        console.log(`Edge function error response: ${responseText}`);
+        console.error(`❌ Edge function error (${response.status}): ${responseText}`);
       } else {
-        console.log(`Successfully triggered embedding generation for videoFileId=${videoFileId}`);
+        const responseData = await response.text();
+        console.log(`✅ Successfully triggered embedding generation for videoFileId=${videoFileId}`);
+        console.log(`📊 Edge function response: ${responseData}`);
       }
     } catch (err) {
       console.error('Failed to trigger video embedding function:', err);

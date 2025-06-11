@@ -184,7 +184,7 @@ export async function POST(req: Request) {
     let queryEmbedding: number[]
     try {
       const embeddingResponse = await openai.embeddings.create({
-        model: 'text-embedding-3-small',
+        model: 'text-embedding-3-large',
         input: sanitizedQuery,
       })
       queryEmbedding = embeddingResponse.data[0].embedding
@@ -393,16 +393,7 @@ export async function POST(req: Request) {
     // Log search activity if requested
     if (log_search) {
       try {
-        await logSearchActivity({
-          user_id: user.id,
-          search_query: sanitizedQuery,
-          results_count: sortedResults.length,
-          search_type: 'video_semantic',
-          filters,
-          sort_by,
-          match_threshold,
-          match_count
-        })
+        await logSearchActivity(supabase, user.id, sanitizedQuery, filters, sortedResults.length)
       } catch (logError) {
         console.error('Error logging search activity:', logError)
         // Don't fail the request if logging fails
@@ -429,13 +420,7 @@ export async function POST(req: Request) {
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
-          await logSearchActivity({
-            user_id: user.id,
-            search_query: searchQuery,
-            results_count: 0,
-            search_type: 'video_semantic',
-            error_message: error instanceof Error ? error.message : 'Unknown error'
-          })
+          await logSearchActivity(supabase, user.id, searchQuery, { error_message: error instanceof Error ? error.message : 'Unknown error' }, 0)
         }
       } catch (logError) {
         console.error('Error logging failed search:', logError)

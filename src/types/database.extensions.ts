@@ -12,6 +12,7 @@ export interface MatchDocumentResult {
 // Define the return type for the match_video_chunks function
 export interface MatchVideoResult {
   video_id: string;
+  chunk_id: string;
   chunk_index: number;
   content: string;
   similarity: number;
