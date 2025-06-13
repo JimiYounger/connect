@@ -27,8 +27,7 @@ const MOCK_FILTERS = {
 }
 
 // Use environment to determine whether to use mock or real data
-const IS_TEST_OR_DEV = process.env.NODE_ENV === 'development' || 
-                      process.env.NODE_ENV === 'test' ||
+const IS_TEST_OR_DEV = process.env.NODE_ENV === 'test' ||
                       // Check if we're in a test path
                       typeof window !== 'undefined' && window.location.pathname.includes('test')
 

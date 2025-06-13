@@ -141,7 +141,7 @@ export function HomePage({ theme = 'dark' }: { theme?: 'dark' | 'light' }) {
     return (
       <>
         <style jsx global>{premiumAnimationStyles}</style>
-        <div className="flex flex-col h-full bg-black text-white items-center justify-center overflow-hidden">
+        <div className="flex flex-col min-h-screen bg-black text-white items-center justify-center overflow-hidden">
           {/* Minimal, high-end loading UI */}
           <div className="relative w-full max-w-md px-8">
             {/* Brand mark - simple, bold, minimal */}
