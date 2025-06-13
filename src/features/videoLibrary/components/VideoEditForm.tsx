@@ -542,11 +542,15 @@ export function VideoEditForm({ videoId }: VideoEditFormProps) {
                     videoId={video?.id}
                     currentThumbnailUrl={formData.customThumbnailUrl}
                     thumbnailSource={formData.thumbnailSource}
-                    onThumbnailChange={(url, source) => setFormData(prev => ({
-                      ...prev,
-                      customThumbnailUrl: url,
-                      thumbnailSource: source
-                    }))}
+                    onThumbnailChange={(url, source) => {
+                      // Only allow valid video thumbnail sources, fallback to 'vimeo' for 'default'
+                      const validSource = source === 'default' ? 'vimeo' : source
+                      setFormData(prev => ({
+                        ...prev,
+                        customThumbnailUrl: url,
+                        thumbnailSource: validSource
+                      }))
+                    }}
                     vimeoThumbnailUrl={video?.vimeoThumbnailUrl}
                   />
                 </div>

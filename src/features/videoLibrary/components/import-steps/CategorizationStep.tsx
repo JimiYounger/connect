@@ -355,13 +355,17 @@ export function CategorizationStep({ formData, updateFormData }: CategorizationS
               <ThumbnailUpload
                 currentThumbnailUrl={formData.videoDetails.customThumbnailUrl}
                 thumbnailSource={formData.videoDetails.thumbnailSource}
-                onThumbnailChange={(url, source) => updateFormData({
-                  videoDetails: {
-                    ...formData.videoDetails,
-                    customThumbnailUrl: url,
-                    thumbnailSource: source
-                  }
-                })}
+                onThumbnailChange={(url, source) => {
+                  // Only allow valid video thumbnail sources, fallback to 'vimeo' for 'default'
+                  const validSource = source === 'default' ? 'vimeo' : source
+                  updateFormData({
+                    videoDetails: {
+                      ...formData.videoDetails,
+                      customThumbnailUrl: url,
+                      thumbnailSource: validSource
+                    }
+                  })
+                }}
                 vimeoThumbnailUrl={formData.selectedVideo?.thumbnail_url}
               />
             </div>

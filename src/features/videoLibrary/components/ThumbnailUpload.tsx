@@ -20,9 +20,10 @@ import { createClient } from '@/lib/supabase'
 interface ThumbnailUploadProps {
   videoId?: string
   currentThumbnailUrl?: string
-  thumbnailSource: 'vimeo' | 'upload' | 'url'
-  onThumbnailChange: (url: string, source: 'vimeo' | 'upload' | 'url') => void
+  thumbnailSource: 'vimeo' | 'upload' | 'url' | 'default'
+  onThumbnailChange: (url: string, source: 'vimeo' | 'upload' | 'url' | 'default') => void
   vimeoThumbnailUrl?: string
+  hideVimeoOption?: boolean
 }
 
 export function ThumbnailUpload({ 
@@ -30,7 +31,8 @@ export function ThumbnailUpload({
   currentThumbnailUrl, 
   thumbnailSource, 
   onThumbnailChange,
-  vimeoThumbnailUrl 
+  vimeoThumbnailUrl,
+  hideVimeoOption = false 
 }: ThumbnailUploadProps) {
   const [uploading, setUploading] = useState(false)
   const [urlInput, setUrlInput] = useState(currentThumbnailUrl || '')
@@ -121,13 +123,15 @@ export function ThumbnailUpload({
         <Label>Thumbnail Source</Label>
         <Select 
           value={thumbnailSource} 
-          onValueChange={(value: 'vimeo' | 'upload' | 'url') => {
+          onValueChange={(value: 'vimeo' | 'upload' | 'url' | 'default') => {
             if (value === 'vimeo') {
               onThumbnailChange('', 'vimeo')
             } else if (value === 'upload') {
               onThumbnailChange(currentThumbnailUrl || '', 'upload')
             } else if (value === 'url') {
               onThumbnailChange(currentThumbnailUrl || '', 'url')
+            } else if (value === 'default') {
+              onThumbnailChange('', 'default')
             }
           }}
         >
@@ -135,7 +139,8 @@ export function ThumbnailUpload({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="vimeo">Use Vimeo Thumbnail</SelectItem>
+            {!hideVimeoOption && <SelectItem value="vimeo">Use Vimeo Thumbnail</SelectItem>}
+            <SelectItem value="default">Default (Color)</SelectItem>
             <SelectItem value="upload">Upload Custom Thumbnail</SelectItem>
             <SelectItem value="url">Use External URL</SelectItem>
           </SelectContent>
@@ -157,7 +162,7 @@ export function ThumbnailUpload({
                 onError={() => setError('Failed to load thumbnail')}
               />
               <div className="absolute top-2 right-2 bg-black bg-opacity-75 text-white px-2 py-1 rounded text-xs">
-                {thumbnailSource === 'vimeo' ? 'Vimeo' : thumbnailSource === 'upload' ? 'Uploaded' : 'External'}
+                {thumbnailSource === 'vimeo' ? 'Vimeo' : thumbnailSource === 'upload' ? 'Uploaded' : thumbnailSource === 'url' ? 'External' : 'Default'}
               </div>
             </div>
           </CardContent>

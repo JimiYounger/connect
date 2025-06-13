@@ -1825,6 +1825,9 @@ export type Database = {
           id: string
           name: string
           order_index: number | null
+          thumbnail_color: string | null
+          thumbnail_source: string | null
+          thumbnail_url: string | null
           updated_at: string | null
         }
         Insert: {
@@ -1833,6 +1836,9 @@ export type Database = {
           id?: string
           name: string
           order_index?: number | null
+          thumbnail_color?: string | null
+          thumbnail_source?: string | null
+          thumbnail_url?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -1841,6 +1847,9 @@ export type Database = {
           id?: string
           name?: string
           order_index?: number | null
+          thumbnail_color?: string | null
+          thumbnail_source?: string | null
+          thumbnail_url?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -2130,6 +2139,9 @@ export type Database = {
           id: string
           name: string
           order_index: number | null
+          thumbnail_color: string | null
+          thumbnail_source: string | null
+          thumbnail_url: string | null
           updated_at: string | null
           video_category_id: string
         }
@@ -2139,6 +2151,9 @@ export type Database = {
           id?: string
           name: string
           order_index?: number | null
+          thumbnail_color?: string | null
+          thumbnail_source?: string | null
+          thumbnail_url?: string | null
           updated_at?: string | null
           video_category_id: string
         }
@@ -2148,6 +2163,9 @@ export type Database = {
           id?: string
           name?: string
           order_index?: number | null
+          thumbnail_color?: string | null
+          thumbnail_source?: string | null
+          thumbnail_url?: string | null
           updated_at?: string | null
           video_category_id?: string
         }
