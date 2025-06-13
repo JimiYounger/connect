@@ -2,50 +2,138 @@
 
 import { createClient } from '@/lib/supabase'
 import type { UserPermissions } from '@/features/permissions/types'
-import type { VideoForViewing, VideoRoleAssignments } from '../types'
-import { VideoPermissionService } from './permissionService'
+import type { VideoForViewing } from '../types'
+
+export interface VideoCategory {
+  id: string
+  name: string
+  subcategories: VideoSubcategory[]
+}
+
+export interface VideoSubcategory {
+  id: string
+  name: string
+  thumbnailUrl?: string
+  thumbnailColor?: string
+  videoCount: number
+}
 
 /**
- * Video Library Service for User Viewing
- * 
- * Fetches videos that users can view based on their permissions
- * Separate from admin video management
+ * Video Library Service using Supabase data
  */
 export class VideoLibraryService {
   
   /**
-   * Get all videos accessible to the user
+   * Get all categories with their subcategories and video counts
    */
-  static async getUserAccessibleVideos(
-    userPermissions: UserPermissions,
-    options: {
-      categoryId?: string
-      subcategoryId?: string
-      seriesId?: string
-      searchQuery?: string
-      limit?: number
-      offset?: number
-      tags?: string[]
-    } = {}
-  ): Promise<{
-    videos: VideoForViewing[]
-    total: number
-    hasMore: boolean
-  }> {
+  static async getCategoriesWithSubcategories(): Promise<VideoCategory[]> {
+    // Use manual query
+    return await this.getCategoriesManually()
+  }
+
+  /**
+   * Get categories manually
+   */
+  static async getCategoriesManually(): Promise<VideoCategory[]> {
     try {
       const supabase = createClient()
-      const {
-        categoryId,
-        subcategoryId,
-        seriesId,
-        searchQuery,
-        limit = 20,
-        offset = 0,
-        tags
-      } = options
+      
+      console.log('Fetching video categories...')
+      
+      // First, get all categories
+      const { data: categories, error: categoriesError } = await supabase
+        .from('video_categories')
+        .select('id, name')
+        .order('name')
 
-      // Build query for approved videos only
-      let query = supabase
+      if (categoriesError) {
+        console.error('Error fetching categories:', categoriesError)
+        return []
+      }
+
+      console.log('Categories found:', categories?.length)
+
+      // Get all subcategories with their categories
+      const { data: subcategories, error: subcategoriesError } = await supabase
+        .from('video_subcategories')
+        .select(`
+          id,
+          name,
+          thumbnail_url,
+          thumbnail_color,
+          video_category_id
+        `)
+        .order('name')
+
+      if (subcategoriesError) {
+        console.error('Error fetching subcategories:', subcategoriesError)
+        return []
+      }
+
+      console.log('Subcategories found:', subcategories?.length)
+
+      // Get video counts for each subcategory
+      const subcategoryIds = subcategories?.map(sub => sub.id) || []
+
+      const { data: videoCounts, error: countError } = await supabase
+        .from('video_files')
+        .select('video_subcategory_id')
+        .eq('library_status', 'approved')
+        .in('video_subcategory_id', subcategoryIds)
+
+      if (countError) {
+        console.error('Error fetching video counts:', countError)
+      }
+
+      console.log('Video files found:', videoCounts?.length)
+
+      // Create count map
+      const countMap = new Map<string, number>()
+      videoCounts?.forEach(video => {
+        if (video.video_subcategory_id) {
+          const count = countMap.get(video.video_subcategory_id) || 0
+          countMap.set(video.video_subcategory_id, count + 1)
+        }
+      })
+
+      // Transform data
+      const result: VideoCategory[] = categories?.map(category => {
+        const categorySubcategories = subcategories?.filter(sub => 
+          sub.video_category_id === category.id
+        ) || []
+
+        return {
+          id: category.id,
+          name: category.name,
+          subcategories: categorySubcategories.map(sub => ({
+            id: sub.id,
+            name: sub.name,
+            thumbnailUrl: sub.thumbnail_url || undefined,
+            thumbnailColor: sub.thumbnail_color || undefined,
+            videoCount: countMap.get(sub.id) || 0
+          }))
+        }
+      }) || []
+
+      console.log('Final result:', result.length, 'categories')
+      return result
+    } catch (err) {
+      console.error('Error in getCategoriesManually:', err)
+      return []
+    }
+  }
+
+  /**
+   * Get videos for a specific subcategory
+   */
+  static async getVideosForSubcategory(
+    subcategoryId: string,
+    _userPermissions: UserPermissions
+  ): Promise<VideoForViewing[]> {
+    try {
+      const supabase = createClient()
+      
+      const { data, error } = await supabase
         .from('video_files')
         .select(`
           id,
@@ -68,71 +156,62 @@ export class VideoLibraryService {
           video_subcategories:video_subcategory_id (
             id,
             name
-          ),
-          video_series:video_series_id (
-            id,
-            name
           )
         `)
-        .eq('library_status', 'approved') // Only approved videos for users
-        .order('updated_at', { ascending: false })
-
-      // Apply filters
-      if (categoryId) {
-        query = query.eq('video_category_id', categoryId)
-      }
-      
-      if (subcategoryId) {
-        query = query.eq('video_subcategory_id', subcategoryId)
-      }
-      
-      if (seriesId) {
-        query = query.eq('video_series_id', seriesId)
-      }
-
-      if (searchQuery) {
-        query = query.or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
-      }
-
-      // Apply pagination
-      query = query.range(offset, offset + limit - 1)
-
-      const { data, error, count } = await query
+        .eq('video_subcategory_id', subcategoryId)
+        .eq('library_status', 'approved')
+        .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error fetching user videos:', error)
-        return { videos: [], total: 0, hasMore: false }
+        console.error('Error fetching videos for subcategory:', error)
+        return []
       }
 
-      // Transform and filter by permissions
-      const videos = this.transformVideoData(data || [])
-      const accessibleVideos = VideoPermissionService.filterViewableVideos(videos, userPermissions)
+      // Transform to VideoForViewing format
+      const videos: VideoForViewing[] = data?.map(video => ({
+        id: video.id,
+        title: video.title,
+        description: video.description || undefined,
+        vimeoId: video.vimeo_id || undefined,
+        vimeoDuration: video.vimeo_duration || undefined,
+        vimeoThumbnailUrl: video.vimeo_thumbnail_url || undefined,
+        customThumbnailUrl: video.custom_thumbnail_url || undefined,
+        thumbnailSource: video.thumbnail_source as 'vimeo' | 'upload' | 'url',
+        category: video.video_categories ? {
+          id: video.video_categories.id,
+          name: video.video_categories.name
+        } : undefined,
+        subcategory: video.video_subcategories ? {
+          id: video.video_subcategories.id,
+          name: video.video_subcategories.name
+        } : undefined,
+        libraryStatus: (video.library_status as 'pending' | 'approved' | 'rejected' | 'archived') || 'pending',
+        publicSharingEnabled: video.public_sharing_enabled || false,
+        visibilityConditions: video.visibility_conditions as any || {
+          roleTypes: [],
+          teams: [],
+          areas: [],
+          regions: []
+        },
+        createdAt: video.created_at || '',
+        updatedAt: video.updated_at || ''
+      })) || []
 
-      // Filter by tags if specified (done client-side for now)
-      let filteredVideos = accessibleVideos
-      if (tags && tags.length > 0) {
-        filteredVideos = accessibleVideos.filter(video =>
-          video.tags?.some(tag => tags.includes(tag))
-        )
-      }
-
-      return {
-        videos: filteredVideos,
-        total: count || 0,
-        hasMore: offset + limit < (count || 0)
-      }
-    } catch (error) {
-      console.error('Error in getUserAccessibleVideos:', error)
-      return { videos: [], total: 0, hasMore: false }
+      // TODO: Apply permission filtering based on userPermissions
+      // For now, return all approved videos
+      return videos
+    } catch (err) {
+      console.error('Error in getVideosForSubcategory:', err)
+      return []
     }
   }
 
   /**
-   * Get a specific video if user has access
+   * Get a specific video by ID
    */
-  static async getVideoForUser(
+  static async getVideoById(
     videoId: string,
-    userPermissions: UserPermissions
+    _userPermissions: UserPermissions
   ): Promise<VideoForViewing | null> {
     try {
       const supabase = createClient()
@@ -160,128 +239,53 @@ export class VideoLibraryService {
           video_subcategories:video_subcategory_id (
             id,
             name
-          ),
-          video_series:video_series_id (
-            id,
-            name
           )
         `)
         .eq('id', videoId)
+        .eq('library_status', 'approved')
         .single()
 
       if (error) {
-        console.error('Error fetching video:', error)
+        console.error('Error fetching video by ID:', error)
         return null
       }
 
-      const video = this.transformVideoData([data])[0]
-      
-      // Check if user can view this video
-      const permissionResult = VideoPermissionService.checkVideoPermission(video, userPermissions)
-      
-      if (!permissionResult.canView) {
-        return null
+      // Transform to VideoForViewing format
+      const video: VideoForViewing = {
+        id: data.id,
+        title: data.title,
+        description: data.description || undefined,
+        vimeoId: data.vimeo_id || undefined,
+        vimeoDuration: data.vimeo_duration || undefined,
+        vimeoThumbnailUrl: data.vimeo_thumbnail_url || undefined,
+        customThumbnailUrl: data.custom_thumbnail_url || undefined,
+        thumbnailSource: data.thumbnail_source as 'vimeo' | 'upload' | 'url',
+        category: data.video_categories ? {
+          id: data.video_categories.id,
+          name: data.video_categories.name
+        } : undefined,
+        subcategory: data.video_subcategories ? {
+          id: data.video_subcategories.id,
+          name: data.video_subcategories.name
+        } : undefined,
+        libraryStatus: (data.library_status as 'pending' | 'approved' | 'rejected' | 'archived') || 'pending',
+        publicSharingEnabled: data.public_sharing_enabled || false,
+        visibilityConditions: data.visibility_conditions as any || {
+          roleTypes: [],
+          teams: [],
+          areas: [],
+          regions: []
+        },
+        createdAt: data.created_at || '',
+        updatedAt: data.updated_at || ''
       }
 
+      // TODO: Apply permission checking based on userPermissions
+      // For now, return the video if it's approved
       return video
-    } catch (error) {
-      console.error('Error in getVideoForUser:', error)
+    } catch (err) {
+      console.error('Error in getVideoById:', err)
       return null
     }
-  }
-
-  /**
-   * Get videos by category with permission filtering
-   */
-  static async getVideosByCategory(
-    categoryId: string,
-    userPermissions: UserPermissions,
-    limit = 20
-  ): Promise<VideoForViewing[]> {
-    const result = await this.getUserAccessibleVideos(userPermissions, {
-      categoryId,
-      limit
-    })
-    return result.videos
-  }
-
-  /**
-   * Get videos by series with permission filtering
-   */
-  static async getVideosBySeries(
-    seriesId: string,
-    userPermissions: UserPermissions
-  ): Promise<VideoForViewing[]> {
-    const result = await this.getUserAccessibleVideos(userPermissions, {
-      seriesId,
-      limit: 100 // Series videos should all be loaded
-    })
-    return result.videos
-  }
-
-  /**
-   * Search videos with permission filtering
-   */
-  static async searchVideos(
-    searchQuery: string,
-    userPermissions: UserPermissions,
-    options: {
-      categoryId?: string
-      tags?: string[]
-      limit?: number
-    } = {}
-  ): Promise<VideoForViewing[]> {
-    const result = await this.getUserAccessibleVideos(userPermissions, {
-      searchQuery,
-      ...options
-    })
-    return result.videos
-  }
-
-  /**
-   * Get recently added videos for user
-   */
-  static async getRecentVideos(
-    userPermissions: UserPermissions,
-    limit = 10
-  ): Promise<VideoForViewing[]> {
-    const result = await this.getUserAccessibleVideos(userPermissions, {
-      limit
-    })
-    return result.videos
-  }
-
-  /**
-   * Transform raw video data to our interface
-   */
-  private static transformVideoData(rawData: any[]): VideoForViewing[] {
-    return rawData.map((video: any) => ({
-      id: video.id,
-      title: video.title,
-      description: video.description,
-      vimeoId: video.vimeo_id,
-      vimeoDuration: video.vimeo_duration,
-      vimeoThumbnailUrl: video.vimeo_thumbnail_url,
-      customThumbnailUrl: video.custom_thumbnail_url,
-      thumbnailSource: video.thumbnail_source,
-      category: video.video_categories ? {
-        id: video.video_categories.id,
-        name: video.video_categories.name
-      } : undefined,
-      subcategory: video.video_subcategories ? {
-        id: video.video_subcategories.id,
-        name: video.video_subcategories.name
-      } : undefined,
-      series: video.video_series ? {
-        id: video.video_series.id,
-        name: video.video_series.name
-      } : undefined,
-      tags: video.tags || [],
-      libraryStatus: video.library_status,
-      publicSharingEnabled: video.public_sharing_enabled,
-      visibilityConditions: video.visibility_conditions as VideoRoleAssignments,
-      createdAt: video.created_at,
-      updatedAt: video.updated_at
-    }))
   }
 }

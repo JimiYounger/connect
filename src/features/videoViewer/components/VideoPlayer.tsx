@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, SkipBack, SkipForward } from 'lucide-react'
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, SkipBack, SkipForward, Settings } from 'lucide-react'
 import { useVideoProgress } from '../hooks/useVideoProgress'
 import type { VideoForViewing } from '../types'
 
@@ -10,13 +10,17 @@ interface VideoPlayerProps {
   autoplay?: boolean
   onComplete?: () => void
   onProgress?: (progress: number) => void
+  hideVideoInfo?: boolean
+  profile?: any
 }
 
 export function VideoPlayer({ 
   video, 
   autoplay = false, 
   onComplete,
-  onProgress 
+  onProgress,
+  hideVideoInfo = false,
+  profile
 }: VideoPlayerProps) {
   // Player state
   const [isPlaying, setIsPlaying] = useState(false)
@@ -28,22 +32,27 @@ export function VideoPlayer({
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showResumePrompt, setShowResumePrompt] = useState(false)
+  const [playbackRate, setPlaybackRate] = useState(1)
+  const [showSpeedMenu, setShowSpeedMenu] = useState(false)
+  const [supportsPlaybackRate, setSupportsPlaybackRate] = useState(false) // Start false, will be set true only if it works
 
   // Refs
   const playerRef = useRef<HTMLDivElement>(null)
   const vimeoPlayerRef = useRef<any>(null)
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const progressUpdateRef = useRef<NodeJS.Timeout | null>(null)
+  const hasShownResumeRef = useRef<boolean>(false)
 
   // Progress tracking
   const {
     progress,
+    loading: progressLoading,
     updateProgress,
     recordEvent,
     getResumePosition,
     shouldShowResume,
     isCompleted
-  } = useVideoProgress(video.id, duration)
+  } = useVideoProgress(video.id, duration, profile)
 
   // Auto-hide controls on mobile
   const resetControlsTimeout = useCallback(() => {
@@ -64,7 +73,31 @@ export function VideoPlayer({
     resetControlsTimeout()
   }, [resetControlsTimeout])
 
+  // Close speed menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showSpeedMenu && !((event.target as Element)?.closest('.speed-menu-container'))) {
+        setShowSpeedMenu(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showSpeedMenu])
+
+  // Player control functions - defined before useEffect that uses them
+  const handlePlay = useCallback(async () => {
+    if (!vimeoPlayerRef.current) return
+    
+    try {
+      await vimeoPlayerRef.current.play()
+    } catch (err) {
+      console.error('Error playing video:', err)
+    }
+  }, [])
+
   // Initialize Vimeo player
+  // Note: onComplete and onProgress are props that should be memoized by parent components
   useEffect(() => {
     if (!video.vimeoId || typeof window === 'undefined') return
 
@@ -85,7 +118,9 @@ export function VideoPlayer({
           controls: false, // We'll use custom controls
           autopause: false,
           autoplay: autoplay,
-          muted: isMuted
+          muted: isMuted,
+          transparent: false,
+          background: false
         })
 
         vimeoPlayerRef.current = player
@@ -96,23 +131,26 @@ export function VideoPlayer({
           const videoDuration = await player.getDuration()
           setDuration(videoDuration)
           
-          // Check if we should show resume prompt
-          if (shouldShowResume()) {
-            setShowResumePrompt(true)
-          } else if (autoplay) {
+          // Playback speed control disabled until proper configuration is added
+          // Vimeo's getPlaybackRate() returns values even when speed control isn't available
+          
+          // Initial resume check will be handled by separate effect
+          if (autoplay) {
             handlePlay()
           }
         })
 
-        player.on('play', () => {
+        player.on('play', async () => {
           setIsPlaying(true)
-          recordEvent('play', currentTime)
+          const currentPos = await player.getCurrentTime()
+          recordEvent('play', currentPos)
           resetControlsTimeout()
         })
 
-        player.on('pause', () => {
+        player.on('pause', async () => {
           setIsPlaying(false)
-          recordEvent('pause', currentTime)
+          const currentPos = await player.getCurrentTime()
+          recordEvent('pause', currentPos)
           setShowControls(true)
         })
 
@@ -136,14 +174,15 @@ export function VideoPlayer({
           }
         })
 
-        player.on('ended', () => {
+        player.on('ended', async () => {
           setIsPlaying(false)
           setShowControls(true)
-          recordEvent('complete', duration)
-          updateProgress(duration, [{
+          const currentPos = await player.getCurrentTime()
+          recordEvent('complete', currentPos)
+          updateProgress(currentPos, [{
             type: 'complete',
             timestamp: Date.now(),
-            position: duration
+            position: currentPos
           }], true)
           onComplete?.()
         })
@@ -178,18 +217,36 @@ export function VideoPlayer({
         clearTimeout(progressUpdateRef.current)
       }
     }
-  }, [video.vimeoId, autoplay, isMuted])
+  }, [video.vimeoId, autoplay, isMuted, handlePlay, isPlaying, onComplete, onProgress, recordEvent, resetControlsTimeout, updateProgress])
 
-  // Player control functions
-  const handlePlay = useCallback(async () => {
-    if (!vimeoPlayerRef.current) return
+  // Handle iframe pointer events based on control visibility
+  useEffect(() => {
+    if (!playerRef.current) return
     
-    try {
-      await vimeoPlayerRef.current.play()
-    } catch (err) {
-      console.error('Error playing video:', err)
+    const iframe = playerRef.current.querySelector('iframe')
+    if (iframe) {
+      iframe.style.pointerEvents = showControls ? 'none' : 'auto'
     }
-  }, [])
+  }, [showControls])
+
+  // Check for resume prompt when progress data becomes available
+  useEffect(() => {
+    // Only check once progress has loaded and we haven't already shown the prompt for this session
+    if (!progressLoading && progress && !hasShownResumeRef.current) {
+      console.log('Progress loaded, checking resume:', { 
+        shouldResume: shouldShowResume(), 
+        progress: progress,
+        percentComplete: progress.percentComplete 
+      })
+      
+      if (shouldShowResume()) {
+        setShowResumePrompt(true)
+        hasShownResumeRef.current = true
+      }
+    }
+  }, [progressLoading, progress, shouldShowResume])
+
+  // Additional player control functions
 
   const handlePause = useCallback(async () => {
     if (!vimeoPlayerRef.current) return
@@ -245,6 +302,22 @@ export function VideoPlayer({
       console.error('Error toggling fullscreen:', err)
     }
   }, [isFullscreen])
+
+  const changePlaybackSpeed = useCallback(async (speed: number) => {
+    if (!vimeoPlayerRef.current) return
+    
+    try {
+      await vimeoPlayerRef.current.setPlaybackRate(speed)
+      setPlaybackRate(speed)
+      setShowSpeedMenu(false)
+    } catch (err: any) {
+      console.log('Could not change playback speed:', err.message)
+      
+      // If speed control fails, hide the feature
+      setSupportsPlaybackRate(false)
+      setShowSpeedMenu(false)
+    }
+  }, [])
 
   const handleResumeFromPosition = useCallback(() => {
     const resumePos = getResumePosition()
@@ -322,23 +395,28 @@ export function VideoPlayer({
       {/* Video Player Container */}
       <div 
         ref={playerRef}
-        className="relative aspect-video bg-black rounded-lg overflow-hidden touch-manipulation"
-        onTouchStart={showControlsTemporarily}
-        onClick={showControlsTemporarily}
+        className={`video-player relative aspect-video bg-black rounded-2xl overflow-hidden touch-manipulation ${showControls ? 'controls-visible' : ''}`}
       >
         {/* Loading State */}
         {isLoading && (
-          <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
+          <div className="absolute inset-0 bg-gray-900 flex items-center justify-center z-20">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
           </div>
         )}
 
         {/* Vimeo Player will be injected here */}
         
+        {/* Invisible Click Overlay for Control Visibility */}
+        <div 
+          className="absolute inset-0 z-10 cursor-pointer"
+          onTouchStart={showControlsTemporarily}
+          onClick={showControlsTemporarily}
+        />
+        
         {/* Custom Controls Overlay */}
         <div 
-          className={`absolute inset-0 transition-opacity duration-300 ${
-            showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          className={`absolute inset-0 z-20 transition-opacity duration-300 pointer-events-none ${
+            showControls ? 'opacity-100' : 'opacity-0'
           }`}
         >
           {/* Top Gradient */}
@@ -351,18 +429,18 @@ export function VideoPlayer({
           <div className="absolute inset-0 flex items-center justify-center">
             <button
               onClick={isPlaying ? handlePause : handlePlay}
-              className="w-16 h-16 bg-black/50 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/20 active:scale-95 transition-transform"
+              className="w-12 h-12 bg-black/60 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/20 active:scale-95 transition-transform pointer-events-auto"
             >
               {isPlaying ? (
-                <Pause className="w-8 h-8 text-white ml-0" />
+                <Pause className="w-6 h-6 text-white ml-0" />
               ) : (
-                <Play className="w-8 h-8 text-white ml-1" />
+                <Play className="w-6 h-6 text-white ml-0.5" />
               )}
             </button>
           </div>
 
           {/* Bottom Controls */}
-          <div className="absolute bottom-0 left-0 right-0 p-4">
+          <div className="absolute bottom-0 left-0 right-0 p-4 pointer-events-auto">
             {/* Progress Bar */}
             <div className="mb-4">
               <div className="relative h-1 bg-white/30 rounded-full">
@@ -387,30 +465,30 @@ export function VideoPlayer({
             {/* Control Buttons */}
             <div className="flex items-center justify-between">
               {/* Left Controls */}
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
                 <button
                   onClick={skipBackward}
-                  className="w-10 h-10 flex items-center justify-center text-white active:scale-95 transition-transform"
+                  className="w-8 h-8 flex items-center justify-center text-white active:scale-95 transition-transform"
                 >
-                  <SkipBack className="w-5 h-5" />
+                  <SkipBack className="w-4 h-4" />
                 </button>
                 
                 <button
                   onClick={isPlaying ? handlePause : handlePlay}
-                  className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-black active:scale-95 transition-transform shadow-lg"
+                  className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-black active:scale-95 transition-transform shadow-lg"
                 >
                   {isPlaying ? (
-                    <Pause className="w-6 h-6" />
+                    <Pause className="w-5 h-5" />
                   ) : (
-                    <Play className="w-6 h-6 ml-0.5" />
+                    <Play className="w-5 h-5 ml-0.5" />
                   )}
                 </button>
 
                 <button
                   onClick={skipForward}
-                  className="w-10 h-10 flex items-center justify-center text-white active:scale-95 transition-transform"
+                  className="w-8 h-8 flex items-center justify-center text-white active:scale-95 transition-transform"
                 >
-                  <SkipForward className="w-5 h-5" />
+                  <SkipForward className="w-4 h-4" />
                 </button>
               </div>
 
@@ -420,26 +498,62 @@ export function VideoPlayer({
               </div>
 
               {/* Right Controls */}
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
                 <button
                   onClick={toggleMute}
-                  className="w-10 h-10 flex items-center justify-center text-white active:scale-95 transition-transform"
+                  className="w-8 h-8 flex items-center justify-center text-white active:scale-95 transition-transform"
                 >
                   {isMuted ? (
-                    <VolumeX className="w-5 h-5" />
+                    <VolumeX className="w-4 h-4" />
                   ) : (
-                    <Volume2 className="w-5 h-5" />
+                    <Volume2 className="w-4 h-4" />
                   )}
                 </button>
 
+                {/* Playback Speed Button - Only show if supported */}
+                {supportsPlaybackRate && (
+                  <div className="relative speed-menu-container">
+                    <button
+                      onClick={() => setShowSpeedMenu(!showSpeedMenu)}
+                      className="w-8 h-8 flex items-center justify-center text-white active:scale-95 transition-transform relative"
+                    >
+                      <Settings className="w-4 h-4" />
+                      {playbackRate !== 1 && (
+                        <span className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full text-xs flex items-center justify-center text-white font-bold">
+                          {playbackRate}x
+                        </span>
+                      )}
+                    </button>
+                    
+                    {/* Speed Menu */}
+                    {showSpeedMenu && (
+                      <div className="absolute bottom-10 right-0 bg-black/90 backdrop-blur-sm rounded-lg p-2 min-w-[80px] border border-white/20 shadow-2xl">
+                        {[0.5, 0.75, 1, 1.25, 1.5, 2].map((speed) => (
+                          <button
+                            key={speed}
+                            onClick={() => changePlaybackSpeed(speed)}
+                            className={`w-full px-3 py-2 text-sm rounded transition-colors text-left ${
+                              playbackRate === speed 
+                                ? 'bg-blue-600 text-white' 
+                                : 'text-white hover:bg-white/20'
+                            }`}
+                          >
+                            {speed}x
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <button
                   onClick={toggleFullscreen}
-                  className="w-10 h-10 flex items-center justify-center text-white active:scale-95 transition-transform"
+                  className="w-8 h-8 flex items-center justify-center text-white active:scale-95 transition-transform"
                 >
                   {isFullscreen ? (
-                    <Minimize className="w-5 h-5" />
+                    <Minimize className="w-4 h-4" />
                   ) : (
-                    <Maximize className="w-5 h-5" />
+                    <Maximize className="w-4 h-4" />
                   )}
                 </button>
               </div>
@@ -447,50 +561,54 @@ export function VideoPlayer({
           </div>
 
           {/* Video Title Overlay */}
-          <div className="absolute top-4 left-4 right-4">
-            <h3 className="text-white font-medium text-lg leading-tight line-clamp-2">
-              {video.title}
-            </h3>
-            {progress && progress.percentComplete > 0 && (
-              <div className="mt-2 flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <span className="text-white/80 text-sm">
-                  {Math.round(progress.percentComplete)}% watched
-                </span>
-              </div>
-            )}
-          </div>
+          {!hideVideoInfo && (
+            <div className="absolute top-4 left-4 right-4 pointer-events-auto">
+              <h3 className="text-white font-medium text-lg leading-tight line-clamp-2">
+                {video.title}
+              </h3>
+              {progress && progress.percentComplete > 0 && (
+                <div className="mt-2 flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                  <span className="text-white/80 text-sm">
+                    {Math.round(progress.percentComplete)}% watched
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Mobile-optimized video info */}
-      <div className="mt-4 px-1">
-        <h2 className="font-semibold text-lg leading-tight mb-2">{video.title}</h2>
-        {video.description && (
-          <p className="text-gray-600 text-sm leading-relaxed">{video.description}</p>
-        )}
-        
-        {/* Video metadata */}
-        <div className="flex items-center gap-4 mt-3 text-sm text-gray-500">
-          {video.category && (
-            <span>{video.category.name}</span>
+      {!hideVideoInfo && (
+        <div className="mt-4 px-1">
+          <h2 className="font-semibold text-lg leading-tight mb-2">{video.title}</h2>
+          {video.description && (
+            <p className="text-gray-600 text-sm leading-relaxed">{video.description}</p>
           )}
-          {video.subcategory && (
-            <span>• {video.subcategory.name}</span>
-          )}
-          <span>• {formatTime(duration)}</span>
-        </div>
-
-        {/* Completion indicator */}
-        {isCompleted && (
-          <div className="flex items-center gap-2 mt-3 text-green-600 text-sm">
-            <div className="w-4 h-4 bg-green-600 rounded-full flex items-center justify-center">
-              <div className="w-2 h-2 bg-white rounded-full"></div>
-            </div>
-            <span>Completed</span>
+          
+          {/* Video metadata */}
+          <div className="flex items-center gap-4 mt-3 text-sm text-gray-500">
+            {video.category && (
+              <span>{video.category.name}</span>
+            )}
+            {video.subcategory && (
+              <span>• {video.subcategory.name}</span>
+            )}
+            <span>• {formatTime(duration)}</span>
           </div>
-        )}
-      </div>
+
+          {/* Completion indicator */}
+          {isCompleted && (
+            <div className="flex items-center gap-2 mt-3 text-green-600 text-sm">
+              <div className="w-4 h-4 bg-green-600 rounded-full flex items-center justify-center">
+                <div className="w-2 h-2 bg-white rounded-full"></div>
+              </div>
+              <span>Completed</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

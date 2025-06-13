@@ -7,29 +7,26 @@ import { useAuth } from '@/features/auth/context/auth-context'
 import { useProfile } from '@/features/users/hooks/useProfile'
 import type { VideoForViewing } from '@/features/videoViewer/types'
 
-// Mock video data for testing
+// Real video data from your database for testing
 const mockVideo: VideoForViewing = {
-  id: 'test-video-1',
-  title: 'Sample Training Video - Mobile Optimization Best Practices',
-  description: 'Learn how to create mobile-first designs that provide premium user experiences. This comprehensive training covers touch interactions, responsive layouts, and performance optimization techniques.',
-  vimeoId: '76979871', // Sample Vimeo video ID
-  vimeoDuration: 300, // 5 minutes
-  vimeoThumbnailUrl: 'https://i.vimeocdn.com/video/example_thumbnail.jpg',
+  id: 'e549dcfb-d5a8-4fc0-a25c-22bdd261c759',
+  title: 'GSuite',
+  description: 'This video provides an overview of the G Suite, focusing on Gmail and Google Calendar as essential tools for sales reps. It demonstrates how to use Gmail for email, internal messaging, and chat, as well as how to manage appointments and scheduling efficiently with Google Calendar.',
+  vimeoId: '983365839', // Real Vimeo video from your database
+  vimeoDuration: 315, // 5 minutes 15 seconds
+  vimeoThumbnailUrl: 'https://i.vimeocdn.com/video/1898764241-063ee7ef872cbb02284d40092b7835de4eeaec9c681bd54eb6eddbfd46bd3d6f-d_640x360?&r=pad&region=us',
   customThumbnailUrl: undefined,
   thumbnailSource: 'vimeo',
   category: {
-    id: 'cat-1',
-    name: 'Design & UX'
+    id: 'f82a3883-70de-4384-a7b5-e2c76ce3e543',
+    name: 'Training'
   },
   subcategory: {
-    id: 'subcat-1',
-    name: 'Mobile Design'
+    id: 'fe9a1f91-6f54-4b96-84d4-7302cc5aded8',
+    name: 'Software & Tools'
   },
-  series: {
-    id: 'series-1',
-    name: 'Mobile Development Series'
-  },
-  tags: ['mobile', 'design', 'ux', 'responsive'],
+  series: undefined,
+  tags: ['gsuite', 'gmail', 'calendar', 'tools'],
   libraryStatus: 'approved',
   publicSharingEnabled: true,
   visibilityConditions: {

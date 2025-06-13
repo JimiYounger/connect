@@ -10,8 +10,10 @@ import type { VideoWatchProgress, VideoWatchEvent } from '../types'
 /**
  * Hook for managing video watch progress and analytics
  */
-export function useVideoProgress(videoFileId: string, totalDuration?: number) {
-  const { session } = useAuth()
+export function useVideoProgress(videoFileId: string, totalDuration?: number, profileParam?: any) {
+  const { session: _session, profile: authProfile } = useAuth()
+  // Use passed profile if available, otherwise fall back to auth context
+  const profile = profileParam || authProfile
   const [progress, setProgress] = useState<VideoWatchProgress | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -21,7 +23,8 @@ export function useVideoProgress(videoFileId: string, totalDuration?: number) {
   const pendingEventsRef = useRef<VideoWatchEvent[]>([])
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  const userId = session?.user?.id
+  // Use profile ID for video_watches table (not auth user ID)
+  const userId = profile?.id
 
   /**
    * Load initial progress data
@@ -54,7 +57,18 @@ export function useVideoProgress(videoFileId: string, totalDuration?: number) {
     events: VideoWatchEvent[] = [],
     force = false
   ) => {
-    if (!userId || !videoFileId || !totalDuration) return
+    if (!userId || !videoFileId || !totalDuration) {
+      console.log('Video progress update skipped:', { 
+        userId, 
+        videoFileId, 
+        totalDuration,
+        hasProfile: !!profile,
+        profileId: profile?.id 
+      })
+      return
+    }
+    
+    console.log('Updating video progress:', { userId, videoFileId, currentPosition, totalDuration })
 
     // Add events to pending queue
     pendingEventsRef.current.push(...events)
@@ -96,7 +110,7 @@ export function useVideoProgress(videoFileId: string, totalDuration?: number) {
       console.error('Error updating progress:', err)
       setError('Failed to save progress')
     }
-  }, [userId, videoFileId, totalDuration])
+  }, [userId, videoFileId, totalDuration, profile])
 
   /**
    * Record a specific watch event
