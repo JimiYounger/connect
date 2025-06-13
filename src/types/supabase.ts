@@ -1911,14 +1911,17 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           current_version_id: string | null
+          custom_thumbnail_url: string | null
           description: string | null
           embedding_status: string | null
           id: string
           library_status: string | null
           order_index: number | null
           preview_image_url: string | null
+          public_sharing_enabled: boolean | null
           summary: string | null
           summary_status: string | null
+          thumbnail_source: string | null
           title: string
           transcript_status: string | null
           updated_at: string | null
@@ -1937,14 +1940,17 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           current_version_id?: string | null
+          custom_thumbnail_url?: string | null
           description?: string | null
           embedding_status?: string | null
           id?: string
           library_status?: string | null
           order_index?: number | null
           preview_image_url?: string | null
+          public_sharing_enabled?: boolean | null
           summary?: string | null
           summary_status?: string | null
+          thumbnail_source?: string | null
           title: string
           transcript_status?: string | null
           updated_at?: string | null
@@ -1963,14 +1969,17 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           current_version_id?: string | null
+          custom_thumbnail_url?: string | null
           description?: string | null
           embedding_status?: string | null
           id?: string
           library_status?: string | null
           order_index?: number | null
           preview_image_url?: string | null
+          public_sharing_enabled?: boolean | null
           summary?: string | null
           summary_status?: string | null
+          thumbnail_source?: string | null
           title?: string
           transcript_status?: string | null
           updated_at?: string | null
@@ -2989,6 +2998,26 @@ export type Database = {
           chunk_index: number
           content: string
           similarity: number
+        }[]
+      }
+      match_video_chunks: {
+        Args: {
+          query_embedding: string
+          match_threshold?: number
+          match_count?: number
+          filter_category_id?: string
+          filter_subcategory_id?: string
+          filter_series_id?: string
+          filter_tag_ids?: string[]
+        }
+        Returns: {
+          video_id: string
+          chunk_id: string
+          chunk_index: number
+          content: string
+          similarity: number
+          timestamp_start: number
+          timestamp_end: number
         }[]
       }
       matches_user_criteria: {

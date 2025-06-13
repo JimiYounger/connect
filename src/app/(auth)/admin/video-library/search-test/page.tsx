@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -38,7 +39,7 @@ export default function VideoSearchTestPage() {
     match_threshold: number
     match_count: number
   } | null>(null)
-  const [threshold, setThreshold] = useState(0.3)
+  const [threshold, _setThreshold] = useState(0.3)
   const [selectedVideo, setSelectedVideo] = useState<{
     video: SearchResult
     startTime?: number
@@ -171,7 +172,7 @@ export default function VideoSearchTestPage() {
           <CardContent className="pt-6">
             <div className="flex flex-wrap gap-4 text-sm">
               <div>
-                <span className="font-medium">Query:</span> "{searchStats.query}"
+                <span className="font-medium">Query:</span> &quot;{searchStats.query}&quot;
               </div>
               <div>
                 <span className="font-medium">Results:</span> {searchStats.total}
@@ -209,16 +210,18 @@ export default function VideoSearchTestPage() {
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">Search Results</h2>
           
-          {results.map((result, index) => (
+          {results.map((result, _index) => (
             <Card key={result.id} className="overflow-hidden">
               <CardContent className="p-6">
                 <div className="space-y-4">
                   {/* Video Header */}
                   <div className="flex gap-4">
                     {result.vimeo_thumbnail_url ? (
-                      <img
+                      <Image
                         src={result.vimeo_thumbnail_url}
                         alt={result.title}
+                        width={128}
+                        height={80}
                         className="w-32 h-20 object-cover rounded-md flex-shrink-0"
                       />
                     ) : (
@@ -283,7 +286,7 @@ export default function VideoSearchTestPage() {
                   {result.highlight && (
                     <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
                       <p className="text-sm font-medium text-yellow-800 mb-1">Best Match:</p>
-                      <p className="text-sm text-yellow-700 italic">"{result.highlight}"</p>
+                      <p className="text-sm text-yellow-700 italic">&quot;{result.highlight}&quot;</p>
                     </div>
                   )}
 
@@ -310,7 +313,7 @@ export default function VideoSearchTestPage() {
                                 )}
                               </div>
                             </div>
-                            <p className="text-gray-700">"{chunk.content}"</p>
+                            <p className="text-gray-700">&quot;{chunk.content}&quot;</p>
                           </div>
                         ))}
                         

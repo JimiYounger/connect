@@ -32,7 +32,7 @@ export async function POST(req: Request) {
     // Check if user is admin
     const { data: userProfile } = await supabase
       .from('user_profiles')
-      .select('role_type')
+      .select('id, role_type')
       .eq('user_id', user.id)
       .single()
 

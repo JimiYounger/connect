@@ -37,6 +37,7 @@ export async function GET(req: Request) {
     const url = new URL(req.url)
     const page = parseInt(url.searchParams.get('page') || '1')
     const perPage = parseInt(url.searchParams.get('per_page') || '25')
+    const searchQuery = url.searchParams.get('search')
 
     // Validate parameters
     if (page < 1 || perPage < 1 || perPage > 50) {
@@ -61,6 +62,11 @@ export async function GET(req: Request) {
       sort: 'date',
       direction: 'desc'
     })
+
+    // Add search query if provided
+    if (searchQuery) {
+      params.append('query', searchQuery)
+    }
 
     // Fetch videos directly from Vimeo API
     const vimeoApiResponse = await fetch(`${VIMEO_API_URL}/me/videos?${params.toString()}`, {
@@ -100,7 +106,7 @@ export async function GET(req: Request) {
     }
 
     // Get existing video files to check which are already imported
-    const vimeoIds = vimeoResponse.data.map(video => 
+    const vimeoIds = vimeoResponse.data.map((video: any) => 
       video.uri.replace('/videos/', '')
     ).filter(Boolean)
 
@@ -114,9 +120,18 @@ export async function GET(req: Request) {
     )
 
     // Process Vimeo videos and add import status
-    const processedVideos = vimeoResponse.data.map(video => {
+    const processedVideos = vimeoResponse.data.map((video: any) => {
       const vimeoId = video.uri.replace('/videos/', '')
       const existing = existingVideoMap.get(vimeoId)
+      
+      // Get the best thumbnail
+      let thumbnailUrl = ''
+      if (video.pictures?.sizes && video.pictures.sizes.length > 0) {
+        // Find a good medium size thumbnail (around 640px width)
+        const thumbnail = video.pictures.sizes.find((size: any) => size.width >= 640) ||
+                         video.pictures.sizes[video.pictures.sizes.length - 1]
+        thumbnailUrl = thumbnail.link
+      }
       
       return {
         vimeoId,
@@ -129,7 +144,10 @@ export async function GET(req: Request) {
         status: video.status,
         created_time: video.created_time,
         modified_time: video.modified_time,
-        pictures: video.pictures,
+        pictures: {
+          ...video.pictures,
+          thumbnail_url: thumbnailUrl
+        },
         link: video.link,
         player_embed_url: video.player_embed_url,
         // Import status fields

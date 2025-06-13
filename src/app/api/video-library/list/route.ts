@@ -24,10 +24,10 @@ export async function POST(req: Request) {
       video_category_id,
       video_subcategory_id,
       video_series_id,
-      tags,
+      tags: _tags,
       admin_selected,
       library_status,
-      searchQuery,
+      searchQuery: _searchQuery,
       page = 1,
       limit = 20
     } = params
@@ -36,9 +36,9 @@ export async function POST(req: Request) {
     const offset = (page - 1) * limit
     
     // Track IDs from filtering for counting
-    let matchingTranscriptIds: string[] | undefined
-    let matchingTagIds: string[] | undefined
-    let visibleVideoIds: string[] = []
+    let _matchingTranscriptIds: string[] | undefined
+    let _matchingTagIds: string[] | undefined
+    let _visibleVideoIds: string[] = []
 
     // Get the authenticated user
     const supabase = await createClient()
@@ -162,8 +162,33 @@ export async function POST(req: Request) {
       )
     }
     
-    // Process the data to have a cleaner structure
-    const processedData = data.map(video => {
+    // Get chunks count and tags for each video
+    const processedData = await Promise.all(data.map(async (video) => {
+      // Get chunks count
+      const { count: chunksCount } = await supabase
+        .from('video_chunks')
+        .select('*', { count: 'exact', head: true })
+        .eq('video_file_id', video.id)
+
+      // Get tags
+      const { data: tagData } = await supabase
+        .from('video_tag_assignments')
+        .select(`
+          video_tags (name)
+        `)
+        .eq('video_file_id', video.id)
+
+      const tags = tagData?.map(item => item.video_tags?.name).filter(Boolean) || []
+
+      // Get permissions
+      const { data: visibilityData } = await supabase
+        .from('video_visibility')
+        .select('conditions')
+        .eq('video_file_id', video.id)
+        .single()
+
+      const permissions = visibilityData?.conditions || { roleTypes: [], teams: [], areas: [], regions: [] }
+
       // Use summary if available, otherwise generate preview from description
       let summary = video.summary || null;
       let contentPreview: string | null = null;
@@ -187,7 +212,7 @@ export async function POST(req: Request) {
         series: video.video_series,
         summary,
         contentPreview,
-        tags: [], // Will be populated later when we fix the tags query
+        tags,
         adminSelected: video.admin_selected,
         libraryStatus: video.library_status,
         transcriptStatus: video.transcript_status,
@@ -195,9 +220,10 @@ export async function POST(req: Request) {
         summaryStatus: video.summary_status,
         createdAt: video.created_at,
         updatedAt: video.updated_at,
-        chunksCount: 0 // Will be populated later when we fix the chunks query
+        chunksCount: chunksCount || 0,
+        permissions
       }
-    })
+    }))
     
     return NextResponse.json({
       success: true,

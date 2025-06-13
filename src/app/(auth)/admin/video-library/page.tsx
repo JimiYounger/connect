@@ -1,7 +1,7 @@
 'use client'
 
-import { Suspense, useMemo } from 'react'
-import { VideoLibraryViewer } from '@/features/videoLibrary/viewer/VideoLibraryViewer'
+import { Suspense } from 'react'
+import { AdminVideoLibrary } from '@/features/videoLibrary/components/AdminVideoLibrary'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -10,20 +10,15 @@ const queryClient = new QueryClient()
 
 // Main component to load and display videos with data
 function VideoLibraryContent() {
-  // Create a reference object we can pass to VideoLibraryViewer to enable refetching
-  const refetchRef = useMemo(() => ({ 
-    refetch: () => {} // This will be set by the VideoLibraryViewer component
-  }), [])
-
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Video Library Administration</h1>
-        <p className="text-gray-600 mt-2">Manage and curate video content from your Vimeo library</p>
+        <p className="text-gray-600 mt-2">Manage and curate video content from your Vimeo library with AI-powered organization</p>
       </div>
       
       <Suspense fallback={<VideoLibrarySkeleton />}>
-        <VideoLibraryViewer refetchRef={refetchRef} />
+        <AdminVideoLibrary />
       </Suspense>
     </div>
   );

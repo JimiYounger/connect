@@ -1,5 +1,3 @@
-// my-app/src/app/api/video-library/tags/route.ts
-
 import { createClient } from '@/lib/supabase-server'
 import { NextResponse } from 'next/server'
 
@@ -17,42 +15,47 @@ export async function GET() {
       )
     }
 
-    // Fetch tags with count of videos
-    const { data: tags, error } = await supabase
-      .from('video_tags')
+    // Fetch subcategories with their parent categories
+    const { data: subcategories, error } = await supabase
+      .from('video_subcategories')
       .select(`
         id,
         name,
         description,
+        video_category_id,
         created_at,
-        video_tag_assignments (count)
+        video_categories (
+          id,
+          name
+        )
       `)
       .order('name')
 
     if (error) {
-      console.error('Error fetching video tags:', error)
+      console.error('Error fetching video subcategories:', error)
       return NextResponse.json(
-        { success: false, error: `Failed to fetch tags: ${error.message}` },
+        { success: false, error: `Failed to fetch subcategories: ${error.message}` },
         { status: 500 }
       )
     }
 
-    // Process the data to include counts
-    const processedTags = tags.map(tag => ({
-      id: tag.id,
-      name: tag.name,
-      description: tag.description,
-      created_at: tag.created_at,
-      video_count: Array.isArray(tag.video_tag_assignments) ? tag.video_tag_assignments.length : 0
+    // Process the data to flatten the structure
+    const processedSubcategories = subcategories.map(subcategory => ({
+      id: subcategory.id,
+      name: subcategory.name,
+      description: subcategory.description,
+      category_id: subcategory.video_category_id,
+      category: subcategory.video_categories,
+      created_at: subcategory.created_at
     }))
 
     return NextResponse.json({
       success: true,
-      data: processedTags
+      data: processedSubcategories
     })
 
   } catch (error) {
-    console.error('Error in video tags API:', error)
+    console.error('Error in video subcategories API:', error)
     return NextResponse.json(
       { 
         success: false, 
@@ -91,40 +94,68 @@ export async function POST(req: Request) {
       )
     }
 
-    const { name, description } = await req.json()
+    const { name, description, category_id } = await req.json()
 
     if (!name || typeof name !== 'string' || name.trim() === '') {
       return NextResponse.json(
-        { success: false, error: 'Tag name is required' },
+        { success: false, error: 'Subcategory name is required' },
         { status: 400 }
       )
     }
 
-    // Create the tag
-    const { data: newTag, error } = await supabase
-      .from('video_tags')
+    if (!category_id) {
+      return NextResponse.json(
+        { success: false, error: 'Category ID is required' },
+        { status: 400 }
+      )
+    }
+
+    // Create the subcategory
+    const { data: newSubcategory, error } = await supabase
+      .from('video_subcategories')
       .insert({
         name: name.trim(),
-        description: description?.trim() || null
+        description: description?.trim() || null,
+        video_category_id: category_id
       })
-      .select()
+      .select(`
+        id,
+        name,
+        description,
+        video_category_id,
+        created_at,
+        video_categories (
+          id,
+          name
+        )
+      `)
       .single()
 
     if (error) {
-      console.error('Error creating video tag:', error)
+      console.error('Error creating video subcategory:', error)
       return NextResponse.json(
-        { success: false, error: `Failed to create tag: ${error.message}` },
+        { success: false, error: `Failed to create subcategory: ${error.message}` },
         { status: 500 }
       )
     }
 
+    // Process the response to match expected format
+    const processedSubcategory = {
+      id: newSubcategory.id,
+      name: newSubcategory.name,
+      description: newSubcategory.description,
+      category_id: newSubcategory.video_category_id,
+      category: newSubcategory.video_categories,
+      created_at: newSubcategory.created_at
+    }
+
     return NextResponse.json({
       success: true,
-      data: newTag
+      data: processedSubcategory
     })
 
   } catch (error) {
-    console.error('Error in video tag creation API:', error)
+    console.error('Error in video subcategory creation API:', error)
     return NextResponse.json(
       { 
         success: false, 

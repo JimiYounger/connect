@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Card, CardContent } from '@/components/ui/card'
@@ -208,9 +209,11 @@ export function VimeoImportModal({ isOpen, onClose, onImportSuccess }: VimeoImpo
                   <Card key={video.vimeoId} className="overflow-hidden">
                     <div className="relative">
                       {getThumbnailUrl(video) ? (
-                        <img
-                          src={getThumbnailUrl(video)!}
+                        <Image
+                          src={getThumbnailUrl(video) || ''}
                           alt={video.name}
+                          width={400}
+                          height={128}
                           className="w-full h-32 object-cover"
                         />
                       ) : (

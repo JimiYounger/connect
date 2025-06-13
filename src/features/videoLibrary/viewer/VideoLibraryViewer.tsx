@@ -2,8 +2,9 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { 
   Play,
@@ -14,7 +15,6 @@ import {
   CheckCircle,
   AlertCircle,
   XCircle,
-  Eye,
   Download,
   ExternalLink
 } from 'lucide-react'
@@ -145,7 +145,7 @@ export function VideoLibraryViewer({ refetchRef }: VideoLibraryViewerProps) {
     if (searchMode === 'semantic' && searchQuery.trim()) {
       performSemanticSearch()
     }
-  }, [searchMode, performSemanticSearch])
+  }, [searchMode, searchQuery, performSemanticSearch])
 
   // Process video (trigger transcript extraction, etc.)
   const processVideo = async (videoId: string) => {
@@ -172,6 +172,7 @@ export function VideoLibraryViewer({ refetchRef }: VideoLibraryViewerProps) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
+      case 'complete':
         return { icon: CheckCircle, className: 'bg-green-100 text-green-800', text: 'Completed' }
       case 'processing':
         return { icon: Clock, className: 'bg-yellow-100 text-yellow-800', text: 'Processing' }
@@ -265,9 +266,11 @@ export function VideoLibraryViewer({ refetchRef }: VideoLibraryViewerProps) {
               Test AI Search
             </Link>
           </Button>
-          <Button onClick={() => setShowImportModal(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Import from Vimeo
+          <Button asChild>
+            <Link href="/admin/video-library/import">
+              <Plus className="h-4 w-4 mr-2" />
+              Import from Vimeo
+            </Link>
           </Button>
         </div>
       </div>
@@ -318,9 +321,11 @@ export function VideoLibraryViewer({ refetchRef }: VideoLibraryViewerProps) {
               <Card key={video.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                 <CardHeader className="p-0">
                   {video.vimeoThumbnailUrl ? (
-                    <img
+                    <Image
                       src={video.vimeoThumbnailUrl}
                       alt={video.title}
+                      width={400}
+                      height={192}
                       className="w-full h-48 object-cover"
                     />
                   ) : (
@@ -350,7 +355,7 @@ export function VideoLibraryViewer({ refetchRef }: VideoLibraryViewerProps) {
                         {item.highlight && (
                           <div className="p-2 bg-gray-50 rounded-md">
                             <p className="text-xs text-gray-600 font-medium mb-1">Best Match:</p>
-                            <p className="text-sm text-gray-700 italic">"{item.highlight}"</p>
+                            <p className="text-sm text-gray-700 italic">&quot;{item.highlight}&quot;</p>
                           </div>
                         )}
                         {item.matching_chunks && item.matching_chunks.length > 0 && (

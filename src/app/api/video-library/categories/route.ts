@@ -62,7 +62,8 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      data: processedCategories
+      data: processedCategories,
+      categories: processedCategories // Also include as 'categories' for backward compatibility
     })
 
   } catch (error) {

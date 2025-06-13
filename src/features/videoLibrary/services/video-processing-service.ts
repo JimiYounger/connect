@@ -289,6 +289,40 @@ function parseXMLTranscript(content: string): string {
 }
 
 /**
+ * Generate description for video content using OpenAI
+ */
+async function generateVideoDescription(title: string, description: string, transcriptText: string): Promise<string> {
+  try {
+    const content = `
+Title: ${title}
+Description: ${description || 'No description available'}
+Transcript: ${transcriptText.substring(0, 3000)}${transcriptText.length > 3000 ? '...' : ''}
+`;
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a helpful assistant that creates brief, engaging descriptions of video content. Write 1-3 sentences that clearly explain what the video is about.'
+        },
+        {
+          role: 'user',
+          content: `Please create a brief description (1-3 sentences) explaining what this video is about:\n\n${content}`
+        }
+      ],
+      max_tokens: 150,
+      temperature: 0.3
+    });
+
+    return response.choices[0]?.message?.content || 'Description could not be generated';
+  } catch (error) {
+    console.error('Error generating video description:', error);
+    throw error;
+  }
+}
+
+/**
  * Generate summary for video content using OpenAI
  */
 async function generateVideoSummary(title: string, description: string, transcriptText: string): Promise<string> {
@@ -375,17 +409,17 @@ export async function processVideoFile(
     // Extract details from the fetched file
     title = videoFile.title;
     description = videoFile.description;
-    vimeoId = videoFile.vimeo_id;
-    vimeoDuration = videoFile.vimeo_duration;
+    vimeoId = videoFile.vimeo_id || null;
+    vimeoDuration = videoFile.vimeo_duration || null;
     console.log(`🔍 Successfully retrieved video file: ${videoFile.id}, title: ${title}`)
   } else {
     // New object parameter with all details
     const { video_file_id, title: fileTitle, description: fileDesc, vimeo_id, vimeo_duration } = videoDetailsOrId;
     videoFileId = video_file_id;
     title = fileTitle;
-    description = fileDesc;
-    vimeoId = vimeo_id;
-    vimeoDuration = vimeo_duration;
+    description = fileDesc || null;
+    vimeoId = vimeo_id || null;
+    vimeoDuration = vimeo_duration || null;
     
     console.log(`[processVideoFile] Starting to process video_file_id: ${videoFileId}, title: ${title}`)
     
@@ -438,7 +472,7 @@ export async function processVideoFile(
     }
 
     // Create the transcript record
-    const transcriptId = uuidv4()
+    let transcriptId = uuidv4()
     console.log(`Inserting transcript with ID: ${transcriptId} for video_file_id: ${videoFileId}`)
     const { error: transcriptError } = await supabase
       .from('video_transcripts')
@@ -453,9 +487,31 @@ export async function processVideoFile(
       })
 
     if (transcriptError) {
-      console.error('Error creating transcript:', transcriptError)
-      await updateStatusToFailed(supabase, videoFileId, 'transcript')
-      return { success: false, error: 'Failed to save transcript' }
+      // If it's a duplicate constraint error, the transcript already exists - that's ok
+      if (transcriptError.code === '23505' && transcriptError.message.includes('video_file_id_language_key')) {
+        console.log(`Transcript already exists for video ${videoFileId}, continuing with existing transcript`)
+        
+        // Get the existing transcript ID
+        const { data: existingTranscript } = await supabase
+          .from('video_transcripts')
+          .select('id')
+          .eq('video_file_id', videoFileId)
+          .eq('language', 'en')
+          .single()
+        
+        if (existingTranscript) {
+          transcriptId = existingTranscript.id
+          console.log(`Using existing transcript ID: ${transcriptId}`)
+        } else {
+          console.error('Error creating transcript:', transcriptError)
+          await updateStatusToFailed(supabase, videoFileId, 'transcript')
+          return { success: false, error: 'Failed to save transcript' }
+        }
+      } else {
+        console.error('Error creating transcript:', transcriptError)
+        await updateStatusToFailed(supabase, videoFileId, 'transcript')
+        return { success: false, error: 'Failed to save transcript' }
+      }
     }
 
     // Generate chunks from the transcript
@@ -469,16 +525,53 @@ export async function processVideoFile(
       video_transcript_id: transcriptId
     }))
 
-    // Insert the chunks into the database
-    console.log(`Inserting ${chunks.length} chunks into video_chunks table`)
-    const { error: chunksError } = await supabase
+    // Check if chunks already exist for this video
+    const { data: existingChunks } = await supabase
       .from('video_chunks')
-      .insert(chunksWithTranscriptId)
+      .select('id')
+      .eq('video_file_id', videoFileId)
+      .limit(1)
 
-    if (chunksError) {
-      console.error('Error creating chunks:', chunksError)
-      await updateStatusToFailed(supabase, videoFileId, 'transcript')
-      return { success: false, error: 'Failed to save video chunks' }
+    if (existingChunks && existingChunks.length > 0) {
+      console.log(`Chunks already exist for video ${videoFileId}, skipping chunk creation`)
+    } else {
+      // Insert the chunks into the database
+      console.log(`Inserting ${chunks.length} chunks into video_chunks table`)
+      const { error: chunksError } = await supabase
+        .from('video_chunks')
+        .insert(chunksWithTranscriptId)
+
+      if (chunksError) {
+        console.error('Error creating chunks:', chunksError)
+        await updateStatusToFailed(supabase, videoFileId, 'transcript')
+        return { success: false, error: 'Failed to save video chunks' }
+      }
+    }
+
+    // Generate description if we have sufficient content and no existing description
+    if (transcriptText.length > 100 && (!description || description.trim() === '')) {
+      try {
+        console.log(`Generating description for video: ${title}`)
+        
+        const generatedDescription = await generateVideoDescription(title || 'Untitled', description || '', transcriptText);
+        
+        const { error: descriptionError } = await supabase
+          .from('video_files')
+          .update({ 
+            description: generatedDescription
+          })
+          .eq('id', videoFileId)
+
+        if (descriptionError) {
+          console.error('Error saving generated description:', descriptionError)
+        } else {
+          console.log('Successfully generated and saved video description')
+          // Update the local description variable for use in summary generation
+          description = generatedDescription
+        }
+      } catch (descriptionError) {
+        console.error('Error generating description:', descriptionError)
+      }
     }
 
     // Update the transcript status to 'completed'
@@ -499,7 +592,7 @@ export async function processVideoFile(
     if (transcriptText.length > 100) {
       try {
         console.log(`Generating summary for video: ${title}`)
-        const { error: summaryStatusError } = await supabase
+        const { error: _summaryStatusError } = await supabase
           .from('video_files')
           .update({ summary_status: 'processing' })
           .eq('id', videoFileId)

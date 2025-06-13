@@ -143,7 +143,7 @@ export function VideoPlayerModal({
             {highlight && (
               <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
                 <p className="text-sm font-medium text-yellow-800 mb-1">Matched Content:</p>
-                <p className="text-sm text-yellow-700 italic">"{highlight}"</p>
+                <p className="text-sm text-yellow-700 italic">&quot;{highlight}&quot;</p>
               </div>
             )}
             

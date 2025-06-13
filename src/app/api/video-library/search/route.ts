@@ -305,7 +305,7 @@ export async function POST(req: Request) {
             }
 
             // Check role type
-            if (conditions.roleTypes && conditions.roleTypes.includes(userProfile.role_type)) {
+            if (conditions.roleTypes && userProfile.role_type && conditions.roleTypes.includes(userProfile.role_type)) {
               hasAccess = true
               break
             }
