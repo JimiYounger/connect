@@ -37,6 +37,11 @@ const nextConfig: NextConfig = {
         hostname: 'lh3.google.com',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'mxrxeqzmlwpqahkhjzdw.supabase.co',
+        pathname: '/storage/v1/object/public/**',
+      },
     ],
   },
   // Removed HTTP to HTTPS redirect to prevent conflicts with hosting platform

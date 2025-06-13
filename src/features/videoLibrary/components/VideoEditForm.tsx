@@ -27,10 +27,12 @@ import {
   Plus,
   X,
   Clock,
-  Share2
+  Share2,
+  Sparkles
 } from 'lucide-react'
 import { RoleSelector } from '@/features/carousel/components/RoleSelector'
 import { ThumbnailUpload } from './ThumbnailUpload'
+import { getVideoThumbnailUrl } from '../utils/thumbnailUtils'
 import type { RoleAssignments } from '@/features/carousel/types'
 
 interface VideoData {
@@ -80,6 +82,7 @@ export function VideoEditForm({ videoId }: VideoEditFormProps) {
   const [existingTags, setExistingTags] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [generatingDescription, setGeneratingDescription] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
@@ -179,6 +182,41 @@ export function VideoEditForm({ videoId }: VideoEditFormProps) {
       console.error('Error fetching tags:', err)
     }
   }, [])
+
+  // Generate AI description
+  const generateDescription = useCallback(async () => {
+    if (!video?.id) return
+
+    try {
+      setGeneratingDescription(true)
+      setError(null)
+
+      const response = await fetch('/api/video-library/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videoFileId: video.id })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate description')
+      }
+
+      const result = await response.json()
+      if (result.success) {
+        // Refresh the video data to get the updated description
+        await fetchVideo()
+        setSuccess(true)
+        setTimeout(() => setSuccess(false), 3000)
+      } else {
+        throw new Error(result.error || 'Failed to generate description')
+      }
+    } catch (err) {
+      console.error('Error generating description:', err)
+      setError(err instanceof Error ? err.message : 'Failed to generate description')
+    } finally {
+      setGeneratingDescription(false)
+    }
+  }, [video?.id, fetchVideo])
 
   // Initial data fetch
   useEffect(() => {
@@ -381,7 +419,11 @@ export function VideoEditForm({ videoId }: VideoEditFormProps) {
             <div className="flex gap-6">
               <div className="relative">
                 <Image
-                  src={video.vimeoThumbnailUrl || ''}
+                  src={getVideoThumbnailUrl({
+                    thumbnailSource: video.thumbnailSource,
+                    customThumbnailUrl: video.customThumbnailUrl,
+                    vimeoThumbnailUrl: video.vimeoThumbnailUrl
+                  }) || ''}
                   alt={video.title}
                   width={256}
                   height={144}
@@ -460,12 +502,34 @@ export function VideoEditForm({ videoId }: VideoEditFormProps) {
               </div>
               
               <div>
-                <Label htmlFor="description">Description</Label>
+                <div className="flex items-center justify-between mb-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={generateDescription}
+                    disabled={generatingDescription || !video?.id}
+                    className="h-8"
+                  >
+                    {generatingDescription ? (
+                      <>
+                        <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-3 w-3 mr-2" />
+                        Generate Description
+                      </>
+                    )}
+                  </Button>
+                </div>
                 <Textarea
                   id="description"
                   value={formData.description}
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Enter video description..."
+                  placeholder="Enter video description or click 'Generate Description' to create one with AI..."
                   rows={4}
                 />
               </div>

@@ -28,6 +28,7 @@ import {
   Users,
   TrendingUp,
   Activity,
+  Play,
   PlayCircle,
   RefreshCw,
   Archive,
@@ -36,6 +37,7 @@ import {
   Info
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { getVideoThumbnailUrl, type ThumbnailSource } from '../utils/thumbnailUtils'
 
 interface VideoFile {
   id: string
@@ -46,6 +48,8 @@ interface VideoFile {
   vimeoUri?: string
   vimeoDuration?: number
   vimeoThumbnailUrl?: string
+  customThumbnailUrl?: string
+  thumbnailSource?: ThumbnailSource
   category?: { id: string; name: string }
   subcategory?: { id: string; name: string }
   series?: { id: string; name: string }
@@ -99,7 +103,7 @@ export function AdminVideoLibrary() {
   const [error, setError] = useState<string | null>(null)
   
   // Filters and search
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState('videos')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
@@ -109,6 +113,10 @@ export function AdminVideoLibrary() {
   // Modal states
   const [selectedVideo, setSelectedVideo] = useState<VideoFile | null>(null)
   const [showVideoModal, setShowVideoModal] = useState(false)
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false)
+  
+  // Grid view video playing state
+  const [playingVideos, setPlayingVideos] = useState<Set<string>>(new Set())
 
   // Fetch videos with filters
   const fetchVideos = useCallback(async () => {
@@ -199,6 +207,31 @@ export function AdminVideoLibrary() {
       return `${hours}h ${mins}m`
     }
     return `${mins}m`
+  }
+
+  // Handle modal close - reset video state
+  const handleModalClose = () => {
+    setShowVideoModal(false)
+    setIsVideoPlaying(false)
+    setSelectedVideo(null)
+  }
+
+  // Handle play video in modal
+  const handlePlayVideo = () => {
+    setIsVideoPlaying(true)
+  }
+
+  // Handle grid view video play/pause
+  const toggleGridVideoPlay = (videoId: string) => {
+    setPlayingVideos(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(videoId)) {
+        newSet.delete(videoId)
+      } else {
+        newSet.add(videoId)
+      }
+      return newSet
+    })
   }
 
   // Get status badge
@@ -330,7 +363,11 @@ export function AdminVideoLibrary() {
                 <div key={video.id} className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg cursor-pointer"
                      onClick={() => { setSelectedVideo(video); setShowVideoModal(true) }}>
                   <Image 
-                    src={video.vimeoThumbnailUrl || ''} 
+                    src={getVideoThumbnailUrl({
+                      thumbnailSource: video.thumbnailSource,
+                      customThumbnailUrl: video.customThumbnailUrl,
+                      vimeoThumbnailUrl: video.vimeoThumbnailUrl
+                    }) || ''} 
                     alt={video.title}
                     width={64}
                     height={48}
@@ -468,29 +505,82 @@ export function AdminVideoLibrary() {
         </div>
       ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {videos.map((video) => (
-            <Card key={video.id} className="overflow-hidden hover:shadow-lg transition-all cursor-pointer"
-                  onClick={() => { setSelectedVideo(video); setShowVideoModal(true) }}>
-              <CardHeader className="p-0">
-                <div className="relative">
-                  <Image
-                    src={video.vimeoThumbnailUrl || ''}
-                    alt={video.title}
-                    width={400}
-                    height={192}
-                    className="w-full h-48 object-cover"
-                  />
-                  <div className="absolute top-2 right-2">
-                    <Badge className={getStatusBadge(video.libraryStatus).className} variant="secondary">
-                      {getStatusBadge(video.libraryStatus).text}
-                    </Badge>
+          {videos.map((video) => {
+            const isPlaying = playingVideos.has(video.id)
+            
+            return (
+              <Card key={video.id} className="overflow-hidden hover:shadow-lg transition-all">
+                <CardHeader className="p-0">
+                  <div className="relative">
+                    {isPlaying && video.vimeoId ? (
+                      // Vimeo Player
+                      <div className="aspect-[4/3] w-full">
+                        <iframe
+                          src={`https://player.vimeo.com/video/${video.vimeoId}?autoplay=1&title=0&byline=0&portrait=0`}
+                          width="100%"
+                          height="100%"
+                          frameBorder="0"
+                          allow="autoplay; fullscreen; picture-in-picture"
+                          allowFullScreen
+                          className="w-full h-full"
+                        />
+                      </div>
+                    ) : (
+                      // Thumbnail with play overlay
+                      <div className="relative group">
+                        <Image
+                          src={getVideoThumbnailUrl({
+                            thumbnailSource: video.thumbnailSource,
+                            customThumbnailUrl: video.customThumbnailUrl,
+                            vimeoThumbnailUrl: video.vimeoThumbnailUrl
+                          }) || ''}
+                          alt={video.title}
+                          width={400}
+                          height={192}
+                          className="w-full h-48 object-cover cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (video.vimeoId) {
+                              toggleGridVideoPlay(video.id)
+                            }
+                          }}
+                        />
+                        {/* Play button overlay */}
+                        {video.vimeoId && (
+                          <div 
+                            className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              toggleGridVideoPlay(video.id)
+                            }}
+                          >
+                            <div className="bg-white bg-opacity-90 group-hover:bg-opacity-100 rounded-full p-3 transform group-hover:scale-110 transition-all shadow-lg">
+                              <Play className="h-6 w-6 text-gray-800 ml-0.5" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Status badge */}
+                    <div className="absolute top-2 right-2">
+                      <Badge className={getStatusBadge(video.libraryStatus).className} variant="secondary">
+                        {getStatusBadge(video.libraryStatus).text}
+                      </Badge>
+                    </div>
+                    
+                    {/* Duration badge - only show when not playing */}
+                    {!isPlaying && (
+                      <div className="absolute bottom-2 right-2 bg-black bg-opacity-75 text-white px-2 py-1 rounded text-xs">
+                        {formatDuration(video.vimeoDuration || 0)}
+                      </div>
+                    )}
                   </div>
-                  <div className="absolute bottom-2 right-2 bg-black bg-opacity-75 text-white px-2 py-1 rounded text-xs">
-                    {formatDuration(video.vimeoDuration || 0)}
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-4">
+                </CardHeader>
+              <CardContent 
+                className="p-4 cursor-pointer"
+                onClick={() => { setSelectedVideo(video); setShowVideoModal(true) }}
+              >
                 <h3 className="font-semibold text-sm line-clamp-2 mb-3">{video.title}</h3>
                 <div className="space-y-2">
                   {/* Category & Subcategory */}
@@ -612,7 +702,8 @@ export function AdminVideoLibrary() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+            )
+          })}
         </div>
       ) : (
         <div className="space-y-4">
@@ -622,7 +713,11 @@ export function AdminVideoLibrary() {
               <CardContent className="p-6">
                 <div className="flex items-center gap-4">
                   <Image
-                    src={video.vimeoThumbnailUrl || ''}
+                    src={getVideoThumbnailUrl({
+                      thumbnailSource: video.thumbnailSource,
+                      customThumbnailUrl: video.customThumbnailUrl,
+                      vimeoThumbnailUrl: video.vimeoThumbnailUrl
+                    }) || ''}
                     alt={video.title}
                     width={96}
                     height={64}
@@ -812,8 +907,8 @@ export function AdminVideoLibrary() {
 
   // Video detail modal
   const renderVideoModal = () => (
-    <Dialog open={showVideoModal} onOpenChange={setShowVideoModal}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+    <Dialog open={showVideoModal} onOpenChange={handleModalClose}>
+      <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] overflow-y-auto">
         {selectedVideo && (
           <>
             <DialogHeader>
@@ -838,18 +933,61 @@ export function AdminVideoLibrary() {
             
             <div className="space-y-6">
               {/* Video Preview */}
-              <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
-                <Image
-                  src={selectedVideo.vimeoThumbnailUrl || ''}
-                  alt={selectedVideo.title}
-                  width={800}
-                  height={450}
-                  className="w-full h-full object-cover"
-                />
+              <div className="relative">
+                <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden max-w-2xl mx-auto">
+                  {isVideoPlaying && selectedVideo.vimeoId ? (
+                    // Vimeo Player
+                    <iframe
+                      src={`https://player.vimeo.com/video/${selectedVideo.vimeoId}?autoplay=1&title=0&byline=0&portrait=0`}
+                      width="100%"
+                      height="100%"
+                      frameBorder="0"
+                      allow="autoplay; fullscreen; picture-in-picture"
+                      allowFullScreen
+                      className="w-full h-full"
+                    />
+                  ) : (
+                    // Thumbnail with play overlay
+                    <div className="relative group h-full">
+                      <Image
+                        src={getVideoThumbnailUrl({
+                          thumbnailSource: selectedVideo.thumbnailSource,
+                          customThumbnailUrl: selectedVideo.customThumbnailUrl,
+                          vimeoThumbnailUrl: selectedVideo.vimeoThumbnailUrl
+                        }) || ''}
+                        alt={selectedVideo.title}
+                        width={640}
+                        height={360}
+                        className="w-full h-full object-cover cursor-pointer transition-opacity group-hover:opacity-90"
+                        onClick={handlePlayVideo}
+                      />
+                      {/* Play button overlay */}
+                      {selectedVideo.vimeoId && (
+                        <div 
+                          className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all cursor-pointer"
+                          onClick={handlePlayVideo}
+                        >
+                          <div className="bg-white bg-opacity-90 group-hover:bg-opacity-100 rounded-full p-4 transform group-hover:scale-110 transition-all shadow-lg">
+                            <Play className="h-8 w-8 text-gray-800 ml-1" />
+                          </div>
+                        </div>
+                      )}
+                      {/* Duration badge */}
+                      {selectedVideo.vimeoDuration && !isVideoPlaying && (
+                        <div className="absolute bottom-2 right-2 bg-black bg-opacity-75 text-white px-2 py-1 rounded text-sm">
+                          {formatDuration(selectedVideo.vimeoDuration)}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {!isVideoPlaying && selectedVideo.vimeoId && (
+                  <p className="text-center text-sm text-gray-500 mt-2">Click to play video</p>
+                )}
               </div>
 
               {/* Video Info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div>
                     <h3 className="font-semibold mb-2">Description</h3>

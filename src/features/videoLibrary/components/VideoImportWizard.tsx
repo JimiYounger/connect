@@ -138,112 +138,7 @@ export function VideoImportWizard() {
   const [_processingVideoId, setProcessingVideoId] = useState<string | null>(null)
   const processedVideoRef = useRef<string | null>(null)
 
-  // Background processing functions (extracted from ProcessingStep)
-  const startBackgroundProcessing = useCallback(async (video: VimeoVideo) => {
-    if (!video) return
-    if (isProcessing) {
-      console.log('Processing already in progress, skipping duplicate request')
-      return
-    }
-    if (processedVideoRef.current === video.id) {
-      console.log('Video already processed, skipping duplicate request')
-      return
-    }
-
-    setIsProcessing(true)
-    processedVideoRef.current = video.id
-    updateFormData({
-      processingStatus: {
-        status: 'processing',
-        progress: 10,
-        currentStep: 'Getting your video ready for AI magic...',
-        transcript: false,
-        chunks: false,
-        embeddings: false,
-        descriptionGenerating: false
-      },
-      videoDetails: {
-        title: video.title,
-        description: video.description,
-        customThumbnailUrl: '',
-        thumbnailSource: 'vimeo'
-      }
-    })
-
-    try {
-      const response = await fetch('/api/video-library/import-process', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          vimeoId: video.id,
-          title: video.title,
-          description: video.description,
-          vimeoUri: video.uri,
-          vimeoDuration: video.duration,
-          vimeoThumbnailUrl: video.thumbnail_url
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error(`Processing failed: ${response.status}`)
-      }
-
-      const data = await response.json()
-      
-      if (data.success && data.videoFileId) {
-        setProcessingVideoId(data.videoFileId)
-        
-        if (data.alreadyProcessed) {
-          updateFormData({
-            processingStatus: {
-              status: 'completed',
-              progress: 100,
-              currentStep: 'Video already processed and ready to go! ✨',
-              transcript: true,
-              chunks: true,
-              embeddings: true,
-              descriptionGenerating: false
-            }
-          })
-          setIsProcessing(false)
-        } else {
-          updateFormData({
-            processingStatus: {
-              status: 'processing',
-              progress: 20,
-              currentStep: 'Video saved, extracting transcription...',
-              transcript: false,
-              chunks: false,
-              embeddings: false,
-              descriptionGenerating: false
-            }
-          })
-          
-          setTimeout(() => {
-            pollProcessingStatus(data.videoFileId)
-          }, 2000)
-        }
-      } else {
-        throw new Error(data.error || 'Processing failed')
-      }
-    } catch (error) {
-      console.error('Processing error:', error)
-      updateFormData({
-        processingStatus: {
-          status: 'failed',
-          progress: 0,
-          currentStep: 'Processing failed',
-          transcript: false,
-          chunks: false,
-          embeddings: false,
-          descriptionGenerating: false,
-          error: error instanceof Error ? error.message : 'Processing failed'
-        }
-      })
-      setIsProcessing(false)
-    }
-  }, [isProcessing, updateFormData])
-
+  // Declare pollProcessingStatus first to avoid hoisting issues
   const pollProcessingStatus = useCallback(async (videoFileId: string) => {
     let attempts = 0
     let consecutiveErrors = 0
@@ -405,6 +300,112 @@ export function VideoImportWizard() {
     
     poll()
   }, [formData.processingStatus, formData.videoDetails.description, formData.selectedVideo?.description, updateFormData, setIsProcessing])
+
+  // Background processing functions (extracted from ProcessingStep)
+  const startBackgroundProcessing = useCallback(async (video: VimeoVideo) => {
+    if (!video) return
+    if (isProcessing) {
+      console.log('Processing already in progress, skipping duplicate request')
+      return
+    }
+    if (processedVideoRef.current === video.id) {
+      console.log('Video already processed, skipping duplicate request')
+      return
+    }
+
+    setIsProcessing(true)
+    processedVideoRef.current = video.id
+    updateFormData({
+      processingStatus: {
+        status: 'processing',
+        progress: 10,
+        currentStep: 'Getting your video ready for AI magic...',
+        transcript: false,
+        chunks: false,
+        embeddings: false,
+        descriptionGenerating: false
+      },
+      videoDetails: {
+        title: video.title,
+        description: video.description,
+        customThumbnailUrl: '',
+        thumbnailSource: 'vimeo'
+      }
+    })
+
+    try {
+      const response = await fetch('/api/video-library/import-process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          vimeoId: video.id,
+          title: video.title,
+          description: video.description,
+          vimeoUri: video.uri,
+          vimeoDuration: video.duration,
+          vimeoThumbnailUrl: video.thumbnail_url
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Processing failed: ${response.status}`)
+      }
+
+      const data = await response.json()
+      
+      if (data.success && data.videoFileId) {
+        setProcessingVideoId(data.videoFileId)
+        
+        if (data.alreadyProcessed) {
+          updateFormData({
+            processingStatus: {
+              status: 'completed',
+              progress: 100,
+              currentStep: 'Video already processed and ready to go! ✨',
+              transcript: true,
+              chunks: true,
+              embeddings: true,
+              descriptionGenerating: false
+            }
+          })
+          setIsProcessing(false)
+        } else {
+          updateFormData({
+            processingStatus: {
+              status: 'processing',
+              progress: 20,
+              currentStep: 'Video saved, extracting transcription...',
+              transcript: false,
+              chunks: false,
+              embeddings: false,
+              descriptionGenerating: false
+            }
+          })
+          
+          setTimeout(() => {
+            pollProcessingStatus(data.videoFileId)
+          }, 2000)
+        }
+      } else {
+        throw new Error(data.error || 'Processing failed')
+      }
+    } catch (error) {
+      console.error('Processing error:', error)
+      updateFormData({
+        processingStatus: {
+          status: 'failed',
+          progress: 0,
+          currentStep: 'Processing failed',
+          transcript: false,
+          chunks: false,
+          embeddings: false,
+          descriptionGenerating: false,
+          error: error instanceof Error ? error.message : 'Processing failed'
+        }
+      })
+      setIsProcessing(false)
+    }
+  }, [isProcessing, updateFormData, pollProcessingStatus])
 
   // Auto-start processing when video is selected
   useEffect(() => {

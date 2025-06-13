@@ -21,6 +21,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { VimeoImportModal } from './VimeoImportModal'
+import { getVideoThumbnailUrl, type ThumbnailSource } from '../utils/thumbnailUtils'
 
 interface VideoFile {
   id: string
@@ -30,6 +31,8 @@ interface VideoFile {
   vimeoUri?: string
   vimeoDuration?: number
   vimeoThumbnailUrl?: string
+  customThumbnailUrl?: string
+  thumbnailSource?: ThumbnailSource
   category?: { id: string; name: string }
   subcategory?: { id: string; name: string }
   series?: { id: string; name: string }
@@ -304,6 +307,8 @@ export function VideoLibraryViewer({ refetchRef }: VideoLibraryViewerProps) {
               vimeoUri: item.vimeo_uri,
               vimeoDuration: item.vimeo_duration,
               vimeoThumbnailUrl: item.vimeo_thumbnail_url,
+              customThumbnailUrl: item.custom_thumbnail_url,
+              thumbnailSource: item.thumbnail_source,
               adminSelected: true,
               libraryStatus: 'completed',
               transcriptStatus: 'completed',
@@ -317,12 +322,18 @@ export function VideoLibraryViewer({ refetchRef }: VideoLibraryViewerProps) {
             const transcriptBadge = getStatusBadge(video.transcriptStatus)
             const embeddingBadge = getStatusBadge(video.embeddingStatus)
             
+            const thumbnailUrl = getVideoThumbnailUrl({
+              thumbnailSource: video.thumbnailSource,
+              customThumbnailUrl: video.customThumbnailUrl,
+              vimeoThumbnailUrl: video.vimeoThumbnailUrl
+            })
+            
             return (
               <Card key={video.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                 <CardHeader className="p-0">
-                  {video.vimeoThumbnailUrl ? (
+                  {thumbnailUrl ? (
                     <Image
-                      src={video.vimeoThumbnailUrl}
+                      src={thumbnailUrl}
                       alt={video.title}
                       width={400}
                       height={192}

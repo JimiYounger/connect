@@ -5,7 +5,6 @@ import type React from "react"
 import { useState } from "react"
 import { useAuth } from "../context/auth-context"
 import { Button } from "@/components/ui/button"
-import { ArrowRight } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 
 interface LoginButtonProps {

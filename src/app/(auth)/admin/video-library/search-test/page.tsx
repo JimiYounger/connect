@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Search, Play, Clock, Zap, ArrowLeft, SkipForward } from 'lucide-react'
 import Link from 'next/link'
 import { VideoPlayerModal } from '@/features/videoLibrary/components/VideoPlayerModal'
+import { getVideoThumbnailUrl } from '@/features/videoLibrary/utils/thumbnailUtils'
 
 interface SearchResult {
   id: string
@@ -17,6 +18,8 @@ interface SearchResult {
   vimeo_id?: string
   vimeo_duration?: number
   vimeo_thumbnail_url?: string
+  custom_thumbnail_url?: string
+  thumbnail_source?: 'vimeo' | 'upload' | 'url'
   similarity: number
   highlight: string
   matching_chunks: {
@@ -216,9 +219,17 @@ export default function VideoSearchTestPage() {
                 <div className="space-y-4">
                   {/* Video Header */}
                   <div className="flex gap-4">
-                    {result.vimeo_thumbnail_url ? (
+                    {getVideoThumbnailUrl({
+                      thumbnailSource: result.thumbnail_source,
+                      customThumbnailUrl: result.custom_thumbnail_url,
+                      vimeoThumbnailUrl: result.vimeo_thumbnail_url
+                    }) ? (
                       <Image
-                        src={result.vimeo_thumbnail_url}
+                        src={getVideoThumbnailUrl({
+                          thumbnailSource: result.thumbnail_source,
+                          customThumbnailUrl: result.custom_thumbnail_url,
+                          vimeoThumbnailUrl: result.vimeo_thumbnail_url
+                        }) || ''}
                         alt={result.title}
                         width={128}
                         height={80}

@@ -124,6 +124,10 @@ export function ThumbnailUpload({
           onValueChange={(value: 'vimeo' | 'upload' | 'url') => {
             if (value === 'vimeo') {
               onThumbnailChange('', 'vimeo')
+            } else if (value === 'upload') {
+              onThumbnailChange(currentThumbnailUrl || '', 'upload')
+            } else if (value === 'url') {
+              onThumbnailChange(currentThumbnailUrl || '', 'url')
             }
           }}
         >

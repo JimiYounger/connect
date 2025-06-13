@@ -206,6 +206,8 @@ export async function POST(req: Request) {
         vimeoUri: video.vimeo_uri,
         vimeoDuration: video.vimeo_duration,
         vimeoThumbnailUrl: video.vimeo_thumbnail_url,
+        customThumbnailUrl: video.custom_thumbnail_url,
+        thumbnailSource: video.thumbnail_source,
         vimeoMetadata: video.vimeo_metadata,
         category: video.video_categories,
         subcategory: video.video_subcategories,
