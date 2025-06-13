@@ -338,6 +338,9 @@ export function VideoLibraryViewer({ refetchRef }: VideoLibraryViewerProps) {
                       width={400}
                       height={192}
                       className="w-full h-48 object-cover"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                      quality={90}
+                      priority={false}
                     />
                   ) : (
                     <div className="w-full h-48 bg-gray-200 flex items-center justify-center">

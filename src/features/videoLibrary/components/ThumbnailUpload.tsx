@@ -159,6 +159,9 @@ export function ThumbnailUpload({
                 width={300}
                 height={200}
                 className="w-full max-w-xs h-auto rounded-lg border"
+                sizes="(max-width: 768px) 100vw, 300px"
+                quality={90}
+                priority={false}
                 onError={() => setError('Failed to load thumbnail')}
               />
               <div className="absolute top-2 right-2 bg-black bg-opacity-75 text-white px-2 py-1 rounded text-xs">
