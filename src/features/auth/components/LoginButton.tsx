@@ -6,7 +6,7 @@ import { useState } from "react"
 import { useAuth } from "../context/auth-context"
 import { Button } from "@/components/ui/button"
 import { ArrowRight } from "lucide-react"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 
 interface LoginButtonProps {
   className?: string
@@ -41,7 +41,11 @@ export function LoginButton({ className, children }: LoginButtonProps) {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <Button onClick={handleSignIn} className={`relative ${className}`} disabled={isLoading}>
+      <Button
+        onClick={handleSignIn}
+        className={`relative overflow-hidden group ${className}`}
+        disabled={isLoading}
+      >
         {isLoading ? (
           <span className="flex items-center">
             <motion.svg
@@ -60,22 +64,20 @@ export function LoginButton({ className, children }: LoginButtonProps) {
             Signing in...
           </span>
         ) : (
-          <motion.span
-            className="flex items-center gap-2"
-            animate={{ x: isHovered ? -5 : 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            {children || "Sign in with Google"}
-            <motion.div
-              animate={{
-                x: isHovered ? 5 : 0,
-                opacity: isHovered ? 1 : 0.7,
-              }}
-              transition={{ duration: 0.2 }}
-            >
-              <ArrowRight className="h-5 w-5" />
-            </motion.div>
-          </motion.span>
+          <div className="relative flex items-center justify-center w-32 h-6 overflow-hidden">
+            <AnimatePresence initial={false}>
+              <motion.span
+                key={isHovered ? "buckle" : "login"}
+                className="absolute"
+                initial={{ x: 20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: -20, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+              >
+                {isHovered ? "BUCKLE UP" : children}
+              </motion.span>
+            </AnimatePresence>
+          </div>
         )}
       </Button>
     </motion.div>
