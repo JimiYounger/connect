@@ -314,7 +314,11 @@ export const WidgetLibrary: React.FC<WidgetLibraryProps> = ({
         onWheel={handleWheel}
         ref={scrollContainerRef}
       >
-        <div className="overflow-x-auto overflow-y-hidden h-full" style={{ width: "100%" }}>
+        <div className="overflow-x-auto overflow-y-hidden h-full" style={{ 
+          width: "100%",
+          touchAction: 'pan-x',
+          WebkitOverflowScrolling: 'touch'
+        }}>
           {isLoading && widgets.length === 0 ? (
             <div className="flex items-center justify-center h-40">
               <div className="animate-pulse flex space-x-2">

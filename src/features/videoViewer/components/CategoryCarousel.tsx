@@ -67,14 +67,28 @@ export function CategoryCarousel({ category, onSubcategoryClick }: CategoryCarou
         {/* Scrollable Container */}
         <div
           ref={scrollRef}
-          className="flex gap-3 overflow-x-auto scroll-smooth"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          className="flex gap-3 overflow-x-auto overflow-y-hidden scroll-smooth"
+          style={{ 
+            scrollbarWidth: 'none', 
+            msOverflowStyle: 'none',
+            touchAction: 'pan-x',
+            WebkitOverflowScrolling: 'touch',
+            scrollBehavior: 'smooth',
+            overscrollBehaviorX: 'contain',
+            overscrollBehaviorY: 'none'
+          }}
         >
           {category.subcategories.map((subcategory) => (
             <div
               key={subcategory.id}
               onClick={() => onSubcategoryClick(subcategory)}
-              className="flex-none w-48 cursor-pointer group/card transform transition-transform duration-300 hover:scale-105"
+              className="flex-none w-48 cursor-pointer group/card transform transition-transform duration-300 hover:scale-105 select-none"
+              style={{ 
+                touchAction: 'manipulation',
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
+                WebkitTouchCallout: 'none'
+              }}
             >
               {/* Thumbnail Container - 2:3 aspect ratio like Netflix */}
               <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-gray-800 mb-2">
@@ -84,7 +98,9 @@ export function CategoryCarousel({ category, onSubcategoryClick }: CategoryCarou
                     alt={subcategory.name}
                     fill
                     className="object-cover"
-                    sizes="192px"
+                    sizes="(max-width: 768px) 384px, (max-width: 1024px) 512px, 768px"
+                    quality={95}
+                    priority={false}
                   />
                 ) : (
                   // Placeholder with custom color or gradient

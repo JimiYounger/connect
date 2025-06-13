@@ -506,7 +506,9 @@ export function BannerForm({ initialData, onSuccess, mode = 'create' }: BannerFo
                             alt={form.watch('vimeoVideoTitle') || 'Video thumbnail'}
                             fill
                             className="object-cover"
-                            sizes="(max-width: 768px) 100vw, 48vw"
+                            sizes="(max-width: 768px) 100vw, 192px"
+                            quality={90}
+                            priority={false}
                           />
                         </div>
                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">

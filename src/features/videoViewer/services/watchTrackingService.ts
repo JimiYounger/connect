@@ -75,12 +75,26 @@ export class WatchTrackingService {
         userAgent
       } = params
 
-      // Calculate progress metrics
-      const percentComplete = totalDuration > 0 ? (currentPosition / totalDuration) * 100 : 0
+      // Get existing watch record first
+      const existing = await this.getWatchProgress(videoFileId, userId)
+      
+      // Calculate maximum watched seconds (current vs previous)
+      const maxWatchedSeconds = Math.max(currentPosition, existing?.watchedSeconds || 0)
+      
+      // Calculate progress metrics based on MAXIMUM watched, not current position
+      const percentComplete = totalDuration > 0 ? (maxWatchedSeconds / totalDuration) * 100 : 0
       const isCompleted = percentComplete >= 90 // Consider 90% as completed
 
-      // Get existing watch record
-      const existing = await this.getWatchProgress(videoFileId, userId)
+      console.log('🔍 WatchTrackingService.updateWatchProgress called:', {
+        videoFileId,
+        userId,
+        currentPosition,
+        totalDuration,
+        maxWatchedSeconds,
+        percentComplete,
+        isCompleted,
+        existingWatchedSeconds: existing?.watchedSeconds
+      })
       
       // Merge new events with existing ones
       const existingEvents = (existing?.events as VideoWatchEvent[]) || []
@@ -89,7 +103,7 @@ export class WatchTrackingService {
       const updateData = {
         video_file_id: videoFileId,
         user_id: userId,
-        watched_seconds: Math.max(currentPosition, existing?.watchedSeconds || 0),
+        watched_seconds: maxWatchedSeconds,
         total_duration: totalDuration,
         percent_complete: percentComplete,
         last_position: currentPosition,

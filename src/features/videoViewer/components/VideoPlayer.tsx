@@ -42,6 +42,7 @@ export function VideoPlayer({
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const progressUpdateRef = useRef<NodeJS.Timeout | null>(null)
   const hasShownResumeRef = useRef<boolean>(false)
+  const hasUserInteractedRef = useRef<boolean>(false)
 
   // Progress tracking
   const {
@@ -90,6 +91,7 @@ export function VideoPlayer({
     if (!vimeoPlayerRef.current) return
     
     try {
+      hasUserInteractedRef.current = true
       await vimeoPlayerRef.current.play()
     } catch (err) {
       console.error('Error playing video:', err)
@@ -103,10 +105,21 @@ export function VideoPlayer({
 
     const initPlayer = async () => {
       try {
+        console.log('🔍 Initializing Vimeo player for video ID:', video.vimeoId)
+        
         // Dynamically import Vimeo player
         const { default: Player } = await import('@vimeo/player')
         
-        if (!playerRef.current) return
+        if (!playerRef.current) {
+          console.error('🔍 Player ref is null, cannot initialize')
+          return
+        }
+
+        console.log('🔍 Creating Vimeo player with config:', {
+          id: Number(video.vimeoId),
+          autoplay,
+          muted: isMuted
+        })
 
         const player = new Player(playerRef.current, {
           id: Number(video.vimeoId),
@@ -124,18 +137,22 @@ export function VideoPlayer({
         })
 
         vimeoPlayerRef.current = player
+        console.log('🔍 Vimeo player created successfully')
 
         // Set up event listeners
         player.on('loaded', async () => {
+          console.log('🔍 Vimeo player loaded successfully')
           setIsLoading(false)
           const videoDuration = await player.getDuration()
           setDuration(videoDuration)
+          console.log('🔍 Video duration set:', videoDuration)
           
           // Playback speed control disabled until proper configuration is added
           // Vimeo's getPlaybackRate() returns values even when speed control isn't available
           
           // Initial resume check will be handled by separate effect
           if (autoplay) {
+            console.log('🔍 Autoplay enabled, calling handlePlay')
             handlePlay()
           }
         })
@@ -188,7 +205,7 @@ export function VideoPlayer({
         })
 
         player.on('error', (error: any) => {
-          console.error('Vimeo player error:', error)
+          console.error('🔍 Vimeo player error:', error)
           setError('Failed to load video')
           setIsLoading(false)
         })
@@ -217,7 +234,7 @@ export function VideoPlayer({
         clearTimeout(progressUpdateRef.current)
       }
     }
-  }, [video.vimeoId, autoplay, isMuted, handlePlay, isPlaying, onComplete, onProgress, recordEvent, resetControlsTimeout, updateProgress])
+  }, [video.vimeoId])  // Only reinitialize if video changes
 
   // Handle iframe pointer events based on control visibility
   useEffect(() => {
@@ -229,14 +246,16 @@ export function VideoPlayer({
     }
   }, [showControls])
 
-  // Check for resume prompt when progress data becomes available
+  // Check for resume prompt when progress data becomes available (only on initial load)
   useEffect(() => {
     // Only check once progress has loaded and we haven't already shown the prompt for this session
-    if (!progressLoading && progress && !hasShownResumeRef.current) {
+    // AND the user hasn't interacted with the video yet
+    if (!progressLoading && progress && !hasShownResumeRef.current && !hasUserInteractedRef.current) {
       console.log('Progress loaded, checking resume:', { 
         shouldResume: shouldShowResume(), 
         progress: progress,
-        percentComplete: progress.percentComplete 
+        percentComplete: progress.percentComplete,
+        hasUserInteracted: hasUserInteractedRef.current
       })
       
       if (shouldShowResume()) {
@@ -252,6 +271,7 @@ export function VideoPlayer({
     if (!vimeoPlayerRef.current) return
     
     try {
+      hasUserInteractedRef.current = true
       await vimeoPlayerRef.current.pause()
     } catch (err) {
       console.error('Error pausing video:', err)
@@ -262,6 +282,7 @@ export function VideoPlayer({
     if (!vimeoPlayerRef.current) return
     
     try {
+      hasUserInteractedRef.current = true
       await vimeoPlayerRef.current.setCurrentTime(time)
       recordEvent('seek', time, { from: currentTime })
       setCurrentTime(time)
@@ -321,12 +342,15 @@ export function VideoPlayer({
 
   const handleResumeFromPosition = useCallback(() => {
     const resumePos = getResumePosition()
+
+    hasUserInteractedRef.current = true
     handleSeek(resumePos)
     setShowResumePrompt(false)
     handlePlay()
   }, [getResumePosition, handleSeek, handlePlay])
 
   const handleStartFromBeginning = useCallback(() => {
+    hasUserInteractedRef.current = true
     handleSeek(0)
     setShowResumePrompt(false)
     handlePlay()

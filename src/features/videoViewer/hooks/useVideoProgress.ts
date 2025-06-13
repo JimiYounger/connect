@@ -168,26 +168,56 @@ export function useVideoProgress(videoFileId: string, totalDuration?: number, pr
    * Get resume position (where to start playing)
    */
   const getResumePosition = useCallback((): number => {
-    if (!progress) return 0
+    console.log('🔍 getResumePosition called:', {
+      progress,
+      hasProgress: !!progress,
+      completed: progress?.completed,
+      percentComplete: progress?.percentComplete,
+      lastPosition: progress?.lastPosition,
+      watchedSeconds: progress?.watchedSeconds
+    })
+    
+    if (!progress) {
+      console.log('🔍 No progress data, returning 0')
+      return 0
+    }
     
     // If already completed, start from beginning
-    if (progress.completed) return 0
+    if (progress.completed) {
+      console.log('🔍 Video already completed, returning 0')
+      return 0
+    }
     
-    // If less than 5% watched, start from beginning
-    if (progress.percentComplete < 5) return 0
+    // If less than 2% watched, start from beginning
+    if (progress.percentComplete < 2) {
+      console.log('🔍 Less than 2% watched, returning 0')
+      return 0
+    }
     
     // If more than 90% watched, start from beginning
-    if (progress.percentComplete > 90) return 0
+    if (progress.percentComplete > 90) {
+      console.log('🔍 More than 90% watched, returning 0')
+      return 0
+    }
     
-    return progress.lastPosition
+    // Use watched_seconds if last_position is 0 (common when videos pause/restart)
+    const resumePosition = progress.lastPosition > 0 ? progress.lastPosition : progress.watchedSeconds
+    console.log('🔍 Returning resume position:', {
+      lastPosition: progress.lastPosition,
+      watchedSeconds: progress.watchedSeconds,
+      chosen: resumePosition
+    })
+    return resumePosition
   }, [progress])
 
   /**
    * Check if video should show resume prompt
    */
   const shouldShowResume = useCallback((): boolean => {
+    
+    
     if (!progress) return false
-    return progress.percentComplete > 5 && progress.percentComplete < 90
+    return progress.percentComplete > 2 && progress.percentComplete < 90  // Lowered from 5% to 2%
   }, [progress])
 
   /**

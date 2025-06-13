@@ -35,6 +35,29 @@ export function SubcategoryModal({ subcategory, isOpen, onClose, userPermissions
   const [error, setError] = useState<string | null>(null)
   const [watchProgress, setWatchProgress] = useState<Map<string, VideoWatchProgress>>(new Map())
 
+  // Animation states
+  const [isAnimating, setIsAnimating] = useState(false)
+  const [shouldRender, setShouldRender] = useState(false)
+
+  // Handle modal animation
+  useEffect(() => {
+    if (isOpen) {
+      setShouldRender(true)
+      // Small delay to ensure the modal is rendered before animating
+      setTimeout(() => setIsAnimating(true), 10)
+    } else {
+      setIsAnimating(false)
+      // Delay unmounting until animation completes
+      setTimeout(() => setShouldRender(false), 300)
+    }
+  }, [isOpen])
+
+  // Handle close with animation
+  const handleClose = () => {
+    setIsAnimating(false)
+    setTimeout(() => onClose(), 300)
+  }
+
   // Load videos for this subcategory
   useEffect(() => {
     const loadVideos = async () => {
@@ -87,12 +110,16 @@ export function SubcategoryModal({ subcategory, isOpen, onClose, userPermissions
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  if (!isOpen) return null
+  if (!shouldRender) return null
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end md:items-center justify-center">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-start justify-center">
       {/* Modal Container */}
-      <div className="bg-gray-900 w-full max-w-4xl max-h-[90vh] md:rounded-2xl overflow-hidden">
+      <div 
+        className={`bg-gray-900 w-full h-full overflow-hidden transition-transform duration-300 ease-out ${
+          isAnimating ? 'translate-y-0' : 'translate-y-full'
+        }`}
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-700">
           <div>
@@ -107,7 +134,7 @@ export function SubcategoryModal({ subcategory, isOpen, onClose, userPermissions
             </p>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="w-10 h-10 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition-colors"
           >
             <X className="w-5 h-5 text-white" />
@@ -115,7 +142,7 @@ export function SubcategoryModal({ subcategory, isOpen, onClose, userPermissions
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+        <div className="p-6 overflow-y-auto h-[calc(100vh-120px)]">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
@@ -135,28 +162,30 @@ export function SubcategoryModal({ subcategory, isOpen, onClose, userPermissions
                   <div
                     key={video.id}
                     onClick={() => handleVideoClick(video)}
-                    className="flex gap-4 p-4 rounded-xl bg-gray-800 hover:bg-gray-750 cursor-pointer transition-colors group"
+                    className="flex gap-3 md:gap-4 p-3 md:p-4 rounded-xl bg-gray-800 hover:bg-gray-750 cursor-pointer transition-colors group"
                   >
                   {/* Video Thumbnail */}
-                  <div className="relative flex-none w-32 md:w-40 aspect-video rounded-lg overflow-hidden bg-gray-700">
+                  <div className="relative flex-none w-24 sm:w-32 md:w-40 aspect-video rounded-lg overflow-hidden bg-gray-700">
                     {video.vimeoThumbnailUrl ? (
                       <Image
                         src={video.vimeoThumbnailUrl}
                         alt={video.title}
                         fill
                         className="object-cover"
-                        sizes="(max-width: 768px) 128px, 160px"
+                        sizes="(max-width: 640px) 96px, (max-width: 768px) 128px, 160px"
+                        quality={90}
+                        priority={false}
                       />
                     ) : (
                       <div className="w-full h-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
-                        <Play className="w-8 h-8 text-white opacity-80" />
+                        <Play className="w-6 md:w-8 h-6 md:h-8 text-white opacity-80" />
                       </div>
                     )}
                     
                     {/* Play Overlay */}
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
-                        <Play className="w-5 h-5 text-white ml-0.5" />
+                      <div className="w-8 md:w-10 h-8 md:h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+                        <Play className="w-4 md:w-5 h-4 md:h-5 text-white ml-0.5" />
                       </div>
                     </div>
 
@@ -172,14 +201,14 @@ export function SubcategoryModal({ subcategory, isOpen, onClose, userPermissions
 
                     {/* Completion Badge */}
                     {isCompleted && (
-                      <div className="absolute top-2 left-2 bg-green-600 rounded-full p-1">
-                        <CheckCircle className="w-3 h-3 text-white" />
+                      <div className="absolute top-1 md:top-2 left-1 md:left-2 bg-green-600 rounded-full p-0.5 md:p-1">
+                        <CheckCircle className="w-2.5 md:w-3 h-2.5 md:h-3 text-white" />
                       </div>
                     )}
 
                     {/* Duration Badge */}
                     {video.vimeoDuration && (
-                      <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1">
+                      <div className="absolute bottom-1 md:bottom-2 right-1 md:right-2 bg-black/60 backdrop-blur-sm rounded px-1.5 md:px-2 py-0.5 md:py-1">
                         <span className="text-white text-xs font-medium">
                           {formatDuration(video.vimeoDuration)}
                         </span>
@@ -189,18 +218,33 @@ export function SubcategoryModal({ subcategory, isOpen, onClose, userPermissions
 
                   {/* Video Info */}
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-white font-semibold text-lg leading-tight mb-2 line-clamp-2">
+                    <h3 className="text-white font-semibold text-base md:text-lg leading-tight mb-1 md:mb-2 line-clamp-2">
                       {video.title}
                     </h3>
                     
+                    {/* Progress Status - Mobile First */}
+                    <div className="mb-2 md:mb-3">
+                      {isCompleted ? (
+                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-green-600/20 rounded-full text-green-400 text-xs font-medium">
+                          <CheckCircle className="w-3 h-3" />
+                          <span>Completed</span>
+                        </div>
+                      ) : percentComplete > 0 ? (
+                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-blue-600/20 rounded-full text-blue-400 text-xs font-medium">
+                          <Play className="w-3 h-3" />
+                          <span>{Math.round(percentComplete)}% watched</span>
+                        </div>
+                      ) : null}
+                    </div>
+                    
                     {video.description && (
-                      <p className="text-gray-400 text-sm leading-relaxed mb-3 line-clamp-3">
+                      <p className="text-gray-400 text-xs md:text-sm leading-relaxed mb-2 md:mb-3 line-clamp-2 md:line-clamp-3">
                         {video.description}
                       </p>
                     )}
 
-                    {/* Metadata */}
-                    <div className="flex items-center gap-4 text-xs text-gray-500">
+                    {/* Metadata - Mobile Friendly */}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
                       {video.vimeoDuration && (
                         <div className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />
@@ -211,19 +255,6 @@ export function SubcategoryModal({ subcategory, isOpen, onClose, userPermissions
                         <Calendar className="w-3 h-3" />
                         <span>{new Date(video.createdAt).toLocaleDateString()}</span>
                       </div>
-                      
-                      {/* Progress Status */}
-                      {isCompleted ? (
-                        <div className="flex items-center gap-1 text-green-400">
-                          <CheckCircle className="w-3 h-3" />
-                          <span>Completed</span>
-                        </div>
-                      ) : percentComplete > 0 ? (
-                        <div className="flex items-center gap-1 text-blue-400">
-                          <Play className="w-3 h-3" />
-                          <span>{Math.round(percentComplete)}% watched</span>
-                        </div>
-                      ) : null}
                     </div>
                   </div>
                 </div>
