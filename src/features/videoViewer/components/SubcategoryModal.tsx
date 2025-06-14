@@ -9,6 +9,7 @@ import type { UserPermissions } from '@/features/permissions/types'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/features/auth/context/auth-context'
 import { useProfile } from '@/features/users/hooks/useProfile'
+import { motion } from 'framer-motion'
 import Image from 'next/image'
 
 interface VideoSubcategory {
@@ -159,10 +160,12 @@ export function SubcategoryModal({ subcategory, isOpen, onClose, userPermissions
                 const percentComplete = progress?.percentComplete || 0
                 
                 return (
-                  <div
+                  <motion.div
                     key={video.id}
                     onClick={() => handleVideoClick(video)}
                     className="flex gap-3 md:gap-4 p-3 md:p-4 rounded-xl bg-gray-800 hover:bg-gray-750 cursor-pointer transition-colors group"
+                    whileTap={{ scale: 0.98 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
                   >
                   {/* Video Thumbnail */}
                   <div className="relative flex-none w-24 sm:w-32 md:w-40 aspect-video rounded-lg overflow-hidden bg-gray-700">
@@ -257,7 +260,7 @@ export function SubcategoryModal({ subcategory, isOpen, onClose, userPermissions
                       </div>
                     </div>
                   </div>
-                </div>
+                </motion.div>
                 )
               })}
             </div>

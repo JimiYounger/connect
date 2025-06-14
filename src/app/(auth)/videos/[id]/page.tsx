@@ -9,6 +9,7 @@ import { useVideoPermissions } from '@/features/videoViewer/hooks/useVideoPermis
 import { VideoPlayer } from '@/features/videoViewer/components/VideoPlayer'
 import { VideoPermissionGate } from '@/features/videoViewer/components/VideoPermissionGate'
 import { VideoLibraryService } from '@/features/videoViewer/services/videoLibraryService'
+import { motion } from 'framer-motion'
 import type { VideoForViewing } from '@/features/videoViewer/types'
 
 export default function VideoWatchPage() {
@@ -116,9 +117,25 @@ export default function VideoWatchPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black">
+    <motion.div 
+      className="min-h-screen bg-black"
+      initial={{ scale: 0.95, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      exit={{ scale: 0.95, opacity: 0 }}
+      transition={{ 
+        type: "spring", 
+        stiffness: 300, 
+        damping: 30,
+        duration: 0.4
+      }}
+    >
       {/* Mobile Header */}
-      <div className="sticky top-0 z-40 bg-black/90 backdrop-blur-sm">
+      <motion.div 
+        className="sticky top-0 z-40 bg-black/90 backdrop-blur-sm"
+        initial={{ y: -50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.1, duration: 0.3 }}
+      >
         <div className="flex items-center justify-between px-4 py-3">
           <button
             onClick={handleBack}
@@ -143,10 +160,15 @@ export default function VideoWatchPage() {
             </button>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Video Player Section */}
-      <div className="px-2 pb-4">
+      <motion.div 
+        className="px-2 pb-4"
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ delay: 0.2, duration: 0.4, type: "spring", stiffness: 300, damping: 30 }}
+      >
         <VideoPermissionGate
           video={video}
           profile={profile}
@@ -154,14 +176,14 @@ export default function VideoWatchPage() {
         >
           <VideoPlayer
             video={video}
-            autoplay={false}
+            autoplay={true}
             onComplete={() => console.log('Video completed!')}
             onProgress={(time) => console.log('Progress:', time)}
             hideVideoInfo={true}
             profile={profile}
           />
         </VideoPermissionGate>
-      </div>
+      </motion.div>
 
       {/* Video Information */}
       <div className="px-4 pb-8">
@@ -249,6 +271,6 @@ export default function VideoWatchPage() {
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   )
 }

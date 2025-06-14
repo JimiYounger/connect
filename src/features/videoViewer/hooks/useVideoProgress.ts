@@ -68,7 +68,7 @@ export function useVideoProgress(videoFileId: string, totalDuration?: number, pr
       return
     }
     
-    console.log('Updating video progress:', { userId, videoFileId, currentPosition, totalDuration })
+
 
     // Add events to pending queue
     pendingEventsRef.current.push(...events)
@@ -77,7 +77,7 @@ export function useVideoProgress(videoFileId: string, totalDuration?: number, pr
     const now = Date.now()
     const timeSinceLastSave = now - lastSaveRef.current
     
-    if (!force && timeSinceLastSave < 5000) { // Save at most every 5 seconds
+    if (!force && timeSinceLastSave < 3000) { // Save at most every 3 seconds
       // Clear existing timeout and set new one
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current)
@@ -85,7 +85,7 @@ export function useVideoProgress(videoFileId: string, totalDuration?: number, pr
       
       saveTimeoutRef.current = setTimeout(() => {
         updateProgress(currentPosition, [], true)
-      }, 5000 - timeSinceLastSave)
+      }, 3000 - timeSinceLastSave)
       
       return
     }
@@ -166,6 +166,7 @@ export function useVideoProgress(videoFileId: string, totalDuration?: number, pr
 
   /**
    * Get resume position (where to start playing)
+   * Always returns a valid position - user requirement is to always resume where left off
    */
   const getResumePosition = useCallback((): number => {
     console.log('🔍 getResumePosition called:', {
@@ -188,20 +189,19 @@ export function useVideoProgress(videoFileId: string, totalDuration?: number, pr
       return 0
     }
     
-    // If less than 2% watched, start from beginning
-    if (progress.percentComplete < 2) {
-      console.log('🔍 Less than 2% watched, returning 0')
-      return 0
-    }
-    
-    // If more than 90% watched, start from beginning
-    if (progress.percentComplete > 90) {
-      console.log('🔍 More than 90% watched, returning 0')
-      return 0
-    }
-    
-    // Use watched_seconds if last_position is 0 (common when videos pause/restart)
+    // For very little progress (less than 5 seconds), start from beginning
     const resumePosition = progress.lastPosition > 0 ? progress.lastPosition : progress.watchedSeconds
+    if (resumePosition < 5) {
+      console.log('🔍 Less than 5 seconds watched, returning 0')
+      return 0
+    }
+    
+    // If more than 95% watched, start from beginning 
+    if (progress.percentComplete > 95) {
+      console.log('🔍 More than 95% watched, returning 0')
+      return 0
+    }
+    
     console.log('🔍 Returning resume position:', {
       lastPosition: progress.lastPosition,
       watchedSeconds: progress.watchedSeconds,
@@ -221,15 +221,48 @@ export function useVideoProgress(videoFileId: string, totalDuration?: number, pr
   }, [progress])
 
   /**
-   * Cleanup on unmount
+   * Force save progress when component unmounts or user leaves page
+   */
+  const forceSaveProgress = useCallback(() => {
+    if (pendingEventsRef.current.length > 0 && userId && videoFileId && totalDuration) {
+      // Force save any pending progress
+      updateProgress(0, [], true) // Use 0 as placeholder, the actual position will be in events
+    }
+  }, [userId, videoFileId, totalDuration, updateProgress])
+
+  /**
+   * Cleanup on unmount and page navigation
    */
   useEffect(() => {
+    // Save progress when user navigates away
+    const handleBeforeUnload = () => {
+      forceSaveProgress()
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        forceSaveProgress()
+      }
+    }
+
+    // Add event listeners for page navigation
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
     return () => {
+      // Save progress before cleanup
+      forceSaveProgress()
+      
+      // Clear timeout
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current)
       }
+
+      // Remove event listeners
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [])
+  }, [forceSaveProgress])
 
   return {
     progress,
