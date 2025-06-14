@@ -85,16 +85,7 @@ export class WatchTrackingService {
       const percentComplete = totalDuration > 0 ? (maxWatchedSeconds / totalDuration) * 100 : 0
       const isCompleted = percentComplete >= 90 // Consider 90% as completed
 
-      console.log('🔍 WatchTrackingService.updateWatchProgress called:', {
-        videoFileId,
-        userId,
-        currentPosition,
-        totalDuration,
-        maxWatchedSeconds,
-        percentComplete,
-        isCompleted,
-        existingWatchedSeconds: existing?.watchedSeconds
-      })
+
       
       // Merge new events with existing ones
       const existingEvents = (existing?.events as VideoWatchEvent[]) || []

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { X, Search, Play, Clock } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import { motion } from 'framer-motion'
 import type { UserPermissions } from '@/features/permissions/types'
 
 interface SearchResult {
@@ -234,10 +235,12 @@ export function VideoSearchModal({ isOpen, onClose, userPermissions: _userPermis
                 <p className="text-gray-400 text-sm px-1">Found {results.length} videos</p>
                 
                 {results.map((result) => (
-                  <div
+                  <motion.div
                     key={result.id}
                     onClick={() => handleVideoClick(result)}
                     className="flex flex-col sm:flex-row gap-3 sm:gap-4 p-3 md:p-4 rounded-xl bg-gray-800 hover:bg-gray-750 active:bg-gray-700 cursor-pointer transition-colors group"
+                    whileTap={{ scale: 0.98 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
                   >
                     {/* Video Thumbnail */}
                     <div className="relative flex-none w-full sm:w-32 md:w-40 aspect-video rounded-lg overflow-hidden bg-gray-700">
@@ -295,7 +298,7 @@ export function VideoSearchModal({ isOpen, onClose, userPermissions: _userPermis
                         )}
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             )}
