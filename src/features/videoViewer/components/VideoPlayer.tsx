@@ -22,11 +22,14 @@ export function VideoPlayer({
   hideVideoInfo = false,
   profile
 }: VideoPlayerProps) {
+  // Detect mobile device
+  const isMobile = typeof window !== 'undefined' && /Mobi|Android/i.test(navigator.userAgent)
+  
   // Player state
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(video.vimeoDuration || 0)
-  const [isMuted, setIsMuted] = useState(false)
+  const [isMuted, setIsMuted] = useState(isMobile) // Start muted on mobile
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [showControls, setShowControls] = useState(true)
   const [isLoading, setIsLoading] = useState(true)
@@ -176,7 +179,7 @@ export function VideoPlayer({
           portrait: false,
           controls: false, // We'll use custom controls
           autopause: false,
-          autoplay: autoplay, // Use the autoplay prop
+          autoplay: isMobile ? false : autoplay, // Disable autoplay on mobile
           muted: isMuted,
           transparent: false,
           background: false
@@ -586,9 +589,9 @@ export function VideoPlayer({
             setCurrentTime(resumePos)
           }
           
-          // Then play if autoplay is enabled
-          if (autoplay) {
-            console.log('▶️ Auto-playing video')
+          // Then play if autoplay is enabled and not on mobile
+          if (autoplay && !isMobile) {
+            console.log('▶️ Auto-playing video (desktop)')
             hasUserInteractedRef.current = true
             await vimeoPlayerRef.current.play()
             // Start auto-hide timer after autoplay starts
@@ -597,6 +600,10 @@ export function VideoPlayer({
                 resetControlsTimeoutRef.current()
               }
             }, 1000)
+          } else if (isMobile) {
+            console.log('📱 Mobile device detected - autoplay disabled, user interaction required')
+            // On mobile, just show controls and wait for user interaction
+            setShowControls(true)
           }
         } catch (err) {
           console.error('Error auto-resuming video:', err)
