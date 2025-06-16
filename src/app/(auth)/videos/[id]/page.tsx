@@ -87,6 +87,7 @@ export default function VideoWatchPage() {
   }
 
   if (!session) {
+    console.log('Mobile debug - No session, showing auth required')
     return (
       <div className="min-h-screen bg-black flex items-center justify-center p-4">
         <div className="text-center">
@@ -98,6 +99,7 @@ export default function VideoWatchPage() {
   }
 
   if (permissionsLoading || loading) {
+    console.log('Mobile debug - Still loading:', { permissionsLoading, loading, videoId })
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
@@ -106,6 +108,7 @@ export default function VideoWatchPage() {
   }
 
   if (error || !video) {
+    console.log('Mobile debug - Error or no video:', { error, hasVideo: !!video, videoId })
     return (
       <div className="min-h-screen bg-black flex items-center justify-center p-4">
         <div className="text-center">
@@ -121,6 +124,13 @@ export default function VideoWatchPage() {
       </div>
     )
   }
+
+  console.log('Mobile debug - Rendering video page:', { 
+    videoId, 
+    videoTitle: video?.title, 
+    hasVideo: !!video,
+    hasProfile: !!profile 
+  })
 
   return (
     <motion.div 

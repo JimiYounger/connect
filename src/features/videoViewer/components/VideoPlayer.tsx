@@ -95,8 +95,16 @@ export function VideoPlayer({
           userAgent: navigator.userAgent
         })
 
-        // Import Vimeo player
-        const { default: Player } = await import('@vimeo/player')
+        // Import Vimeo player - use different syntax for mobile compatibility
+        let Player
+        try {
+          const vimeoModule = await import('@vimeo/player')
+          Player = vimeoModule.default || vimeoModule
+          console.log('Mobile debug - Vimeo player imported successfully')
+        } catch (importError) {
+          console.error('Mobile debug - Failed to import Vimeo player:', importError)
+          throw new Error('Failed to load video player')
+        }
         
         if (!playerRef.current) {
           throw new Error('Player container not found')
@@ -118,7 +126,15 @@ export function VideoPlayer({
         }
 
         console.log('Mobile debug - Player config:', playerConfig)
-        const player = new Player(playerRef.current, playerConfig)
+        
+        let player
+        try {
+          player = new Player(playerRef.current, playerConfig)
+          console.log('Mobile debug - Vimeo player created successfully')
+        } catch (playerError) {
+          console.error('Mobile debug - Failed to create Vimeo player:', playerError)
+          throw new Error(`Failed to create video player: ${playerError.message}`)
+        }
         
         vimeoPlayerRef.current = player
 
