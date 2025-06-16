@@ -75,26 +75,30 @@ export class WatchTrackingService {
         userAgent
       } = params
 
-      // Get existing watch record first
-      const existing = await this.getWatchProgress(videoFileId, userId)
+      // Skip expensive existing record fetch if we only have simple events
+      const simpleEventTypes = ['play', 'pause', 'seek']
+      const hasOnlySimpleEvents = events.every(e => simpleEventTypes.includes(e.type))
       
-      // Calculate maximum watched seconds (current vs previous)
-      const maxWatchedSeconds = Math.max(currentPosition, existing?.watchedSeconds || 0)
+      let existing = null
+      let watchedSeconds = currentPosition
       
-      // Calculate progress metrics based on MAXIMUM watched, not current position
-      const percentComplete = totalDuration > 0 ? (maxWatchedSeconds / totalDuration) * 100 : 0
-      const isCompleted = percentComplete >= 90 // Consider 90% as completed
+      // Only fetch existing record if we need to merge complex data
+      if (!hasOnlySimpleEvents || events.length === 0) {
+        existing = await this.getWatchProgress(videoFileId, userId)
+        watchedSeconds = existing ? Math.max(currentPosition, existing.watchedSeconds) : currentPosition
+      }
+      
+      const percentComplete = totalDuration > 0 ? (watchedSeconds / totalDuration) * 100 : 0
+      const isCompleted = percentComplete >= 90
 
-
-      
-      // Merge new events with existing ones
-      const existingEvents = (existing?.events as VideoWatchEvent[]) || []
-      const allEvents = [...existingEvents, ...events]
+      // Simplified event handling - only keep last 50 events for performance
+      const existingEvents = existing?.events || []
+      const allEvents = [...(existingEvents.slice(-40)), ...events].slice(-50)
 
       const updateData = {
         video_file_id: videoFileId,
         user_id: userId,
-        watched_seconds: maxWatchedSeconds,
+        watched_seconds: watchedSeconds,
         total_duration: totalDuration,
         percent_complete: percentComplete,
         last_position: currentPosition,

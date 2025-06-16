@@ -40,9 +40,9 @@ export function VideoPlayer({
   // Progress tracking
   const {
     progress,
-    updateProgress,
     recordEvent,
     getResumePosition,
+    saveProgress,
     isCompleted
   } = useVideoProgress(video.id, duration, profile)
 
@@ -65,19 +65,19 @@ export function VideoPlayer({
 
   // Create stable refs for event handlers to avoid dependency issues
   const currentTimeRef = useRef(currentTime)
-  const updateProgressRef = useRef(updateProgress)
   const recordEventRef = useRef(recordEvent)
   const onProgressRef = useRef(onProgress)
   const onCompleteRef = useRef(onComplete)
+  const saveProgressRef = useRef(saveProgress)
 
   // Update refs when values change
   useEffect(() => {
     currentTimeRef.current = currentTime
-    updateProgressRef.current = updateProgress
     recordEventRef.current = recordEvent
     onProgressRef.current = onProgress
     onCompleteRef.current = onComplete
-  }, [currentTime, updateProgress, recordEvent, onProgress, onComplete])
+    saveProgressRef.current = saveProgress
+  }, [currentTime, recordEvent, onProgress, onComplete, saveProgress])
 
   // Initialize Vimeo player - simplified
   useEffect(() => {
@@ -131,28 +131,14 @@ export function VideoPlayer({
           setIsPlaying(false)
           setShowControls(true)
           
-          // Record pause event and update progress
+          // Record pause event
           const currentPos = currentTimeRef.current
           recordEventRef.current('pause', currentPos)
-          updateProgressRef.current(currentPos, [{
-            type: 'pause',
-            timestamp: Date.now(),
-            position: currentPos
-          }])
         })
 
         player.on('timeupdate', (data: { seconds: number }) => {
           setCurrentTime(data.seconds)
           onProgressRef.current?.(data.seconds)
-          
-          // Update progress every 10 seconds while playing
-          if (Math.floor(data.seconds) % 10 === 0 && data.seconds > 0) {
-            updateProgressRef.current(data.seconds, [{
-              type: 'progress',
-              timestamp: Date.now(),
-              position: data.seconds
-            }])
-          }
         })
 
         player.on('ended', async () => {
@@ -161,11 +147,6 @@ export function VideoPlayer({
           
           const finalTime = await player.getCurrentTime()
           recordEventRef.current('complete', finalTime)
-          updateProgressRef.current(finalTime, [{
-            type: 'complete',
-            timestamp: Date.now(),
-            position: finalTime
-          }], true)
           onCompleteRef.current?.()
         })
 
@@ -191,13 +172,8 @@ export function VideoPlayer({
     // Cleanup
     return () => {
       // Save current progress before destroying player
-      if (currentTimeRef.current > 0 && vimeoPlayerRef.current) {
-        updateProgressRef.current(currentTimeRef.current, [{
-          type: 'pause',
-          timestamp: Date.now(),
-          position: currentTimeRef.current,
-          metadata: { reason: 'component_unmount' }
-        }], true) // Force save
+      if (currentTimeRef.current > 0) {
+        saveProgressRef.current(currentTimeRef.current)
       }
 
       if (vimeoPlayerRef.current) {
@@ -225,21 +201,15 @@ export function VideoPlayer({
     if (resumePos > 0) {
       vimeoPlayerRef.current.setCurrentTime(resumePos)
         .then(() => setCurrentTime(resumePos))
-        .catch(err => console.error('Error resuming video:', err))
+        .catch((err: any) => console.error('Error resuming video:', err))
     }
   }, [progress, isLoading, duration, currentTime, getResumePosition])
 
   // Track progress on navigation/page leave
   useEffect(() => {
     const saveProgressOnLeave = () => {
-      if (currentTimeRef.current > 0 && vimeoPlayerRef.current) {
-        // Force immediate progress save
-        updateProgressRef.current(currentTimeRef.current, [{
-          type: 'pause',
-          timestamp: Date.now(),
-          position: currentTimeRef.current,
-          metadata: { reason: 'navigation_away' }
-        }], true) // Force save
+      if (currentTimeRef.current > 0) {
+        saveProgressRef.current(currentTimeRef.current)
       }
     }
 
@@ -302,10 +272,13 @@ export function VideoPlayer({
     try {
       await vimeoPlayerRef.current.setCurrentTime(time)
       setCurrentTime(time)
+      
+      // Record seek event
+      recordEvent('seek', time, { seekTo: time, seekFrom: currentTime })
     } catch (err) {
       console.error('Error seeking video:', err)
     }
-  }, [])
+  }, [currentTime, recordEvent])
 
   const toggleMute = useCallback(async () => {
     if (!vimeoPlayerRef.current) return
