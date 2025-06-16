@@ -26,7 +26,7 @@ export function VideoPlayer({
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(video.vimeoDuration || 0)
-  const [isMuted, setIsMuted] = useState(false)
+  const [isMuted, setIsMuted] = useState(true) // Start muted to match player config
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [showControls, setShowControls] = useState(true)
   const [isLoading, setIsLoading] = useState(true)
@@ -144,6 +144,17 @@ export function VideoPlayer({
         player.on('loaded', async () => {
           const videoDuration = await player.getDuration()
           setDuration(videoDuration)
+          
+          // Sync muted state with player's actual state
+          try {
+            const volume = await player.getVolume()
+            const playerMuted = volume === 0
+            setIsMuted(playerMuted)
+            console.log('Mobile debug - Player loaded, volume:', volume, 'muted:', playerMuted)
+          } catch (err) {
+            console.error('Error getting initial volume:', err)
+          }
+          
           setIsLoading(false)
         })
 
@@ -326,9 +337,23 @@ export function VideoPlayer({
   const toggleMute = useCallback(async () => {
     if (!vimeoPlayerRef.current) return
     try {
+      const currentVolume = await vimeoPlayerRef.current.getVolume()
       const newVolume = isMuted ? 1 : 0
+      
+      console.log('Mobile debug - Toggle mute:', {
+        currentVolume,
+        isMuted,
+        newVolume,
+        willBeMuted: !isMuted
+      })
+      
       await vimeoPlayerRef.current.setVolume(newVolume)
       setIsMuted(!isMuted)
+      
+      // Verify the change worked
+      const verifyVolume = await vimeoPlayerRef.current.getVolume()
+      console.log('Mobile debug - After mute toggle, volume is:', verifyVolume)
+      
     } catch (err) {
       console.error('Error toggling mute:', err)
     }
