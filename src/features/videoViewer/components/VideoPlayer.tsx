@@ -103,7 +103,8 @@ export function VideoPlayer({
           console.log('Mobile debug - Vimeo player imported successfully')
         } catch (importError) {
           console.error('Mobile debug - Failed to import Vimeo player:', importError)
-          throw new Error('Failed to load video player')
+          const errorMessage = importError instanceof Error ? importError.message : 'Unknown import error'
+          throw new Error(`Failed to load video player: ${errorMessage}`)
         }
         
         if (!playerRef.current) {
@@ -133,7 +134,8 @@ export function VideoPlayer({
           console.log('Mobile debug - Vimeo player created successfully')
         } catch (playerError) {
           console.error('Mobile debug - Failed to create Vimeo player:', playerError)
-          throw new Error(`Failed to create video player: ${playerError.message}`)
+          const errorMessage = playerError instanceof Error ? playerError.message : 'Unknown player error'
+          throw new Error(`Failed to create video player: ${errorMessage}`)
         }
         
         vimeoPlayerRef.current = player
