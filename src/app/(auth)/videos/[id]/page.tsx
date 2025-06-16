@@ -176,7 +176,7 @@ export default function VideoWatchPage() {
         >
           <VideoPlayer
             video={video}
-            autoplay={true}
+            autoplay={false}
             onComplete={() => console.log('Video completed!')}
             onProgress={(time) => console.log('Progress:', time)}
             hideVideoInfo={true}
