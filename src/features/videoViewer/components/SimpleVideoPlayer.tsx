@@ -114,7 +114,7 @@ export function SimpleVideoPlayer({ video, onBack, profile }: SimpleVideoPlayerP
             try {
               const currentTime = await player.getCurrentTime()
               saveProgressRef.current(currentTime)
-            } catch (err) {
+            } catch (_err) {
               // Player might be destroyed
             }
           }, 5000) // Save every 5 seconds
@@ -125,7 +125,7 @@ export function SimpleVideoPlayer({ video, onBack, profile }: SimpleVideoPlayerP
           try {
             const currentTime = await player.getCurrentTime()
             saveProgressRef.current(currentTime)
-          } catch (err) {
+          } catch (_err) {
             // Player might be destroyed
           }
         })
@@ -135,7 +135,7 @@ export function SimpleVideoPlayer({ video, onBack, profile }: SimpleVideoPlayerP
           try {
             const duration = await player.getDuration()
             saveProgressRef.current(duration)
-          } catch (err) {
+          } catch (_err) {
             // Player might be destroyed
           }
         })
@@ -165,7 +165,7 @@ export function SimpleVideoPlayer({ video, onBack, profile }: SimpleVideoPlayerP
           }).catch(() => {})
           
           playerRef.current.destroy()
-        } catch (err) {
+        } catch (_err) {
           // Player already destroyed
         }
         playerRef.current = null
@@ -181,7 +181,7 @@ export function SimpleVideoPlayer({ video, onBack, profile }: SimpleVideoPlayerP
           playerRef.current.getCurrentTime().then((time: number) => {
             saveProgressRef.current(time)
           }).catch(() => {})
-        } catch (err) {
+        } catch (_err) {
           // Player not ready
         }
       }
