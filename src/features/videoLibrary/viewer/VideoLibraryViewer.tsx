@@ -330,24 +330,32 @@ export function VideoLibraryViewer({ refetchRef }: VideoLibraryViewerProps) {
             
             return (
               <Card key={video.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                <CardHeader className="p-0">
-                  {thumbnailUrl ? (
-                    <Image
-                      src={thumbnailUrl}
-                      alt={video.title}
-                      width={400}
-                      height={192}
-                      className="w-full h-48 object-cover"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                      quality={90}
-                      priority={false}
-                    />
-                  ) : (
-                    <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
-                      <Play className="h-12 w-12 text-gray-400" />
-                    </div>
-                  )}
-                </CardHeader>
+                <Link href={`/videos/${video.id}`}>
+                  <CardHeader className="p-0 cursor-pointer">
+                    {thumbnailUrl ? (
+                      <div className="relative">
+                        <Image
+                          src={thumbnailUrl}
+                          alt={video.title}
+                          width={400}
+                          height={192}
+                          className="w-full h-48 object-cover"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                          quality={90}
+                          priority={false}
+                        />
+                        {/* Play overlay */}
+                        <div className="absolute inset-0 bg-black/30 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Play className="h-12 w-12 text-white" />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-full h-48 bg-gray-200 flex items-center justify-center hover:bg-gray-300 transition-colors">
+                        <Play className="h-12 w-12 text-gray-400" />
+                      </div>
+                    )}
+                  </CardHeader>
+                </Link>
                 
                 <CardContent className="p-4">
                   <div className="space-y-3">

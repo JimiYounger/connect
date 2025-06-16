@@ -101,8 +101,18 @@ export function SubcategoryModal({ subcategory, isOpen, onClose, userPermissions
     loadVideos()
   }, [isOpen, subcategory.id, userPermissions, profile?.id])
 
-  const handleVideoClick = (video: VideoForViewing) => {
-    router.push(`/videos/${video.id}`)
+  const handleVideoClick = (video: VideoForViewing, event?: React.MouseEvent) => {
+    console.log('SubcategoryModal - Video clicked:', video.id, video.title)
+    console.log('SubcategoryModal - Event:', event)
+    console.log('SubcategoryModal - Router:', router)
+    console.log('SubcategoryModal - Navigating to:', `/videos/${video.id}`)
+    
+    try {
+      router.push(`/videos/${video.id}`)
+      console.log('SubcategoryModal - router.push called successfully')
+    } catch (error) {
+      console.error('SubcategoryModal - Error calling router.push:', error)
+    }
   }
 
   const formatDuration = (seconds: number): string => {
@@ -162,7 +172,7 @@ export function SubcategoryModal({ subcategory, isOpen, onClose, userPermissions
                 return (
                   <motion.div
                     key={video.id}
-                    onClick={() => handleVideoClick(video)}
+                    onClick={(e) => handleVideoClick(video, e)}
                     className="flex gap-3 md:gap-4 p-3 md:p-4 rounded-xl bg-gray-800 hover:bg-gray-750 cursor-pointer transition-colors group"
                     whileTap={{ scale: 0.98 }}
                     transition={{ type: "spring", stiffness: 400, damping: 25 }}

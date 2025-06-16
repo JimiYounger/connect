@@ -111,8 +111,18 @@ export function VideoSearchModal({ isOpen, onClose, userPermissions: _userPermis
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  const handleVideoClick = (video: SearchResult) => {
-    router.push(`/videos/${video.id}`)
+  const handleVideoClick = (video: SearchResult, event?: React.MouseEvent) => {
+    console.log('VideoSearchModal - Video clicked:', video.id, video.title)
+    console.log('VideoSearchModal - Event:', event)
+    console.log('VideoSearchModal - Router:', router)
+    console.log('VideoSearchModal - Navigating to:', `/videos/${video.id}`)
+    
+    try {
+      router.push(`/videos/${video.id}`)
+      console.log('VideoSearchModal - router.push called successfully')
+    } catch (error) {
+      console.error('VideoSearchModal - Error calling router.push:', error)
+    }
     onClose()
   }
 
@@ -237,7 +247,7 @@ export function VideoSearchModal({ isOpen, onClose, userPermissions: _userPermis
                 {results.map((result) => (
                   <motion.div
                     key={result.id}
-                    onClick={() => handleVideoClick(result)}
+                    onClick={(e) => handleVideoClick(result, e)}
                     className="flex flex-col sm:flex-row gap-3 sm:gap-4 p-3 md:p-4 rounded-xl bg-gray-800 hover:bg-gray-750 active:bg-gray-700 cursor-pointer transition-colors group"
                     whileTap={{ scale: 0.98 }}
                     transition={{ type: "spring", stiffness: 400, damping: 25 }}
