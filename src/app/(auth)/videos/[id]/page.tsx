@@ -17,6 +17,8 @@ export default function VideoWatchPage() {
   const router = useRouter()
   const videoId = params.id as string
   
+  console.log('VideoWatchPage - Rendered with videoId:', videoId)
+  
   const { session } = useAuth()
   const { profile } = useProfile(session)
   const { userPermissions, isLoading: permissionsLoading } = useVideoPermissions(profile)
