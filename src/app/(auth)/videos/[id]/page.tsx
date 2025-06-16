@@ -35,9 +35,13 @@ export default function VideoWatchPage() {
         setLoading(true)
         setError(null)
         
+        console.log('Mobile debug - Loading video:', { videoId, userPermissions })
         const realVideo = await VideoLibraryService.getVideoById(videoId, userPermissions)
         
+        console.log('Mobile debug - Video loaded:', realVideo)
+        
         if (!realVideo) {
+          console.log('Mobile debug - Video not found or no permission')
           setError('Video not found or you do not have permission to view it')
           return
         }

@@ -88,6 +88,13 @@ export function VideoPlayer({
         setIsLoading(true)
         setError(null)
 
+        console.log('Mobile debug - Starting video player init:', {
+          videoId: video.vimeoId,
+          autoplay,
+          isMuted,
+          userAgent: navigator.userAgent
+        })
+
         // Import Vimeo player
         const { default: Player } = await import('@vimeo/player')
         
@@ -95,18 +102,23 @@ export function VideoPlayer({
           throw new Error('Player container not found')
         }
 
-        // Simple Vimeo player configuration
-        const player = new Player(playerRef.current, {
+        // Mobile-optimized Vimeo player configuration
+        const playerConfig = {
           id: Number(video.vimeoId),
           responsive: true,
-          controls: false, // Use custom controls
-          autoplay: autoplay,
-          muted: isMuted,
+          controls: false,
+          autoplay: false, // Always disable autoplay on mobile
+          muted: true, // Always start muted on mobile
           playsinline: true,
           title: false,
           byline: false,
-          portrait: false
-        })
+          portrait: false,
+          pip: false, // Disable picture-in-picture
+          transparent: false
+        }
+
+        console.log('Mobile debug - Player config:', playerConfig)
+        const player = new Player(playerRef.current, playerConfig)
         
         vimeoPlayerRef.current = player
 
@@ -151,7 +163,13 @@ export function VideoPlayer({
         })
 
         player.on('error', (error: any) => {
-          console.error('Vimeo player error:', error)
+          console.error('Mobile debug - Vimeo player error:', {
+            error,
+            errorMessage: error.message,
+            errorName: error.name,
+            videoId: video.vimeoId,
+            userAgent: navigator.userAgent
+          })
           setError(`Failed to load video: ${error.message || 'Unknown error'}`)
           setIsLoading(false)
         })
