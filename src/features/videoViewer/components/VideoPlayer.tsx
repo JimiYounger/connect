@@ -288,9 +288,16 @@ export function VideoPlayer({
   const handlePlay = useCallback(async () => {
     if (!vimeoPlayerRef.current) return
     try {
+      console.log('Mobile debug - User initiated play')
       await vimeoPlayerRef.current.play()
     } catch (err) {
       console.error('Error playing video:', err)
+      // On mobile, this is often due to autoplay restrictions
+      // Show user that they need to tap play button
+      if (err instanceof Error && err.name === 'NotAllowedError') {
+        console.log('Mobile debug - Play blocked by browser, user must tap play button')
+        setError(null) // Clear any error since this is expected behavior
+      }
     }
   }, [])
 
@@ -358,8 +365,9 @@ export function VideoPlayer({
 
   const handleStartOver = useCallback(async () => {
     handleSeek(0)
-    handlePlay()
-  }, [handleSeek, handlePlay])
+    // Don't auto-play on mobile - let user click play button
+    console.log('Mobile debug - Video reset to start, user can click play when ready')
+  }, [handleSeek])
 
   // Format time for display
   const formatTime = (seconds: number): string => {
