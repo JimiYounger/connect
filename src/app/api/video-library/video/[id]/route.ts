@@ -1,5 +1,8 @@
 import { createClient } from '@/lib/supabase-server'
 import { NextResponse } from 'next/server'
+import type { UserPermissions, RoleType } from '@/features/permissions/types'
+import { VideoPermissionService } from '@/features/videoViewer/services/permissionService'
+import { validateUUID, validateVideoUpdateParams } from '@/lib/validation'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -9,6 +12,10 @@ interface RouteParams {
 export async function GET(req: Request, { params }: RouteParams) {
   try {
     const { id } = await params
+    
+    // Validate video ID
+    const videoId = validateUUID(id, 'Video ID')
+    
     const supabase = await createClient()
     
     // Get the authenticated user
@@ -21,6 +28,20 @@ export async function GET(req: Request, { params }: RouteParams) {
       )
     }
 
+    // Get user profile to check permissions
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('id, role_type, team, area, region')
+      .eq('user_id', user.id)
+      .single()
+
+    if (!userProfile) {
+      return NextResponse.json(
+        { success: false, error: 'User profile not found' },
+        { status: 404 }
+      )
+    }
+
     // Fetch video with related data
     const { data: video, error } = await supabase
       .from('video_files')
@@ -30,7 +51,7 @@ export async function GET(req: Request, { params }: RouteParams) {
         video_subcategories (id, name, description),
         video_series (id, name, description)
       `)
-      .eq('id', id)
+      .eq('id', videoId)
       .single()
 
     if (error) {
@@ -62,10 +83,71 @@ export async function GET(req: Request, { params }: RouteParams) {
     const { data: visibilityData } = await supabase
       .from('video_visibility')
       .select('conditions')
-      .eq('video_file_id', id)
+      .eq('video_file_id', videoId)
       .single()
 
-    const permissions = visibilityData?.conditions || { roleTypes: [], teams: [], areas: [], regions: [] }
+    const permissions = visibilityData?.conditions || video.visibility_conditions || { roleTypes: [], teams: [], areas: [], regions: [] }
+
+    // Build user permissions object for permission checking
+    const userPermissions: UserPermissions = {
+      roleType: userProfile.role_type as RoleType,
+      role: userProfile.role_type || 'Setter',
+      team: userProfile.team || undefined,
+      area: userProfile.area || undefined,
+      region: userProfile.region || undefined
+    }
+
+    // Admin and Executive users can see all videos (including non-approved)
+    const isAdminOrExecutive = userProfile.role_type === 'Admin' || userProfile.role_type === 'Executive'
+    
+    // For non-admin users, only show approved videos
+    if (!isAdminOrExecutive && video.library_status !== 'approved') {
+      return NextResponse.json(
+        { success: false, error: 'Video not found' },
+        { status: 404 }
+      )
+    }
+
+    // Transform to VideoForViewing format for permission checking
+    const videoForViewing = {
+      id: video.id,
+      title: video.title,
+      description: video.description || undefined,
+      vimeoId: video.vimeo_id || undefined,
+      vimeoDuration: video.vimeo_duration || undefined,
+      vimeoThumbnailUrl: video.vimeo_thumbnail_url || undefined,
+      customThumbnailUrl: video.custom_thumbnail_url || undefined,
+      thumbnailSource: video.thumbnail_source as 'vimeo' | 'upload' | 'url',
+      category: video.video_categories ? {
+        id: video.video_categories.id,
+        name: video.video_categories.name
+      } : undefined,
+      subcategory: video.video_subcategories ? {
+        id: video.video_subcategories.id,
+        name: video.video_subcategories.name
+      } : undefined,
+      libraryStatus: (video.library_status as 'pending' | 'approved' | 'rejected' | 'archived') || 'pending',
+      publicSharingEnabled: video.public_sharing_enabled || false,
+      visibilityConditions: permissions as any || {
+        roleTypes: [],
+        teams: [],
+        areas: [],
+        regions: []
+      },
+      createdAt: video.created_at || '',
+      updatedAt: video.updated_at || '',
+      tags: tags
+    }
+
+    // Check if user has permission to view this video
+    const permissionResult = VideoPermissionService.checkVideoPermission(videoForViewing, userPermissions)
+    
+    if (!permissionResult.canView) {
+      return NextResponse.json(
+        { success: false, error: 'Access denied: You do not have permission to view this video' },
+        { status: 403 }
+      )
+    }
 
     // Process the data
     const processedVideo = {
@@ -101,6 +183,18 @@ export async function GET(req: Request, { params }: RouteParams) {
 
   } catch (error) {
     console.error('Error in video API:', error)
+    
+    // Handle validation errors with 400 status
+    if (error instanceof Error && (error.message.includes('Invalid') || error.message.includes('must be a valid UUID'))) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: error.message 
+        },
+        { status: 400 }
+      )
+    }
+    
     return NextResponse.json(
       { 
         success: false, 
@@ -115,7 +209,14 @@ export async function GET(req: Request, { params }: RouteParams) {
 export async function PUT(req: Request, { params }: RouteParams) {
   try {
     const { id } = await params
-    const body = await req.json()
+    
+    // Validate video ID
+    const videoId = validateUUID(id, 'Video ID')
+    
+    // Parse and validate request body
+    const rawBody = await req.json()
+    const validatedBody = validateVideoUpdateParams(rawBody)
+    
     const {
       title,
       description,
@@ -127,7 +228,7 @@ export async function PUT(req: Request, { params }: RouteParams) {
       publicSharingEnabled,
       customThumbnailUrl,
       thumbnailSource
-    } = body
+    } = validatedBody
 
     const supabase = await createClient()
     
@@ -169,7 +270,7 @@ export async function PUT(req: Request, { params }: RouteParams) {
         thumbnail_source: thumbnailSource || 'vimeo',
         updated_at: new Date().toISOString()
       })
-      .eq('id', id)
+      .eq('id', videoId)
 
     if (updateError) {
       console.error('Error updating video:', updateError)
@@ -185,7 +286,7 @@ export async function PUT(req: Request, { params }: RouteParams) {
       await supabase
         .from('video_tag_assignments')
         .delete()
-        .eq('video_file_id', id)
+        .eq('video_file_id', videoId)
 
       // Create new tag assignments
       if (tags.length > 0) {
@@ -212,7 +313,7 @@ export async function PUT(req: Request, { params }: RouteParams) {
 
           if (existingTag) {
             tagRecords.push({
-              video_file_id: id,
+              video_file_id: videoId,
               tag_id: existingTag.id
             })
           }
@@ -232,17 +333,17 @@ export async function PUT(req: Request, { params }: RouteParams) {
       await supabase
         .from('video_visibility')
         .delete()
-        .eq('video_file_id', id)
+        .eq('video_file_id', videoId)
 
       // Create new visibility settings if permissions are specified
-      if (permissions.roleTypes?.length > 0 || 
-          permissions.teams?.length > 0 || 
-          permissions.areas?.length > 0 || 
-          permissions.regions?.length > 0) {
+      if ((permissions.roleTypes && permissions.roleTypes.length > 0) || 
+          (permissions.teams && permissions.teams.length > 0) || 
+          (permissions.areas && permissions.areas.length > 0) || 
+          (permissions.regions && permissions.regions.length > 0)) {
         await supabase
           .from('video_visibility')
           .insert({
-            video_file_id: id,
+            video_file_id: videoId,
             conditions: permissions
           })
       }
@@ -255,6 +356,18 @@ export async function PUT(req: Request, { params }: RouteParams) {
 
   } catch (error) {
     console.error('Error updating video:', error)
+    
+    // Handle validation errors with 400 status
+    if (error instanceof Error && (error.message.includes('Invalid') || error.message.includes('must be a valid UUID'))) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: error.message 
+        },
+        { status: 400 }
+      )
+    }
+    
     return NextResponse.json(
       { 
         success: false, 
