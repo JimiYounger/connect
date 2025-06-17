@@ -115,7 +115,7 @@ export default function VideoLibraryPage() {
   return (
     <div className="min-h-screen bg-black">
       {/* Navigation Header */}
-      <div className="sticky top-0 z-50 bg-black/90 backdrop-blur-sm">
+      <div className="relative bg-black">
         <div className="relative">
           {/* Navigation Menu - Top Left */}
           <div className="absolute left-4 top-3">

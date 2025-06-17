@@ -25,8 +25,6 @@ interface CategoryCarouselProps {
 
 export function CategoryCarousel({ category, onSubcategoryClick }: CategoryCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
-  const isDraggingRef = useRef(false)
-  const startPositionRef = useRef({ x: 0, y: 0 })
 
   const scroll = (direction: 'left' | 'right') => {
     if (!scrollRef.current) return
@@ -38,36 +36,6 @@ export function CategoryCarousel({ category, onSubcategoryClick }: CategoryCarou
       left: newScrollLeft,
       behavior: 'smooth'
     })
-  }
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    isDraggingRef.current = false
-    startPositionRef.current = {
-      x: e.touches[0].clientX,
-      y: e.touches[0].clientY
-    }
-  }
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    const currentX = e.touches[0].clientX
-    const currentY = e.touches[0].clientY
-    const deltaX = Math.abs(currentX - startPositionRef.current.x)
-    const deltaY = Math.abs(currentY - startPositionRef.current.y)
-    
-    // If user moved more than 10px horizontally, consider it a drag
-    if (deltaX > 10 || deltaY > 10) {
-      isDraggingRef.current = true
-    }
-  }
-
-  const handleCardClick = (subcategory: VideoSubcategory, e: React.MouseEvent) => {
-    // Only register click if it wasn't a drag gesture
-    if (isDraggingRef.current) {
-      e.preventDefault()
-      return
-    }
-    
-    onSubcategoryClick(subcategory)
   }
 
 
@@ -99,32 +67,23 @@ export function CategoryCarousel({ category, onSubcategoryClick }: CategoryCarou
         {/* Scrollable Container */}
         <div
           ref={scrollRef}
-          className="flex gap-3 overflow-x-auto overflow-y-hidden scroll-smooth [&::-webkit-scrollbar]:hidden"
+          className="flex gap-3 overflow-x-auto overflow-y-hidden scroll-smooth scrollbar-hide"
           style={{ 
-            scrollbarWidth: 'none', 
-            msOverflowStyle: 'none',
-            touchAction: 'pan-x pinch-zoom',
+            touchAction: 'pan-x',
             WebkitOverflowScrolling: 'touch',
-            scrollBehavior: 'smooth',
             overscrollBehaviorX: 'contain',
-            overscrollBehaviorY: 'none',
-            scrollSnapType: 'x proximity',
-            willChange: 'scroll-position'
+            overscrollBehaviorY: 'none'
           }}
         >
           {category.subcategories.map((subcategory) => (
             <div
               key={subcategory.id}
-              onClick={(e) => handleCardClick(subcategory, e)}
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
+              onClick={() => onSubcategoryClick(subcategory)}
               className="flex-none w-48 cursor-pointer group/card select-none transform transition-transform duration-300 md:hover:scale-105"
               style={{ 
-                touchAction: 'pan-x',
                 userSelect: 'none',
                 WebkitUserSelect: 'none',
-                WebkitTouchCallout: 'none',
-                scrollSnapAlign: 'start'
+                WebkitTouchCallout: 'none'
               }}
             >
               {/* Thumbnail Container - 2:3 aspect ratio like Netflix */}

@@ -209,6 +209,16 @@ html.pwa-mode [contenteditable] {
   .page-description {
     @apply text-muted-foreground;
   }
+
+  /* Hide scrollbars while maintaining functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
   
   /* Sticky positioning (may need adjustments depending on usage within PWA) */
   .sticky {
