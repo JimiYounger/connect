@@ -48,18 +48,18 @@ export function CategoryCarousel({ category, onSubcategoryClick }: CategoryCarou
 
       {/* Carousel Container */}
       <div className="relative group">
-        {/* Left Arrow */}
+        {/* Left Arrow - Desktop only */}
         <button
           onClick={() => scroll('left')}
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-black/80"
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-black/60 rounded-full items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-black/80 hidden md:flex"
         >
           <ChevronLeft className="w-5 h-5 text-white" />
         </button>
 
-        {/* Right Arrow */}
+        {/* Right Arrow - Desktop only */}
         <button
           onClick={() => scroll('right')}
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-black/80"
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-black/60 rounded-full items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-black/80 hidden md:flex"
         >
           <ChevronRight className="w-5 h-5 text-white" />
         </button>
@@ -67,27 +67,30 @@ export function CategoryCarousel({ category, onSubcategoryClick }: CategoryCarou
         {/* Scrollable Container */}
         <div
           ref={scrollRef}
-          className="flex gap-3 overflow-x-auto overflow-y-hidden scroll-smooth"
+          className="flex gap-3 overflow-x-auto overflow-y-hidden scroll-smooth [&::-webkit-scrollbar]:hidden"
           style={{ 
             scrollbarWidth: 'none', 
             msOverflowStyle: 'none',
-            touchAction: 'pan-x',
+            touchAction: 'pan-x pinch-zoom',
             WebkitOverflowScrolling: 'touch',
             scrollBehavior: 'smooth',
             overscrollBehaviorX: 'contain',
-            overscrollBehaviorY: 'none'
+            overscrollBehaviorY: 'none',
+            scrollSnapType: 'x proximity',
+            willChange: 'scroll-position'
           }}
         >
           {category.subcategories.map((subcategory) => (
             <div
               key={subcategory.id}
               onClick={() => onSubcategoryClick(subcategory)}
-              className="flex-none w-48 cursor-pointer group/card transform transition-transform duration-300 hover:scale-105 select-none"
+              className="flex-none w-48 cursor-pointer group/card select-none transform transition-transform duration-300 md:hover:scale-105"
               style={{ 
                 touchAction: 'manipulation',
                 userSelect: 'none',
                 WebkitUserSelect: 'none',
-                WebkitTouchCallout: 'none'
+                WebkitTouchCallout: 'none',
+                scrollSnapAlign: 'start'
               }}
             >
               {/* Thumbnail Container - 2:3 aspect ratio like Netflix */}
@@ -120,8 +123,8 @@ export function CategoryCarousel({ category, onSubcategoryClick }: CategoryCarou
                   </div>
                 )}
                 
-                {/* Hover Overlay */}
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                {/* Hover Overlay - Desktop only */}
+                <div className="absolute inset-0 bg-black/40 opacity-0 md:group-hover/card:opacity-100 transition-opacity duration-300 items-center justify-center hidden md:flex">
                   <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
                     <Play className="w-6 h-6 text-white ml-0.5" />
                   </div>
