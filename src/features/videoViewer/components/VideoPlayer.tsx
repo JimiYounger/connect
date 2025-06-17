@@ -19,8 +19,16 @@ export function VideoPlayer({ video, onBack, profile }: VideoPlayerProps) {
   const playerRef = useRef<any>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const saveProgressRef = useRef<(position: number) => void>(() => {})
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const isMountedRef = useRef(true)
+  const lastPositionRef = useRef(0)
+  
+  // Mounted state management - independent of player lifecycle
+  useEffect(() => {
+    isMountedRef.current = true
+  })
 
-  // Simple progress tracking
+  // Load progress on mount
   useEffect(() => {
     const loadProgress = async () => {
       try {
@@ -40,8 +48,8 @@ export function VideoPlayer({ video, onBack, profile }: VideoPlayerProps) {
             setResumePosition(data.position)
           }
         }
-      } catch (err) {
-        console.log('Could not load progress:', err)
+      } catch (_err) {
+        // Could not load progress - continue without resume position
       }
     }
     
@@ -52,7 +60,9 @@ export function VideoPlayer({ video, onBack, profile }: VideoPlayerProps) {
 
   // Save progress function
   const saveProgress = async (position: number) => {
-    if (!profile?.id || position < 5) return
+    if (!profile?.id || position < 5) {
+      return
+    }
     
     try {
       await fetch('/api/video-progress', {
@@ -66,8 +76,8 @@ export function VideoPlayer({ video, onBack, profile }: VideoPlayerProps) {
           duration: video.vimeoDuration || 0
         })
       })
-    } catch (err) {
-      console.log('Could not save progress:', err)
+    } catch (_err) {
+      // Could not save progress - fail silently
     }
   }
 
@@ -105,22 +115,35 @@ export function VideoPlayer({ video, onBack, profile }: VideoPlayerProps) {
         })
 
         // Save progress every 5 seconds while playing
-        let saveInterval: NodeJS.Timeout
         player.on('play', () => {
-          saveInterval = setInterval(async () => {
+          // Clear any existing interval first
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current)
+          }
+          
+          intervalRef.current = setInterval(async () => {
             try {
+              if (!isMountedRef.current) {
+                return
+              }
               const currentTime = await player.getCurrentTime()
+              lastPositionRef.current = currentTime
               saveProgressRef.current(currentTime)
             } catch (_err) {
-              // Player might be destroyed
+              // Error getting current time - player might be destroyed
             }
           }, 5000) // Save every 5 seconds
         })
 
         player.on('pause', async () => {
-          clearInterval(saveInterval)
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current)
+            intervalRef.current = null
+          }
           try {
+            if (!isMountedRef.current) return
             const currentTime = await player.getCurrentTime()
+            lastPositionRef.current = currentTime
             saveProgressRef.current(currentTime)
           } catch (_err) {
             // Player might be destroyed
@@ -128,9 +151,14 @@ export function VideoPlayer({ video, onBack, profile }: VideoPlayerProps) {
         })
 
         player.on('ended', async () => {
-          clearInterval(saveInterval)
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current)
+            intervalRef.current = null
+          }
           try {
+            if (!isMountedRef.current) return
             const duration = await player.getDuration()
+            lastPositionRef.current = duration
             saveProgressRef.current(duration)
           } catch (_err) {
             // Player might be destroyed
@@ -154,12 +182,21 @@ export function VideoPlayer({ video, onBack, profile }: VideoPlayerProps) {
 
     // Cleanup
     return () => {
+      // Mark as unmounted to prevent further async operations
+      isMountedRef.current = false
+      
+      // Clear the progress saving interval
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+      
       if (playerRef.current) {
         try {
-          // Save final progress before cleanup
-          playerRef.current.getCurrentTime().then((time: number) => {
-            saveProgressRef.current(time)
-          }).catch(() => {})
+          // Save final progress before cleanup using last known position
+          if (lastPositionRef.current > 0) {
+            saveProgressRef.current(lastPositionRef.current)
+          }
           
           playerRef.current.destroy()
         } catch (_err) {
@@ -173,23 +210,46 @@ export function VideoPlayer({ video, onBack, profile }: VideoPlayerProps) {
   // Save progress on page unload
   useEffect(() => {
     const handleBeforeUnload = () => {
-      if (playerRef.current) {
+      // Use last known position for immediate, synchronous save
+      if (isMountedRef.current && lastPositionRef.current > 0) {
+        try {
+          saveProgressRef.current(lastPositionRef.current)
+        } catch (_err) {
+          // Ignore errors during unload
+        }
+      }
+    }
+
+    const handleVisibilityChange = () => {
+      // For visibility change, we can try async but fallback to last position
+      if (document.visibilityState === 'hidden' && playerRef.current && isMountedRef.current) {
         try {
           playerRef.current.getCurrentTime().then((time: number) => {
-            saveProgressRef.current(time)
-          }).catch(() => {})
+            if (isMountedRef.current) {
+              lastPositionRef.current = time
+              saveProgressRef.current(time)
+            }
+          }).catch(() => {
+            // Fallback to last known position
+            if (lastPositionRef.current > 0) {
+              saveProgressRef.current(lastPositionRef.current)
+            }
+          })
         } catch (_err) {
-          // Player not ready
+          // Fallback to last known position
+          if (lastPositionRef.current > 0) {
+            saveProgressRef.current(lastPositionRef.current)
+          }
         }
       }
     }
 
     window.addEventListener('beforeunload', handleBeforeUnload)
-    document.addEventListener('visibilitychange', handleBeforeUnload)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
-      document.removeEventListener('visibilitychange', handleBeforeUnload)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [])
 
