@@ -18,10 +18,12 @@ export function VideoPlayer({ video, onBack, profile }: VideoPlayerProps) {
   
   const playerRef = useRef<any>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const saveProgressRef = useRef<(position: number) => void>(() => {})
+  const saveProgressRef = useRef<(position: number, force?: boolean) => void>(() => {})
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const isMountedRef = useRef(true)
   const lastPositionRef = useRef(0)
+  const lastSavedPositionRef = useRef(0) // Track last saved position to avoid duplicate saves
+  const savingRef = useRef(false) // Prevent concurrent saves
   
   // Mounted state management - independent of player lifecycle
   useEffect(() => {
@@ -58,14 +60,24 @@ export function VideoPlayer({ video, onBack, profile }: VideoPlayerProps) {
     }
   }, [video.id, profile?.id])
 
-  // Save progress function
-  const saveProgress = async (position: number) => {
-    if (!profile?.id || position < 5) {
+  // Optimized save progress function with debouncing and duplicate prevention
+  const saveProgress = async (position: number, force: boolean = false) => {
+    // Skip if no profile, position too low, or already saving
+    if (!profile?.id || position < 5 || savingRef.current) {
       return
     }
     
+    // Skip if position hasn't changed significantly (unless forced)
+    // Only save if moved more than 10 seconds or forced save
+    const positionDiff = Math.abs(position - lastSavedPositionRef.current)
+    if (!force && positionDiff < 10) {
+      return
+    }
+    
+    savingRef.current = true
+    
     try {
-      await fetch('/api/video-progress', {
+      const response = await fetch('/api/video-progress', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -76,8 +88,18 @@ export function VideoPlayer({ video, onBack, profile }: VideoPlayerProps) {
           duration: video.vimeoDuration || 0
         })
       })
-    } catch (_err) {
-      // Could not save progress - fail silently
+      
+      if (response.ok) {
+        lastSavedPositionRef.current = position
+        console.log('Progress saved:', Math.floor(position), 'seconds')
+      } else {
+        console.warn('Failed to save progress:', response.status)
+      }
+    } catch (err) {
+      console.warn('Error saving progress:', err)
+      // Could implement retry logic here if needed
+    } finally {
+      savingRef.current = false
     }
   }
 
@@ -128,11 +150,12 @@ export function VideoPlayer({ video, onBack, profile }: VideoPlayerProps) {
               }
               const currentTime = await player.getCurrentTime()
               lastPositionRef.current = currentTime
-              saveProgressRef.current(currentTime)
+              // Use optimized save function (will debounce automatically)
+              saveProgressRef.current(currentTime, false)
             } catch (_err) {
               // Error getting current time - player might be destroyed
             }
-          }, 5000) // Save every 5 seconds
+          }, 5000) // Back to 5 seconds for better accuracy
         })
 
         player.on('pause', async () => {
@@ -144,7 +167,8 @@ export function VideoPlayer({ video, onBack, profile }: VideoPlayerProps) {
             if (!isMountedRef.current) return
             const currentTime = await player.getCurrentTime()
             lastPositionRef.current = currentTime
-            saveProgressRef.current(currentTime)
+            // Force immediate save on pause
+            saveProgressRef.current(currentTime, true)
           } catch (_err) {
             // Player might be destroyed
           }
@@ -159,7 +183,8 @@ export function VideoPlayer({ video, onBack, profile }: VideoPlayerProps) {
             if (!isMountedRef.current) return
             const duration = await player.getDuration()
             lastPositionRef.current = duration
-            saveProgressRef.current(duration)
+            // Force immediate save on video end
+            saveProgressRef.current(duration, true)
           } catch (_err) {
             // Player might be destroyed
           }
@@ -180,8 +205,10 @@ export function VideoPlayer({ video, onBack, profile }: VideoPlayerProps) {
 
     initPlayer()
 
-    // Cleanup
+    // Cleanup - this runs on component unmount (back button, route change, etc.)
     return () => {
+      console.log('VideoPlayer unmounting - saving final progress')
+      
       // Mark as unmounted to prevent further async operations
       isMountedRef.current = false
       
@@ -193,11 +220,13 @@ export function VideoPlayer({ video, onBack, profile }: VideoPlayerProps) {
       
       if (playerRef.current) {
         try {
-          // Save final progress before cleanup using last known position
+          // Use the last known position for immediate save (more reliable)
           if (lastPositionRef.current > 0) {
-            saveProgressRef.current(lastPositionRef.current)
+            console.log('Final progress save on unmount:', Math.floor(lastPositionRef.current), 'seconds')
+            saveProgressRef.current(lastPositionRef.current, true)
           }
           
+          // Destroy player immediately (don't wait for async operations)
           playerRef.current.destroy()
         } catch (_err) {
           // Player already destroyed
@@ -207,15 +236,28 @@ export function VideoPlayer({ video, onBack, profile }: VideoPlayerProps) {
     }
   }, [video.vimeoId, resumePosition])
 
-  // Save progress on page unload
+  // Save progress on page unload, route changes, and back button
   useEffect(() => {
     const handleBeforeUnload = () => {
       // Use last known position for immediate, synchronous save
       if (isMountedRef.current && lastPositionRef.current > 0) {
         try {
-          saveProgressRef.current(lastPositionRef.current)
+          // Force save with last known position (synchronous for unload)
+          saveProgressRef.current(lastPositionRef.current, true)
         } catch (_err) {
           // Ignore errors during unload
+        }
+      }
+    }
+
+    // Handle browser back/forward navigation
+    const handlePopState = () => {
+      if (isMountedRef.current && lastPositionRef.current > 0) {
+        try {
+          // Force immediate save before navigation
+          saveProgressRef.current(lastPositionRef.current, true)
+        } catch (_err) {
+          // Ignore errors during navigation
         }
       }
     }
@@ -227,28 +269,31 @@ export function VideoPlayer({ video, onBack, profile }: VideoPlayerProps) {
           playerRef.current.getCurrentTime().then((time: number) => {
             if (isMountedRef.current) {
               lastPositionRef.current = time
-              saveProgressRef.current(time)
+              // Force save on visibility change
+              saveProgressRef.current(time, true)
             }
           }).catch(() => {
-            // Fallback to last known position
+            // Fallback to last known position with force save
             if (lastPositionRef.current > 0) {
-              saveProgressRef.current(lastPositionRef.current)
+              saveProgressRef.current(lastPositionRef.current, true)
             }
           })
         } catch (_err) {
-          // Fallback to last known position
+          // Fallback to last known position with force save
           if (lastPositionRef.current > 0) {
-            saveProgressRef.current(lastPositionRef.current)
+            saveProgressRef.current(lastPositionRef.current, true)
           }
         }
       }
     }
 
     window.addEventListener('beforeunload', handleBeforeUnload)
+    window.addEventListener('popstate', handlePopState) // Browser back/forward
     document.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
+      window.removeEventListener('popstate', handlePopState)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [])
