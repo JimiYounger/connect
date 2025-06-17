@@ -82,9 +82,7 @@ export default function TestVideoPlayerPage() {
             >
               <VideoPlayer
                 video={mockVideo}
-                autoplay={false}
-                onComplete={() => console.log('Video completed!')}
-                onProgress={(time) => console.log('Progress:', time)}
+                profile={profile}
               />
             </VideoPermissionGate>
           </div>

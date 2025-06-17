@@ -108,7 +108,8 @@ export function SubcategoryModal({ subcategory, isOpen, onClose, userPermissions
     console.log('SubcategoryModal - Navigating to:', `/videos/${video.id}`)
     
     try {
-      router.push(`/videos/${video.id}`)
+      // Add search parameter to track that user came from subcategory modal
+      router.push(`/videos/${video.id}?from=subcategory&subcategoryId=${subcategory.id}&subcategoryName=${encodeURIComponent(subcategory.name)}`)
       console.log('SubcategoryModal - router.push called successfully')
     } catch (error) {
       console.error('SubcategoryModal - Error calling router.push:', error)

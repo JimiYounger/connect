@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/features/auth/context/auth-context'
 import { useProfile } from '@/features/users/hooks/useProfile'
 import { useVideoPermissions } from '@/features/videoViewer/hooks/useVideoPermissions'
-import { SimpleVideoPlayer } from '@/features/videoViewer/components/SimpleVideoPlayer'
+import { VideoPlayer } from '@/features/videoViewer/components/VideoPlayer'
 import { VideoPermissionGate } from '@/features/videoViewer/components/VideoPermissionGate'
 import { VideoLibraryService } from '@/features/videoViewer/services/videoLibraryService'
 import type { VideoForViewing } from '@/features/videoViewer/types'
@@ -13,6 +13,7 @@ import type { VideoForViewing } from '@/features/videoViewer/types'
 export default function VideoWatchPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const videoId = params.id as string
   
   console.log('VideoWatchPage - Rendered with videoId:', videoId)
@@ -58,7 +59,25 @@ export default function VideoWatchPage() {
   }, [userPermissions, videoId])
 
   const handleBack = () => {
-    router.back()
+    const from = searchParams.get('from')
+    
+    if (from === 'search') {
+      // User came from search modal, restore search modal with query
+      const query = searchParams.get('query') || ''
+      router.push(`/videos?showSearch=true&query=${encodeURIComponent(query)}`)
+    } else if (from === 'subcategory') {
+      // User came from subcategory modal, restore subcategory modal
+      const subcategoryId = searchParams.get('subcategoryId')
+      const subcategoryName = searchParams.get('subcategoryName') || ''
+      if (subcategoryId) {
+        router.push(`/videos?showSubcategory=${subcategoryId}&subcategoryName=${encodeURIComponent(subcategoryName)}`)
+      } else {
+        router.push('/videos')
+      }
+    } else {
+      // No specific source, go to main video library
+      router.push('/videos')
+    }
   }
 
   if (!session) {
@@ -113,13 +132,8 @@ export default function VideoWatchPage() {
       profile={profile}
       showDebugInfo={false}
     >
-      <SimpleVideoPlayer
-        video={{
-          id: video.id,
-          title: video.title,
-          vimeoId: video.vimeoId!,
-          vimeoDuration: video.vimeoDuration
-        }}
+      <VideoPlayer
+        video={video}
         onBack={handleBack}
         profile={profile}
       />

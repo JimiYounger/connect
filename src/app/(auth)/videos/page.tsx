@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/features/auth/context/auth-context'
 import { useProfile } from '@/features/users/hooks/useProfile'
 import { useVideoPermissions } from '@/features/videoViewer/hooks/useVideoPermissions'
@@ -14,6 +15,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 
 export default function VideoLibraryPage() {
+  const searchParams = useSearchParams()
   const { session } = useAuth()
   const { profile } = useProfile(session)
   const { userPermissions, isLoading: permissionsLoading } = useVideoPermissions(profile)
@@ -50,6 +52,27 @@ export default function VideoLibraryPage() {
 
     loadCategories()
   }, [])
+
+  // Handle URL parameters to restore modal state
+  useEffect(() => {
+    const showSearch = searchParams.get('showSearch')
+    const showSubcategoryId = searchParams.get('showSubcategory')
+    const _query = searchParams.get('query') // Unused for now but available for future enhancement
+    
+    if (showSearch === 'true') {
+      setShowSearchModal(true)
+      // TODO: If we want to restore the search query, we'd need to modify VideoSearchModal
+    } else if (showSubcategoryId && categories.length > 0) {
+      // Find the subcategory to show
+      const subcategory = categories
+        .flatMap(cat => cat.subcategories)
+        .find(sub => sub.id === showSubcategoryId)
+      
+      if (subcategory) {
+        setSelectedSubcategory(subcategory)
+      }
+    }
+  }, [searchParams, categories])
 
   const handleSubcategoryClick = (subcategory: VideoSubcategory) => {
     setSelectedSubcategory(subcategory)

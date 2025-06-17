@@ -118,7 +118,8 @@ export function VideoSearchModal({ isOpen, onClose, userPermissions: _userPermis
     console.log('VideoSearchModal - Navigating to:', `/videos/${video.id}`)
     
     try {
-      router.push(`/videos/${video.id}`)
+      // Add search parameter to track that user came from search modal
+      router.push(`/videos/${video.id}?from=search&query=${encodeURIComponent(query)}`)
       console.log('VideoSearchModal - router.push called successfully')
     } catch (error) {
       console.error('VideoSearchModal - Error calling router.push:', error)
