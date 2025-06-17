@@ -188,42 +188,60 @@ export async function POST(req: Request) {
       )
     }
     
-    // Get chunks count and tags for each video
-    const processedData = await Promise.all(data.map(async (video) => {
-      // Get chunks count
-      const { count: chunksCount } = await supabase
-        .from('video_chunks')
-        .select('*', { count: 'exact', head: true })
-        .eq('video_file_id', video.id)
+    // OPTIMIZATION: Fetch all related data in bulk to avoid N+1 queries
+    const videoIds = data.map(video => video.id)
+    
+    // Bulk fetch chunks counts
+    const { data: chunksData } = await supabase
+      .from('video_chunks')
+      .select('video_file_id')
+      .in('video_file_id', videoIds)
+    
+    // Create chunks count map
+    const chunksCountMap = new Map<string, number>()
+    chunksData?.forEach(chunk => {
+      const currentCount = chunksCountMap.get(chunk.video_file_id) || 0
+      chunksCountMap.set(chunk.video_file_id, currentCount + 1)
+    })
 
-      // Get tags
-      const { data: tagData } = await supabase
-        .from('video_tag_assignments')
-        .select(`
-          video_tags (name)
-        `)
-        .eq('video_file_id', video.id)
+    // Bulk fetch tags
+    const { data: allTagData } = await supabase
+      .from('video_tag_assignments')
+      .select(`
+        video_file_id,
+        video_tags (name)
+      `)
+      .in('video_file_id', videoIds)
 
-      const tags = tagData?.map(item => item.video_tags?.name).filter(Boolean) || []
-
-      // Get permissions from video_visibility table
-      const { data: visibilityData } = await supabase
-        .from('video_visibility')
-        .select('conditions')
-        .eq('video_file_id', video.id)
-        .single()
-
-      // Use video_visibility conditions if available, otherwise use video_files visibility_conditions
-      const permissions = visibilityData?.conditions || video.visibility_conditions || { roleTypes: [], teams: [], areas: [], regions: [] }
-
-      // Use summary if available, otherwise generate preview from description
-      let summary = video.summary || null;
-      let contentPreview: string | null = null;
-      
-      // If no summary exists, generate contentPreview from description
-      if (!summary && video.description) {
-        contentPreview = video.description.substring(0, 300) + (video.description.length > 300 ? '...' : '')
+    // Create tags map
+    const tagsMap = new Map<string, string[]>()
+    allTagData?.forEach(item => {
+      if (item.video_tags?.name) {
+        const existingTags = tagsMap.get(item.video_file_id) || []
+        tagsMap.set(item.video_file_id, [...existingTags, item.video_tags.name])
       }
+    })
+
+    // Bulk fetch visibility conditions
+    const { data: allVisibilityData } = await supabase
+      .from('video_visibility')
+      .select('video_file_id, conditions')
+      .in('video_file_id', videoIds)
+
+    // Create visibility map
+    const visibilityMap = new Map<string, any>()
+    allVisibilityData?.forEach(item => {
+      visibilityMap.set(item.video_file_id, item.conditions)
+    })
+
+    // Process videos using the pre-fetched data
+    const processedData = await Promise.all(data.map(async (video) => {
+      const chunksCount = chunksCountMap.get(video.id) || 0
+      const tags = tagsMap.get(video.id) || []
+      const permissions = visibilityMap.get(video.id) || video.visibility_conditions || { roleTypes: [], teams: [], areas: [], regions: [] }
+
+      // Use summary if available for the truncated response
+      let summary = video.summary || null;
       
       // Transform to VideoForViewing format for permission checking
       const videoForViewing = {
@@ -266,14 +284,13 @@ export async function POST(req: Request) {
         video: {
           id: video.id,
           title: video.title,
-          description: video.description,
+          // Only include description preview for listing (limit 150 chars)
+          description: video.description ? video.description.substring(0, 150) + (video.description.length > 150 ? '...' : '') : null,
           vimeoId: video.vimeo_id,
-          vimeoUri: video.vimeo_uri,
           vimeoDuration: video.vimeo_duration,
           vimeoThumbnailUrl: video.vimeo_thumbnail_url,
           customThumbnailUrl: video.custom_thumbnail_url,
           thumbnailSource: video.thumbnail_source,
-          vimeoMetadata: video.vimeo_metadata,
           category: video.video_categories,
           subcategory: video.video_subcategories ? {
             id: video.video_subcategories.id,
@@ -282,18 +299,14 @@ export async function POST(req: Request) {
             thumbnailColor: video.video_subcategories.thumbnail_color,
             thumbnailSource: video.video_subcategories.thumbnail_source
           } : undefined,
-          series: video.video_series,
-          summary,
-          contentPreview,
+          // Only include summary preview for listing (limit 200 chars)
+          summary: summary ? summary.substring(0, 200) + (summary.length > 200 ? '...' : '') : null,
           tags,
           adminSelected: video.admin_selected,
           libraryStatus: video.library_status,
-          transcriptStatus: video.transcript_status,
-          embeddingStatus: video.embedding_status,
-          summaryStatus: video.summary_status,
           createdAt: video.created_at,
           updatedAt: video.updated_at,
-          chunksCount: chunksCount || 0,
+          chunksCount: chunksCount,
           permissions
         },
         canView: permissionResult.canView,

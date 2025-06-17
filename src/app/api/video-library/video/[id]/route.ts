@@ -290,34 +290,43 @@ export async function PUT(req: Request, { params }: RouteParams) {
 
       // Create new tag assignments
       if (tags.length > 0) {
-        const tagRecords = []
-        for (const tagName of tags) {
-          // Get or create tag
-          let { data: existingTag } = await supabase
+        // OPTIMIZATION: Bulk fetch existing tags to avoid N+1 queries
+        const { data: existingTags } = await supabase
+          .from('video_tags')
+          .select('id, name')
+          .in('name', tags)
+
+        const existingTagMap = new Map<string, string>()
+        existingTags?.forEach(tag => {
+          existingTagMap.set(tag.name, tag.id)
+        })
+
+        // Find tags that need to be created
+        const newTagNames = tags.filter(tagName => !existingTagMap.has(tagName))
+        
+        // Bulk create new tags if needed
+        if (newTagNames.length > 0) {
+          const { data: newTags } = await supabase
             .from('video_tags')
-            .select('id')
-            .eq('name', tagName)
-            .single()
+            .insert(newTagNames.map(name => ({ name })))
+            .select('id, name')
 
-          if (!existingTag) {
-            const { data: newTag, error: tagError } = await supabase
-              .from('video_tags')
-              .insert({ name: tagName })
-              .select('id')
-              .single()
-
-            if (!tagError && newTag) {
-              existingTag = newTag
-            }
-          }
-
-          if (existingTag) {
-            tagRecords.push({
-              video_file_id: videoId,
-              tag_id: existingTag.id
-            })
-          }
+          // Add new tags to the map
+          newTags?.forEach(tag => {
+            existingTagMap.set(tag.name, tag.id)
+          })
         }
+
+        // Create tag assignment records
+        const tagRecords = tags
+          .map(tagName => {
+            const tagId = existingTagMap.get(tagName)
+            return tagId ? {
+              video_file_id: videoId,
+              tag_id: tagId
+            } : null
+          })
+          .filter((record): record is { video_file_id: string; tag_id: string } => record !== null)
 
         if (tagRecords.length > 0) {
           await supabase

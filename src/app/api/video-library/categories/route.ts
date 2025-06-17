@@ -48,34 +48,61 @@ export async function GET() {
       )
     }
 
-    // Get video counts for categories and subcategories
-    const processedCategories = await Promise.all(categories.map(async (category) => {
-      // Count ALL videos in this category (including those in subcategories)
-      const { count: categoryVideoCount } = await supabase
-        .from('video_files')
-        .select('*', { count: 'exact', head: true })
-        .eq('video_category_id', category.id)
+    // OPTIMIZATION: Get video counts in bulk to avoid N+1 queries
+    const categoryIds = categories.map(cat => cat.id)
+    const allSubcategoryIds = categories.flatMap(cat => 
+      (cat.video_subcategories || []).map((sub: any) => sub.id)
+    )
+
+    // Bulk fetch category video counts
+    const { data: categoryVideos } = await supabase
+      .from('video_files')
+      .select('video_category_id')
+      .in('video_category_id', categoryIds)
+
+    // Create category count map
+    const categoryCountMap = new Map<string, number>()
+    categoryVideos?.forEach(video => {
+      if (video.video_category_id) {
+        const currentCount = categoryCountMap.get(video.video_category_id) || 0
+        categoryCountMap.set(video.video_category_id, currentCount + 1)
+      }
+    })
+
+    // Bulk fetch subcategory video counts
+    const { data: subcategoryVideos } = await supabase
+      .from('video_files')
+      .select('video_subcategory_id')
+      .in('video_subcategory_id', allSubcategoryIds)
+
+    // Create subcategory count map
+    const subcategoryCountMap = new Map<string, number>()
+    subcategoryVideos?.forEach(video => {
+      if (video.video_subcategory_id) {
+        const currentCount = subcategoryCountMap.get(video.video_subcategory_id) || 0
+        subcategoryCountMap.set(video.video_subcategory_id, currentCount + 1)
+      }
+    })
+
+    // Process categories using pre-fetched counts
+    const processedCategories = categories.map(category => {
+      const categoryVideoCount = categoryCountMap.get(category.id) || 0
 
       // Process subcategories with their video counts
-      const subcategoriesWithCounts = await Promise.all(
-        (category.video_subcategories || []).map(async (sub: any) => {
-          const { count: subVideoCount } = await supabase
-            .from('video_files')
-            .select('*', { count: 'exact', head: true })
-            .eq('video_subcategory_id', sub.id)
+      const subcategoriesWithCounts = (category.video_subcategories || []).map((sub: any) => {
+        const subVideoCount = subcategoryCountMap.get(sub.id) || 0
 
-          return {
-            id: sub.id,
-            name: sub.name,
-            description: sub.description,
-            thumbnail_url: sub.thumbnail_url,
-            thumbnail_source: sub.thumbnail_source,
-            thumbnail_color: sub.thumbnail_color,
-            category_id: category.id,
-            video_count: subVideoCount || 0
-          }
-        })
-      )
+        return {
+          id: sub.id,
+          name: sub.name,
+          description: sub.description,
+          thumbnail_url: sub.thumbnail_url,
+          thumbnail_source: sub.thumbnail_source,
+          thumbnail_color: sub.thumbnail_color,
+          category_id: category.id,
+          video_count: subVideoCount
+        }
+      })
 
       return {
         id: category.id,
@@ -86,10 +113,10 @@ export async function GET() {
         thumbnail_color: category.thumbnail_color,
         created_at: category.created_at,
         updated_at: category.updated_at,
-        video_count: categoryVideoCount || 0,
+        video_count: categoryVideoCount,
         subcategories: subcategoriesWithCounts
       }
-    }))
+    })
 
     return NextResponse.json({
       success: true,

@@ -31,17 +31,16 @@ export class VideoLibraryService {
   }
 
   /**
-   * Get categories manually - Now uses protected API to get videos and builds categories
+   * Get categories manually - Now uses optimized categories summary API for faster loading
    */
   static async getCategoriesManually(): Promise<VideoCategory[]> {
     try {
-      // Call our protected video list API to get all videos the user can access
-      const response = await fetch('/api/video-library/list', {
+      // Call our optimized categories summary API for faster loading
+      const response = await fetch('/api/video-library/categories-summary', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({})
+        }
       })
 
       if (!response.ok) {
@@ -54,60 +53,7 @@ export class VideoLibraryService {
         throw new Error(data.error || 'API returned error')
       }
 
-      const videos = data.data || []
-
-      // Build categories from the filtered videos
-      const categoryMap = new Map<string, {
-        id: string
-        name: string
-        subcategories: Map<string, { id: string, name: string, count: number, thumbnailUrl?: string, thumbnailColor?: string }>
-      }>()
-
-      // Group videos by category and subcategory
-      videos.forEach((video: any) => {
-        if (video.category && video.subcategory) {
-          // Get or create category
-          if (!categoryMap.has(video.category.id)) {
-            categoryMap.set(video.category.id, {
-              id: video.category.id,
-              name: video.category.name,
-              subcategories: new Map()
-            })
-          }
-
-          const category = categoryMap.get(video.category.id)!
-          
-          // Get or create subcategory
-          if (!category.subcategories.has(video.subcategory.id)) {
-            category.subcategories.set(video.subcategory.id, {
-              id: video.subcategory.id,
-              name: video.subcategory.name,
-              count: 0,
-              thumbnailUrl: video.subcategory.thumbnailUrl,
-              thumbnailColor: video.subcategory.thumbnailColor
-            })
-          }
-
-          // Increment count
-          const subcategory = category.subcategories.get(video.subcategory.id)!
-          subcategory.count++
-        }
-      })
-
-      // Convert to the expected format
-      const result: VideoCategory[] = Array.from(categoryMap.values()).map(category => ({
-        id: category.id,
-        name: category.name,
-        subcategories: Array.from(category.subcategories.values()).map(sub => ({
-          id: sub.id,
-          name: sub.name,
-          thumbnailUrl: sub.thumbnailUrl,
-          thumbnailColor: sub.thumbnailColor,
-          videoCount: sub.count
-        }))
-      }))
-
-      return result
+      return data.data || []
       
     } catch (err) {
       console.error('Error fetching categories:', err)
