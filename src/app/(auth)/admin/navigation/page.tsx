@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Plus, MoreVertical } from 'lucide-react'
 import { useNavigation } from '@/features/navigation/hooks/useNavigation'
@@ -94,7 +94,14 @@ export default function NavigationManagementPage() {
     deleteMenu
   } = useNavigation()
 
+  // Hydration safety: ensure we're client-side before rendering dynamic content
+  const [isHydrated, setIsHydrated] = useState(false)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
+
+  // Hydration check - this only runs on client-side
+  useEffect(() => {
+    setIsHydrated(true)
+  }, [])
 
   const handleDeleteMenu = async (menuId: string) => {
     try {
@@ -115,8 +122,8 @@ export default function NavigationManagementPage() {
     }
   }
 
-  // Loading state for menus data
-  if (isLoadingMenus) {
+  // Show loading until hydration is complete - prevents SSR/client mismatch
+  if (!isHydrated || isLoadingMenus) {
     return (
       <div className="max-w-5xl mx-auto py-8 px-4">
         <div className="flex items-center justify-center min-h-[200px]">

@@ -2,7 +2,7 @@
 
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { usePermissions } from '@/features/permissions/hooks/usePermissions'
 import { VideoPermissionService } from '../services/permissionService'
 import type { VideoForViewing, VideoPermissionResult } from '../types'
@@ -14,6 +14,13 @@ import type { UserProfile } from '@/features/users/types'
  */
 export function useVideoPermissions(profile: UserProfile | null) {
   const { userPermissions } = usePermissions(profile)
+  
+  // Hydration safety: ensure consistent loading state between server and client
+  const [isClientSide, setIsClientSide] = useState(false)
+  
+  useEffect(() => {
+    setIsClientSide(true)
+  }, [])
 
   /**
    * Check if user can view a specific video
@@ -86,6 +93,6 @@ export function useVideoPermissions(profile: UserProfile | null) {
     isAdmin,
     canViewAnalytics,
     userPermissions,
-    isLoading: !profile // Loading if we don't have profile yet
+    isLoading: !isClientSide || !profile // Loading until client-side and profile ready
   }
 }

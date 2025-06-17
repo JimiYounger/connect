@@ -27,16 +27,18 @@ export default async function AuthLayout({
     redirect('/');
   }
 
-  // If we have auth cookies but no session, we might be in a race condition
-  // Let's render the children anyway and let client-side handle it
+  // If we have auth cookies but no session, we're in a race condition
+  // Show a consistent loading state while auth resolves client-side
   if (!session && hasAuthCookies) {
-    console.log('Auth Layout - No session but has auth cookies, rendering with null session');
+    console.log('Auth Layout - No session but has auth cookies, showing loading state');
     return (
       <AuthProvider 
         initialSession={null}
-        initialLoading={{ session: true, profile: false, initializing: false }}
+        initialLoading={{ session: true, profile: true, initializing: true }}
       >
-        {children}
+        <div className="min-h-screen bg-black flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+        </div>
       </AuthProvider>
     );
   }

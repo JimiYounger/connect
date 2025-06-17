@@ -20,59 +20,65 @@ export default function VideoLibraryPage() {
   const { profile } = useProfile(session)
   const { userPermissions, isLoading: permissionsLoading } = useVideoPermissions(profile)
   
+  // Hydration safety: ensure we're client-side before rendering dynamic content
+  const [isHydrated, setIsHydrated] = useState(false)
   const [categories, setCategories] = useState<VideoCategory[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedSubcategory, setSelectedSubcategory] = useState<VideoSubcategory | null>(null)
   const [showSearchModal, setShowSearchModal] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Load categories and subcategories
+  // Hydration check - this only runs on client-side
   useEffect(() => {
-    const loadCategories = async () => {
+    setIsHydrated(true)
+  }, [])
+
+  // Load categories and handle URL parameters in one coordinated effect
+  useEffect(() => {
+    const loadInitialData = async () => {
       try {
         setLoading(true)
+        setError(null)
         
+        // Step 1: Load categories first
         const realCategories = await VideoLibraryService.getCategoriesWithSubcategories()
-        
-        // Filter out categories with no subcategories or no videos
         const filteredCategories = realCategories.filter(category => 
           category.subcategories.length > 0 && 
           category.subcategories.some(sub => sub.videoCount > 0)
         )
         
         setCategories(filteredCategories)
-        setError(null)
+        
+        // Step 2: Handle URL parameters now that we have categories
+        const showSearch = searchParams.get('showSearch')
+        const showSubcategoryId = searchParams.get('showSubcategory')
+        
+        if (showSearch === 'true') {
+          setShowSearchModal(true)
+        } else if (showSubcategoryId && filteredCategories.length > 0) {
+          // Find the subcategory to show
+          const subcategory = filteredCategories
+            .flatMap(cat => cat.subcategories)
+            .find(sub => sub.id === showSubcategoryId)
+          
+          if (subcategory) {
+            setSelectedSubcategory(subcategory)
+          }
+        }
+        
       } catch (err) {
-        console.error('Error loading video categories:', err)
+        console.error('Error loading video library:', err)
         setError('Failed to load video library')
       } finally {
         setLoading(false)
       }
     }
 
-    loadCategories()
-  }, [])
-
-  // Handle URL parameters to restore modal state
-  useEffect(() => {
-    const showSearch = searchParams.get('showSearch')
-    const showSubcategoryId = searchParams.get('showSubcategory')
-    const _query = searchParams.get('query') // Unused for now but available for future enhancement
-    
-    if (showSearch === 'true') {
-      setShowSearchModal(true)
-      // TODO: If we want to restore the search query, we'd need to modify VideoSearchModal
-    } else if (showSubcategoryId && categories.length > 0) {
-      // Find the subcategory to show
-      const subcategory = categories
-        .flatMap(cat => cat.subcategories)
-        .find(sub => sub.id === showSubcategoryId)
-      
-      if (subcategory) {
-        setSelectedSubcategory(subcategory)
-      }
+    // Only run after hydration is complete
+    if (isHydrated) {
+      loadInitialData()
     }
-  }, [searchParams, categories])
+  }, [searchParams, isHydrated]) // Depend on both URL params and hydration state
 
   const handleSubcategoryClick = (subcategory: VideoSubcategory) => {
     setSelectedSubcategory(subcategory)
@@ -82,13 +88,11 @@ export default function VideoLibraryPage() {
     setSelectedSubcategory(null)
   }
 
-  if (!session) {
+  // Show loading until hydration is complete - prevents SSR/client mismatch
+  if (!isHydrated || !session) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Authentication Required</h1>
-          <p className="text-gray-600">Please sign in to access the video library.</p>
-        </div>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
       </div>
     )
   }

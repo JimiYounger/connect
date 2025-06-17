@@ -60,6 +60,8 @@ export default function DashboardsPage() {
   const { profile } = useProfile(session);
   const { userPermissions } = usePermissions(profile);
   
+  // Hydration safety: ensure we're client-side before rendering dynamic content
+  const [isHydrated, setIsHydrated] = useState(false);
   // State for dashboards
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -79,10 +81,15 @@ export default function DashboardsPage() {
   // Create a supabase client
   const supabase = createClient();
   
+  // Hydration check - this only runs on client-side
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+  
   // Fetch dashboards
   useEffect(() => {
     async function fetchDashboards() {
-      if (!session?.user.id) return;
+      if (!isHydrated || !session?.user.id) return;
       
       try {
         setIsLoading(true);
@@ -173,7 +180,7 @@ export default function DashboardsPage() {
     
     // Fetch unique role types for filter
     async function fetchRoleTypes() {
-      if (!session?.user.id) return;
+      if (!isHydrated || !session?.user.id) return;
       
       try {
         const { data, error } = await supabase
@@ -191,11 +198,11 @@ export default function DashboardsPage() {
       }
     }
     
-    if (session?.user.id) {
+    if (isHydrated && session?.user.id) {
       fetchDashboards();
       fetchRoleTypes();
     }
-  }, [session, searchQuery, selectedRoleType, activeTab, currentPage, supabase]);
+  }, [isHydrated, session, searchQuery, selectedRoleType, activeTab, currentPage, supabase]);
   
   // Handle refresh
   const handleRefresh = () => {
@@ -210,40 +217,14 @@ export default function DashboardsPage() {
     setCurrentPage(1);
   };
   
-  // Loading states
-  if (loading.initializing) {
+  // Show loading until hydration is complete - prevents SSR/client mismatch
+  if (!isHydrated || loading.initializing || !session || !profile || !userPermissions) {
     return (
       <div className="container mx-auto py-8 space-y-6">
         <div className="flex items-center justify-center min-h-[200px]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
             <p className="mt-2">Loading...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Auth check
-  if (!session) {
-    return (
-      <div className="container mx-auto py-8 space-y-6">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-          <p>Please sign in to access this page</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Profile and permissions loading
-  if (!profile || !userPermissions) {
-    return (
-      <div className="container mx-auto py-8 space-y-6">
-        <div className="flex items-center justify-center min-h-[200px]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-            <p className="mt-2">Loading user data...</p>
           </div>
         </div>
       </div>

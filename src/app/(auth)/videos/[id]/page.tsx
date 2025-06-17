@@ -22,14 +22,21 @@ export default function VideoWatchPage() {
   const { profile } = useProfile(session)
   const { userPermissions, isLoading: permissionsLoading } = useVideoPermissions(profile)
   
+  // Hydration safety: ensure we're client-side before rendering dynamic content
+  const [isHydrated, setIsHydrated] = useState(false)
   const [video, setVideo] = useState<VideoForViewing | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Hydration check - this only runs on client-side
+  useEffect(() => {
+    setIsHydrated(true)
+  }, [])
+
   // Load video data
   useEffect(() => {
     const loadVideo = async () => {
-      if (!userPermissions || !videoId) return
+      if (!isHydrated || !userPermissions || !videoId) return
 
       try {
         setLoading(true)
@@ -56,7 +63,7 @@ export default function VideoWatchPage() {
     }
 
     loadVideo()
-  }, [userPermissions, videoId])
+  }, [isHydrated, userPermissions, videoId]) // Include hydration state
 
   const handleBack = () => {
     const from = searchParams.get('from')
@@ -80,14 +87,11 @@ export default function VideoWatchPage() {
     }
   }
 
-  if (!session) {
-    console.log('Mobile debug - No session, showing auth required')
+  // Show loading until hydration is complete - prevents SSR/client mismatch
+  if (!isHydrated || !session) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-4">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-white mb-4">Authentication Required</h1>
-          <p className="text-gray-400">Please sign in to watch videos.</p>
-        </div>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
       </div>
     )
   }
