@@ -11,6 +11,7 @@ import { useAuth } from '@/features/auth/context/auth-context'
 import { useProfile } from '@/features/users/hooks/useProfile'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
+import { getVideoThumbnailUrl } from '@/features/videoLibrary/utils/thumbnailUtils'
 
 interface VideoSubcategory {
   id: string
@@ -180,21 +181,29 @@ export function SubcategoryModal({ subcategory, isOpen, onClose, userPermissions
                   >
                   {/* Video Thumbnail */}
                   <div className="relative flex-none w-24 sm:w-32 md:w-40 aspect-video rounded-lg overflow-hidden bg-gray-700">
-                    {video.vimeoThumbnailUrl ? (
-                      <Image
-                        src={video.vimeoThumbnailUrl}
-                        alt={video.title}
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 640px) 96px, (max-width: 768px) 128px, 160px"
-                        quality={90}
-                        priority={false}
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
-                        <Play className="w-6 md:w-8 h-6 md:h-8 text-white opacity-80" />
-                      </div>
-                    )}
+                    {(() => {
+                      const thumbnailUrl = getVideoThumbnailUrl({
+                        thumbnailSource: video.thumbnailSource,
+                        customThumbnailUrl: video.customThumbnailUrl,
+                        vimeoThumbnailUrl: video.vimeoThumbnailUrl
+                      })
+                      
+                      return thumbnailUrl ? (
+                        <Image
+                          src={thumbnailUrl}
+                          alt={video.title}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 640px) 96px, (max-width: 768px) 128px, 160px"
+                          quality={90}
+                          priority={false}
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
+                          <Play className="w-6 md:w-8 h-6 md:h-8 text-white opacity-80" />
+                        </div>
+                      )
+                    })()}
                     
                     {/* Play Overlay */}
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">

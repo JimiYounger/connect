@@ -37,7 +37,8 @@ import {
   Trash2,
   Loader2,
   Save,
-  FolderPlus
+  FolderPlus,
+  Upload
 } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -948,6 +949,12 @@ export function AdminVideoLibrary() {
               <List className="h-4 w-4" />
             </Button>
           </div>
+          <Button asChild variant="outline">
+            <Link href="/admin/video-library/bulk-import">
+              <Upload className="h-4 w-4 mr-2" />
+              Bulk Import
+            </Link>
+          </Button>
           <Button asChild>
             <Link href="/admin/video-library/import">
               <Plus className="h-4 w-4 mr-2" />

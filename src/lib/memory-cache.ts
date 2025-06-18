@@ -1,5 +1,3 @@
-// Simple in-memory cache with TTL for single-instance deployments
-// Perfect for your 400-employee, single-server use case
 
 interface CacheItem<T> {
   data: T
