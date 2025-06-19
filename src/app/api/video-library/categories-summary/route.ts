@@ -179,8 +179,8 @@ export async function POST() {
         video_category_id,
         video_subcategory_id,
         library_status,
-        video_categories (id, name),
-        video_subcategories (id, name, thumbnail_url, thumbnail_color, thumbnail_source)
+        video_categories (id, name, order_index),
+        video_subcategories (id, name, order_index, thumbnail_url, thumbnail_color, thumbnail_source)
       `)
       .in('id', viewableVideoIds)
 
@@ -196,9 +196,11 @@ export async function POST() {
     const categoryMap = new Map<string, {
       id: string
       name: string
+      order_index: number | null
       subcategories: Map<string, { 
         id: string, 
         name: string, 
+        order_index: number | null,
         count: number, 
         thumbnailUrl?: string, 
         thumbnailColor?: string,
@@ -213,6 +215,7 @@ export async function POST() {
           categoryMap.set(video.video_categories.id, {
             id: video.video_categories.id,
             name: video.video_categories.name,
+            order_index: video.video_categories.order_index,
             subcategories: new Map()
           })
         }
@@ -224,6 +227,7 @@ export async function POST() {
           category.subcategories.set(video.video_subcategories.id, {
             id: video.video_subcategories.id,
             name: video.video_subcategories.name,
+            order_index: video.video_subcategories.order_index,
             count: 0,
             thumbnailUrl: video.video_subcategories.thumbnail_url || undefined,
             thumbnailColor: video.video_subcategories.thumbnail_color || undefined,
@@ -237,19 +241,45 @@ export async function POST() {
       }
     })
 
-    // Convert to response format
-    const categories = Array.from(categoryMap.values()).map(category => ({
-      id: category.id,
-      name: category.name,
-      subcategories: Array.from(category.subcategories.values()).map(sub => ({
-        id: sub.id,
-        name: sub.name,
-        thumbnailUrl: sub.thumbnailUrl,
-        thumbnailColor: sub.thumbnailColor,
-        thumbnailSource: sub.thumbnailSource,
-        videoCount: sub.count
+    // Convert to response format with proper sorting
+    const categories = Array.from(categoryMap.values())
+      .sort((a, b) => {
+        // Sort categories by order_index (nulls last), then by name
+        if (a.order_index === null && b.order_index === null) {
+          return a.name.localeCompare(b.name)
+        }
+        if (a.order_index === null) return 1
+        if (b.order_index === null) return -1
+        if (a.order_index === b.order_index) {
+          return a.name.localeCompare(b.name)
+        }
+        return a.order_index - b.order_index
+      })
+      .map(category => ({
+        id: category.id,
+        name: category.name,
+        subcategories: Array.from(category.subcategories.values())
+          .sort((a, b) => {
+            // Sort subcategories by order_index (nulls last), then by name
+            if (a.order_index === null && b.order_index === null) {
+              return a.name.localeCompare(b.name)
+            }
+            if (a.order_index === null) return 1
+            if (b.order_index === null) return -1
+            if (a.order_index === b.order_index) {
+              return a.name.localeCompare(b.name)
+            }
+            return a.order_index - b.order_index
+          })
+          .map(sub => ({
+            id: sub.id,
+            name: sub.name,
+            thumbnailUrl: sub.thumbnailUrl,
+            thumbnailColor: sub.thumbnailColor,
+            thumbnailSource: sub.thumbnailSource,
+            videoCount: sub.count
+          }))
       }))
-    }))
 
     // Cache the computed categories for this user (4 hours TTL)
     memoryCache.set(userCacheKey, categories, CACHE_TTL.CATEGORIES)

@@ -1,4 +1,3 @@
-
 interface CacheItem<T> {
   data: T
   expiresAt: number
@@ -57,6 +56,13 @@ class MemoryCache {
   }
   
   /**
+   * Get all cache keys
+   */
+  keys(): string[] {
+    return Array.from(this.cache.keys())
+  }
+  
+  /**
    * Clear expired items (cleanup)
    */
   cleanup(): void {
@@ -99,12 +105,16 @@ export const memoryCache = new MemoryCache()
 export const CACHE_KEYS = {
   CATEGORIES_SUMMARY: 'categories_summary',
   USER_PERMISSIONS: (userId: string) => `user_permissions_${userId}`,
+  SUBCATEGORY_VIDEOS: 'subcategory_videos',
+  SUBCATEGORY_COUNT: 'subcategory_count',
 } as const
 
 // Cache TTLs (Time To Live) in milliseconds
 export const CACHE_TTL = {
   CATEGORIES: 4 * 60 * 60 * 1000, // 4 hours (since categories only change 1-2x per week)
   USER_PERMISSIONS: 30 * 60 * 1000, // 30 minutes
+  SUBCATEGORY_VIDEOS: 10 * 60 * 1000, // 10 minutes
+  SUBCATEGORY_COUNT: 15 * 60 * 1000, // 15 minutes
 } as const
 
 // Cleanup expired items every hour

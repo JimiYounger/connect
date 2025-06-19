@@ -62,21 +62,25 @@ export class VideoLibraryService {
   }
 
   /**
-   * Get videos for a specific subcategory - Now uses protected API
+   * Get videos for a specific subcategory - Optimized with pagination and reduced payload
    */
   static async getVideosForSubcategory(
     subcategoryId: string,
-    _userPermissions: UserPermissions
+    _userPermissions: UserPermissions,
+    limit: number = 50,
+    offset: number = 0
   ): Promise<VideoForViewing[]> {
     try {
-      // Call our protected video list API with subcategory filter
-      const response = await fetch('/api/video-library/list', {
+      // Use optimized subcategory videos endpoint with pagination
+      const response = await fetch('/api/video-library/subcategory-videos', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          video_subcategory_id: subcategoryId
+          subcategoryId,
+          limit,
+          offset
         })
       })
 
@@ -90,37 +94,37 @@ export class VideoLibraryService {
         throw new Error(data.error || 'API returned error')
       }
 
-      const videos = data.data || []
-
-      // Transform to VideoForViewing format
-      const transformedVideos: VideoForViewing[] = videos.map((video: any) => ({
-        id: video.id,
-        title: video.title,
-        description: video.description || undefined,
-        vimeoId: video.vimeoId || undefined,
-        vimeoDuration: video.vimeoDuration || undefined,
-        vimeoThumbnailUrl: video.vimeoThumbnailUrl || undefined,
-        customThumbnailUrl: video.customThumbnailUrl || undefined,
-        thumbnailSource: video.thumbnailSource as 'vimeo' | 'upload' | 'url',
-        category: video.category,
-        subcategory: video.subcategory,
-        libraryStatus: video.libraryStatus || 'pending',
-        publicSharingEnabled: video.publicSharingEnabled || false,
-        visibilityConditions: video.permissions || {
-          roleTypes: [],
-          teams: [],
-          areas: [],
-          regions: []
-        },
-        createdAt: video.createdAt || '',
-        updatedAt: video.updatedAt || '',
-        tags: video.tags || []
-      }))
-
-      return transformedVideos
+      return data.data || []
     } catch (err) {
       console.error('Error in getVideosForSubcategory:', err)
       return []
+    }
+  }
+
+  /**
+   * Get total video count for a subcategory
+   */
+  static async getSubcategoryVideoCount(
+    subcategoryId: string
+  ): Promise<number> {
+    try {
+      const response = await fetch('/api/video-library/subcategory-count', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ subcategoryId })
+      })
+
+      if (!response.ok) {
+        throw new Error(`API call failed: ${response.status} ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      return data.success ? (data.count || 0) : 0
+    } catch (err) {
+      console.error('Error getting subcategory video count:', err)
+      return 0
     }
   }
 

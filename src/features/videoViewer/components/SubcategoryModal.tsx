@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { X, Play, Clock, Calendar, CheckCircle } from 'lucide-react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { X, Play, Clock, Calendar, CheckCircle, Search } from 'lucide-react'
 import { VideoLibraryService } from '@/features/videoViewer/services/videoLibraryService'
 import { WatchTrackingService } from '@/features/videoViewer/services/watchTrackingService'
 import type { VideoForViewing, VideoWatchProgress } from '@/features/videoViewer/types'
@@ -36,6 +36,11 @@ export function SubcategoryModal({ subcategory, isOpen, onClose, userPermissions
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [watchProgress, setWatchProgress] = useState<Map<string, VideoWatchProgress>>(new Map())
+  const [searchQuery, setSearchQuery] = useState('')
+  const [hasMore, setHasMore] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [currentOffset, setCurrentOffset] = useState(0)
+  const [totalCount, setTotalCount] = useState<number | null>(null)
 
   // Animation states
   const [isAnimating, setIsAnimating] = useState(false)
@@ -60,47 +65,104 @@ export function SubcategoryModal({ subcategory, isOpen, onClose, userPermissions
     setTimeout(() => onClose(), 300)
   }
 
-  // Load videos for this subcategory
-  useEffect(() => {
-    const loadVideos = async () => {
-      if (!isOpen || !userPermissions) return
+  // Load initial videos and count
+  const loadInitialVideos = useCallback(async () => {
+    if (!isOpen || !userPermissions) return
 
-      try {
-        setLoading(true)
-        setError(null)
-        
-        const realVideos = await VideoLibraryService.getVideosForSubcategory(
+    try {
+      setLoading(true)
+      setError(null)
+      setCurrentOffset(0)
+      setVideos([])
+      setWatchProgress(new Map())
+      
+      // Load videos and count in parallel
+      const [videosResult, countResult] = await Promise.all([
+        VideoLibraryService.getVideosForSubcategory(
           subcategory.id,
-          userPermissions
-        )
+          userPermissions,
+          50, // Initial batch size
+          0
+        ),
+        VideoLibraryService.getSubcategoryVideoCount(subcategory.id)
+      ])
+      
+      setVideos(videosResult)
+      setTotalCount(countResult)
+      setHasMore(videosResult.length === 50 && countResult > 50)
+      setCurrentOffset(50)
+      
+      // Load watch progress for initial videos
+      if (profile?.id && videosResult.length > 0) {
+        try {
+          const videoFileIds = videosResult.map(v => v.id)
+          const progressData = await WatchTrackingService.getUserWatchHistory(profile.id, videoFileIds)
+          
+          const progressMap = new Map<string, VideoWatchProgress>()
+          progressData.forEach(progress => {
+            progressMap.set(progress.videoFileId, progress)
+          })
+          setWatchProgress(progressMap)
+        } catch (progressErr) {
+          console.error('Error loading watch progress:', progressErr)
+        }
+      }
+    } catch (err) {
+      console.error('Error loading videos:', err)
+      setError('Failed to load videos')
+    } finally {
+      setLoading(false)
+    }
+  }, [isOpen, subcategory.id, userPermissions, profile?.id])
+
+  // Load more videos (pagination)
+  const loadMoreVideos = useCallback(async () => {
+    if (loadingMore || !hasMore || !userPermissions) return
+
+    try {
+      setLoadingMore(true)
+      
+      const moreVideos = await VideoLibraryService.getVideosForSubcategory(
+        subcategory.id,
+        userPermissions,
+        50,
+        currentOffset
+      )
+      
+      if (moreVideos.length > 0) {
+        setVideos(prev => [...prev, ...moreVideos])
+        setCurrentOffset(prev => prev + moreVideos.length)
         
-        setVideos(realVideos)
-        
-        // Load watch progress for these videos
-        if (profile?.id && realVideos.length > 0) {
+        // Load watch progress for new videos
+        if (profile?.id) {
           try {
-            const videoFileIds = realVideos.map(v => v.id)
+            const videoFileIds = moreVideos.map(v => v.id)
             const progressData = await WatchTrackingService.getUserWatchHistory(profile.id, videoFileIds)
             
-            const progressMap = new Map<string, VideoWatchProgress>()
-            progressData.forEach(progress => {
-              progressMap.set(progress.videoFileId, progress)
+            setWatchProgress(prev => {
+              const newMap = new Map(prev)
+              progressData.forEach(progress => {
+                newMap.set(progress.videoFileId, progress)
+              })
+              return newMap
             })
-            setWatchProgress(progressMap)
           } catch (progressErr) {
-            console.error('Error loading watch progress:', progressErr)
+            console.error('Error loading additional watch progress:', progressErr)
           }
         }
-      } catch (err) {
-        console.error('Error loading videos:', err)
-        setError('Failed to load videos')
-      } finally {
-        setLoading(false)
       }
+      
+      setHasMore(moreVideos.length === 50 && (totalCount === null || videos.length + moreVideos.length < totalCount))
+    } catch (err) {
+      console.error('Error loading more videos:', err)
+    } finally {
+      setLoadingMore(false)
     }
+  }, [loadingMore, hasMore, userPermissions, subcategory.id, currentOffset, totalCount, videos.length, profile?.id])
 
-    loadVideos()
-  }, [isOpen, subcategory.id, userPermissions, profile?.id])
+  useEffect(() => {
+    loadInitialVideos()
+  }, [loadInitialVideos])
 
   const handleVideoClick = (video: VideoForViewing, event?: React.MouseEvent) => {
     console.log('SubcategoryModal - Video clicked:', video.id, video.title)
@@ -116,6 +178,18 @@ export function SubcategoryModal({ subcategory, isOpen, onClose, userPermissions
       console.error('SubcategoryModal - Error calling router.push:', error)
     }
   }
+
+  // Filter videos based on search query
+  const filteredVideos = useMemo(() => {
+    if (!searchQuery.trim()) return videos
+    
+    const query = searchQuery.toLowerCase().trim()
+    return videos.filter(video => 
+      video.title.toLowerCase().includes(query) ||
+      video.description?.toLowerCase().includes(query) ||
+      video.tags?.some(tag => tag.toLowerCase().includes(query))
+    )
+  }, [videos, searchQuery])
 
   const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60)
@@ -134,28 +208,59 @@ export function SubcategoryModal({ subcategory, isOpen, onClose, userPermissions
         }`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-700">
-          <div>
-            <h2 className="text-2xl font-bold text-white">{subcategory.name}</h2>
-            <p className="text-gray-400 mt-1">
-              {subcategory.videoCount} video{subcategory.videoCount !== 1 ? 's' : ''} available
-              {watchProgress.size > 0 && (
-                <span className="ml-2">
-                  • {Array.from(watchProgress.values()).filter(p => p.completed).length} completed
-                </span>
-              )}
-            </p>
+        <div className="p-6 border-b border-gray-700 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-white">{subcategory.name}</h2>
+              <p className="text-gray-400 mt-1">
+                {loading ? 'Loading...' : (
+                  <>
+                    {filteredVideos.length}
+                    {totalCount !== null && totalCount !== videos.length && ` of ${totalCount}`}
+                    {searchQuery && filteredVideos.length !== videos.length ? ' (filtered)' : ' video' + (filteredVideos.length !== 1 ? 's' : '')}
+                    {!searchQuery && videos.length < (totalCount || 0) && ` (showing first ${videos.length})`}
+                    {watchProgress.size > 0 && (
+                      <span className="ml-2">
+                        • {Array.from(watchProgress.values()).filter(p => p.completed).length} completed
+                      </span>
+                    )}
+                  </>
+                )}
+              </p>
+            </div>
+            <button
+              onClick={handleClose}
+              className="w-10 h-10 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition-colors"
+            >
+              <X className="w-5 h-5 text-white" />
+            </button>
           </div>
-          <button
-            onClick={handleClose}
-            className="w-10 h-10 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition-colors"
-          >
-            <X className="w-5 h-5 text-white" />
-          </button>
+          
+          {/* Search Bar */}
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <Search className="w-4 h-4 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search videos..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto h-[calc(100vh-120px)]">
+        <div className="p-6 overflow-y-auto h-[calc(100vh-180px)]">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
@@ -164,9 +269,15 @@ export function SubcategoryModal({ subcategory, isOpen, onClose, userPermissions
             <div className="text-center py-12">
               <p className="text-red-400">{error}</p>
             </div>
+          ) : filteredVideos.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-400">
+                {searchQuery ? 'No videos found matching your search.' : 'No videos available.'}
+              </p>
+            </div>
           ) : (
             <div className="space-y-4">
-              {videos.map((video) => {
+              {filteredVideos.map((video) => {
                 const progress = watchProgress.get(video.id)
                 const isCompleted = progress?.completed || false
                 const percentComplete = progress?.percentComplete || 0
@@ -283,6 +394,26 @@ export function SubcategoryModal({ subcategory, isOpen, onClose, userPermissions
                 </motion.div>
                 )
               })}
+              
+              {/* Load More Button */}
+              {hasMore && !searchQuery && (
+                <div className="text-center py-6">
+                  <button
+                    onClick={loadMoreVideos}
+                    disabled={loadingMore}
+                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2 mx-auto"
+                  >
+                    {loadingMore ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Loading...
+                      </>
+                    ) : (
+                      `Load More Videos (${(totalCount || 0) - videos.length} remaining)`
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

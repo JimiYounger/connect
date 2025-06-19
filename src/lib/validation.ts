@@ -19,7 +19,7 @@ export const videoListParamsSchema = z.object({
   library_status: z.enum(['pending', 'processing', 'completed', 'error', 'approved', 'rejected', 'archived']).optional(),
   searchQuery: z.string().min(1).max(200).optional(),
   page: z.number().int().min(1).max(1000).optional(),
-  limit: z.number().int().min(1).max(100).optional()
+  limit: z.number().int().min(1).max(1000).optional()
 })
 
 // Video update parameters validation

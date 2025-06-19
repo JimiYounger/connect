@@ -3,6 +3,25 @@
 import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import {
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -38,7 +57,8 @@ import {
   Loader2,
   Save,
   FolderPlus,
-  Upload
+  Upload,
+  GripVertical
 } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -81,6 +101,7 @@ interface Category {
   id: string
   name: string
   description?: string
+  order_index?: number
   thumbnail_url?: string
   thumbnail_source?: 'vimeo' | 'upload' | 'url' | 'default'
   thumbnail_color?: string
@@ -95,6 +116,7 @@ interface Subcategory {
   id: string
   name: string
   description?: string
+  order_index?: number
   thumbnail_url?: string
   thumbnail_source?: 'vimeo' | 'upload' | 'url' | 'default'
   thumbnail_color?: string
@@ -663,6 +685,69 @@ export function AdminVideoLibrary() {
     }
   }
 
+  // Reorder categories
+  const reorderCategories = async (newCategories: Category[]) => {
+    try {
+      const response = await fetch('/api/video-library/categories/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'categories',
+          items: newCategories.map(cat => ({ id: cat.id }))
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          // Update local state with new order
+          setCategories(newCategories)
+        } else {
+          setError(data.error || 'Failed to reorder categories')
+        }
+      } else {
+        setError('Failed to reorder categories')
+      }
+    } catch (err) {
+      console.error('Error reordering categories:', err)
+      setError('Failed to reorder categories')
+    }
+  }
+
+  // Reorder subcategories within a category
+  const reorderSubcategories = async (categoryId: string, newSubcategories: Subcategory[]) => {
+    try {
+      const response = await fetch('/api/video-library/categories/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'subcategories',
+          categoryId: categoryId,
+          items: newSubcategories.map(sub => ({ id: sub.id }))
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          // Update local state with new subcategory order
+          setCategories(prev => prev.map(cat => 
+            cat.id === categoryId 
+              ? { ...cat, subcategories: newSubcategories }
+              : cat
+          ))
+        } else {
+          setError(data.error || 'Failed to reorder subcategories')
+        }
+      } else {
+        setError('Failed to reorder subcategories')
+      }
+    } catch (err) {
+      console.error('Error reordering subcategories:', err)
+      setError('Failed to reorder subcategories')
+    }
+  }
+
   // Handle reassignment and deletion
   const handleReassignAndDelete = async () => {
     if (!reassignmentData || !reassignForm.newCategoryId) {
@@ -713,6 +798,60 @@ export function AdminVideoLibrary() {
       setError('Failed to delete and reassign')
     } finally {
       setDeleting(null)
+    }
+  }
+
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+
+  // Handle category drag end
+  const handleCategoryDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (active.id !== over?.id) {
+      setCategories((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id)
+        const newIndex = items.findIndex((item) => item.id === over?.id)
+
+        const newOrder = arrayMove(items, oldIndex, newIndex)
+        
+        // Update order in the background
+        reorderCategories(newOrder)
+        
+        return newOrder
+      })
+    }
+  }
+
+  // Handle subcategory drag end
+  const handleSubcategoryDragEnd = (categoryId: string) => (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (active.id !== over?.id) {
+      setCategories((items) => {
+        const updatedItems = items.map(category => {
+          if (category.id === categoryId) {
+            const subcategories = category.subcategories || []
+            const oldIndex = subcategories.findIndex((item) => item.id === active.id)
+            const newIndex = subcategories.findIndex((item) => item.id === over?.id)
+
+            const newOrder = arrayMove(subcategories, oldIndex, newIndex)
+            
+            // Update order in the background
+            reorderSubcategories(categoryId, newOrder)
+            
+            return { ...category, subcategories: newOrder }
+          }
+          return category
+        })
+        
+        return updatedItems
+      })
     }
   }
 
@@ -1343,6 +1482,178 @@ export function AdminVideoLibrary() {
     </div>
   )
 
+  // Sortable Category Component
+  const SortableCategory = ({ category }: { category: Category }) => {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({ id: category.id })
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+    }
+
+    return (
+      <Card 
+        ref={setNodeRef} 
+        style={style} 
+        className={`hover:shadow-lg transition-shadow ${isDragging ? 'z-50' : ''}`}
+      >
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div 
+                {...attributes}
+                {...listeners}
+                className="cursor-grab active:cursor-grabbing p-1 hover:bg-gray-100 rounded"
+              >
+                <GripVertical className="h-4 w-4 text-gray-400" />
+              </div>
+              {getThumbnailDisplay(category)}
+              <div className="flex-1">
+                <CardTitle className="text-lg">{category.name}</CardTitle>
+                {category.description && (
+                  <p className="text-sm text-gray-600 mt-1">{category.description}</p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">{category.video_count} videos</Badge>
+              <Button size="sm" variant="ghost" onClick={() => editCategory(category)}>
+                <Edit className="h-4 w-4" />
+              </Button>
+              <Button 
+                size="sm" 
+                variant="ghost"
+                onClick={() => deleteCategory(category.id, category.name)}
+                disabled={deleting === category.id}
+              >
+                {deleting === category.id ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4 text-red-600" />
+                )}
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        
+        <CardContent>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium text-gray-900">Subcategories</h4>
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => {
+                  setSubcategoryForm(prev => ({ ...prev, category_id: category.id }))
+                  setShowCreateSubcategory(true)
+                }}
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Add
+              </Button>
+            </div>
+            
+            {category.subcategories && category.subcategories.length > 0 ? (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleSubcategoryDragEnd(category.id)}
+              >
+                <SortableContext
+                  items={category.subcategories.map(sub => sub.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-2">
+                    {category.subcategories.map((subcategory) => (
+                      <SortableSubcategory 
+                        key={subcategory.id} 
+                        subcategory={subcategory}
+                        categoryId={category.id}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            ) : (
+              <p className="text-sm text-gray-500 italic">No subcategories yet</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Sortable Subcategory Component
+  const SortableSubcategory = ({ subcategory, categoryId: _categoryId }: { subcategory: Subcategory, categoryId: string }) => {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({ id: subcategory.id })
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+    }
+
+    return (
+      <div 
+        ref={setNodeRef} 
+        style={style}
+        className={`flex items-center justify-between p-3 bg-gray-50 rounded-lg border ${isDragging ? 'shadow-lg' : ''}`}
+      >
+        <div className="flex items-center gap-3">
+          <div 
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing p-1 hover:bg-gray-200 rounded"
+          >
+            <GripVertical className="h-3 w-3 text-gray-400" />
+          </div>
+          {getThumbnailDisplay(subcategory, 'sm')}
+          <div>
+            <span className="font-medium text-sm">{subcategory.name}</span>
+            {subcategory.description && (
+              <p className="text-xs text-gray-600 mt-1">{subcategory.description}</p>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="text-xs">
+            {subcategory.video_count} videos
+          </Badge>
+          <Button size="sm" variant="ghost" onClick={() => editSubcategory(subcategory)}>
+            <Edit className="h-3 w-3" />
+          </Button>
+          <Button 
+            size="sm" 
+            variant="ghost"
+            onClick={() => deleteSubcategory(subcategory.id, subcategory.name)}
+            disabled={deleting === subcategory.id}
+          >
+            {deleting === subcategory.id ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Trash2 className="h-3 w-3 text-red-600" />
+            )}
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   // Categories tab content
   const renderCategories = () => (
     <div className="space-y-6">
@@ -1376,112 +1687,22 @@ export function AdminVideoLibrary() {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {categories.map((category) => (
-            <Card key={category.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader className="pb-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {getThumbnailDisplay(category)}
-                    <div className="flex-1">
-                      <CardTitle className="text-lg">{category.name}</CardTitle>
-                      <p className="text-sm text-gray-600 mt-1">{category.description}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline">{category.video_count} videos</Badge>
-                    <Button size="sm" variant="ghost" onClick={() => editCategory(category)}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="ghost"
-                      onClick={() => deleteCategory(category.id, category.name)}
-                      disabled={deleting === category.id}
-                    >
-                      {deleting === category.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4 text-red-600" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              
-              {category.subcategories && category.subcategories.length > 0 && (
-                <CardContent className="pt-0">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-medium text-sm">Subcategories</h4>
-                      <Button 
-                        size="sm" 
-                        variant="ghost"
-                        onClick={() => {
-                          setSubcategoryForm(prev => ({ ...prev, category_id: category.id }))
-                          setShowCreateSubcategory(true)
-                        }}
-                      >
-                        <Plus className="h-3 w-3" />
-                      </Button>
-                    </div>
-                    <div className="space-y-2">
-                      {category.subcategories.map((subcategory) => (
-                        <div key={subcategory.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div className="flex items-center gap-3">
-                            {getThumbnailDisplay(subcategory, 'sm')}
-                            <div className="flex-1">
-                              <p className="font-medium text-sm">{subcategory.name}</p>
-                              <p className="text-xs text-gray-500">{subcategory.description}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-xs">
-                              {subcategory.video_count} videos
-                            </Badge>
-                            <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => editSubcategory(subcategory)}>
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              className="h-6 w-6 p-0"
-                              onClick={() => deleteSubcategory(subcategory.id, subcategory.name)}
-                              disabled={deleting === subcategory.id}
-                            >
-                              {deleting === subcategory.id ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-3 w-3 text-red-600" />
-                              )}
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              )}
-              
-              {(!category.subcategories || category.subcategories.length === 0) && (
-                <CardContent className="pt-0">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full"
-                    onClick={() => {
-                      setSubcategoryForm(prev => ({ ...prev, category_id: category.id }))
-                      setShowCreateSubcategory(true)
-                    }}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Subcategory
-                  </Button>
-                </CardContent>
-              )}
-            </Card>
-          ))}
-        </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleCategoryDragEnd}
+        >
+          <SortableContext
+            items={categories.map(cat => cat.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {categories.map((category) => (
+                <SortableCategory key={category.id} category={category} />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
     </div>
   )

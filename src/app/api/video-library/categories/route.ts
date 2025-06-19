@@ -24,6 +24,7 @@ export async function GET() {
         id,
         name,
         description,
+        order_index,
         thumbnail_url,
         thumbnail_source,
         thumbnail_color,
@@ -33,11 +34,13 @@ export async function GET() {
           id,
           name,
           description,
+          order_index,
           thumbnail_url,
           thumbnail_source,
           thumbnail_color
         )
       `)
+      .order('order_index', { nullsFirst: false })
       .order('name')
 
     if (error) {
@@ -88,26 +91,41 @@ export async function GET() {
     const processedCategories = categories.map(category => {
       const categoryVideoCount = categoryCountMap.get(category.id) || 0
 
-      // Process subcategories with their video counts
-      const subcategoriesWithCounts = (category.video_subcategories || []).map((sub: any) => {
-        const subVideoCount = subcategoryCountMap.get(sub.id) || 0
+      // Process subcategories with their video counts and sort by order_index
+      const subcategoriesWithCounts = (category.video_subcategories || [])
+        .map((sub: any) => {
+          const subVideoCount = subcategoryCountMap.get(sub.id) || 0
 
-        return {
-          id: sub.id,
-          name: sub.name,
-          description: sub.description,
-          thumbnail_url: sub.thumbnail_url,
-          thumbnail_source: sub.thumbnail_source,
-          thumbnail_color: sub.thumbnail_color,
-          category_id: category.id,
-          video_count: subVideoCount
-        }
-      })
+          return {
+            id: sub.id,
+            name: sub.name,
+            description: sub.description,
+            order_index: sub.order_index,
+            thumbnail_url: sub.thumbnail_url,
+            thumbnail_source: sub.thumbnail_source,
+            thumbnail_color: sub.thumbnail_color,
+            category_id: category.id,
+            video_count: subVideoCount
+          }
+        })
+        .sort((a, b) => {
+          // Sort by order_index (nulls last), then by name
+          if (a.order_index === null && b.order_index === null) {
+            return a.name.localeCompare(b.name)
+          }
+          if (a.order_index === null) return 1
+          if (b.order_index === null) return -1
+          if (a.order_index === b.order_index) {
+            return a.name.localeCompare(b.name)
+          }
+          return a.order_index - b.order_index
+        })
 
       return {
         id: category.id,
         name: category.name,
         description: category.description,
+        order_index: category.order_index,
         thumbnail_url: category.thumbnail_url,
         thumbnail_source: category.thumbnail_source,
         thumbnail_color: category.thumbnail_color,
