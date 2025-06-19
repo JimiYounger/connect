@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { X, Play, Clock, Calendar, CheckCircle, Search } from 'lucide-react'
 import { VideoLibraryService } from '@/features/videoViewer/services/videoLibraryService'
 import { WatchTrackingService } from '@/features/videoViewer/services/watchTrackingService'
@@ -81,7 +81,7 @@ export function SubcategoryModal({ subcategory, isOpen, onClose, userPermissions
         VideoLibraryService.getVideosForSubcategory(
           subcategory.id,
           userPermissions,
-          50, // Initial batch size
+          100, // Larger initial batch size
           0
         ),
         VideoLibraryService.getSubcategoryVideoCount(subcategory.id)
@@ -89,8 +89,8 @@ export function SubcategoryModal({ subcategory, isOpen, onClose, userPermissions
       
       setVideos(videosResult)
       setTotalCount(countResult)
-      setHasMore(videosResult.length === 50 && countResult > 50)
-      setCurrentOffset(50)
+      setHasMore(videosResult.length === 100 && countResult > 100)
+      setCurrentOffset(100)
       
       // Load watch progress for initial videos
       if (profile?.id && videosResult.length > 0) {
@@ -133,23 +133,8 @@ export function SubcategoryModal({ subcategory, isOpen, onClose, userPermissions
         setVideos(prev => [...prev, ...moreVideos])
         setCurrentOffset(prev => prev + moreVideos.length)
         
-        // Load watch progress for new videos
-        if (profile?.id) {
-          try {
-            const videoFileIds = moreVideos.map(v => v.id)
-            const progressData = await WatchTrackingService.getUserWatchHistory(profile.id, videoFileIds)
-            
-            setWatchProgress(prev => {
-              const newMap = new Map(prev)
-              progressData.forEach(progress => {
-                newMap.set(progress.videoFileId, progress)
-              })
-              return newMap
-            })
-          } catch (progressErr) {
-            console.error('Error loading additional watch progress:', progressErr)
-          }
-        }
+        // Skip individual watch progress loading - will load all at once when done
+        // Progress will be loaded in batch after all videos are loaded
       }
       
       setHasMore(moreVideos.length === 50 && (totalCount === null || videos.length + moreVideos.length < totalCount))
@@ -158,11 +143,73 @@ export function SubcategoryModal({ subcategory, isOpen, onClose, userPermissions
     } finally {
       setLoadingMore(false)
     }
-  }, [loadingMore, hasMore, userPermissions, subcategory.id, currentOffset, totalCount, videos.length, profile?.id])
+  }, [loadingMore, hasMore, userPermissions, subcategory.id, currentOffset, totalCount, videos.length])
+
+  // Infinite scroll implementation
+  const scrollRef = useRef<HTMLDivElement>(null)
+  
+  const handleScroll = useCallback(() => {
+    if (!scrollRef.current || loadingMore || !hasMore) return
+    
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current
+    // Load more when user scrolls to within 200px of bottom
+    if (scrollHeight - scrollTop - clientHeight < 200) {
+      loadMoreVideos()
+    }
+  }, [loadMoreVideos, loadingMore, hasMore])
+  
+  useEffect(() => {
+    const scrollElement = scrollRef.current
+    if (!scrollElement) return
+    
+    scrollElement.addEventListener('scroll', handleScroll)
+    return () => scrollElement.removeEventListener('scroll', handleScroll)
+  }, [handleScroll])
 
   useEffect(() => {
     loadInitialVideos()
   }, [loadInitialVideos])
+
+  // Auto-load all remaining videos after initial load
+  useEffect(() => {
+    const autoLoadAll = async () => {
+      if (!hasMore || loading || loadingMore || !userPermissions) return
+      
+      // Small delay to let the UI render the initial videos
+      await new Promise(resolve => setTimeout(resolve, 200))
+      
+      // Continue loading until all videos are loaded
+      while (hasMore && !loadingMore) {
+        await loadMoreVideos()
+        // Small delay between batches to avoid overwhelming the UI
+        await new Promise(resolve => setTimeout(resolve, 50))
+      }
+    }
+    
+    autoLoadAll()
+  }, [hasMore, loading, loadingMore, userPermissions, loadMoreVideos])
+
+  // Load watch progress for all videos at once (after all videos are loaded)
+  useEffect(() => {
+    const loadAllWatchProgress = async () => {
+      if (!profile?.id || videos.length === 0 || hasMore || watchProgress.size > 0) return
+      
+      try {
+        const allVideoIds = videos.map(v => v.id)
+        const progressData = await WatchTrackingService.getUserWatchHistory(profile.id, allVideoIds)
+        
+        const progressMap = new Map<string, VideoWatchProgress>()
+        progressData.forEach(progress => {
+          progressMap.set(progress.videoFileId, progress)
+        })
+        setWatchProgress(progressMap)
+      } catch (err) {
+        console.error('Error loading all watch progress:', err)
+      }
+    }
+    
+    loadAllWatchProgress()
+  }, [profile?.id, videos, hasMore, watchProgress.size])
 
   const handleVideoClick = (video: VideoForViewing, event?: React.MouseEvent) => {
     console.log('SubcategoryModal - Video clicked:', video.id, video.title)
@@ -260,7 +307,7 @@ export function SubcategoryModal({ subcategory, isOpen, onClose, userPermissions
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto h-[calc(100vh-180px)]">
+        <div ref={scrollRef} className="p-6 overflow-y-auto h-[calc(100vh-180px)]">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
@@ -395,23 +442,22 @@ export function SubcategoryModal({ subcategory, isOpen, onClose, userPermissions
                 )
               })}
               
-              {/* Load More Button */}
-              {hasMore && !searchQuery && (
+              {/* Loading More Indicator */}
+              {loadingMore && (
                 <div className="text-center py-6">
-                  <button
-                    onClick={loadMoreVideos}
-                    disabled={loadingMore}
-                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2 mx-auto"
-                  >
-                    {loadingMore ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        Loading...
-                      </>
-                    ) : (
-                      `Load More Videos (${(totalCount || 0) - videos.length} remaining)`
-                    )}
-                  </button>
+                  <div className="flex items-center justify-center gap-2 text-gray-400">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
+                    Loading more videos...
+                  </div>
+                </div>
+              )}
+              
+              {/* End of list indicator */}
+              {!hasMore && videos.length > 0 && !searchQuery && (
+                <div className="text-center py-6">
+                  <p className="text-gray-500 text-sm">
+                    {totalCount !== null ? `All ${totalCount} videos loaded` : 'All videos loaded'}
+                  </p>
                 </div>
               )}
             </div>
