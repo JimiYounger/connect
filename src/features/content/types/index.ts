@@ -1,10 +1,48 @@
-// src/features/carousel/types.ts
+// src/features/content/types/index.ts
 
 import { z } from "zod"
 import type { Tables } from "@/types/supabase"
 
-export type CarouselBanner = Tables<"carousel_banners">
+export type CarouselBanner = Tables<"carousel_banners_detailed">
 export type CarouselBannerDetailed = Tables<"carousel_banners_detailed">
+
+// Navigation types
+export type NavigationItem = Tables<"navigation_items">
+
+// Dashboard types  
+export type Dashboard = Tables<"dashboards"> & {
+  widgets?: DashboardWidget[]
+}
+
+export type DashboardWidget = Tables<"widgets"> & {
+  placement?: {
+    layout_type?: string
+    [key: string]: any
+  }
+  config?: {
+    [key: string]: any
+  }
+  shape?: import('@/features/widgets/types').WidgetShape
+  size_ratio?: import('@/features/widgets/types').WidgetSizeRatio
+}
+
+// Content state interface for the useUserContent hook
+export interface ContentState {
+  carouselBanners: CarouselBanner[]
+  navigationItems: NavigationItem[]
+  dashboard: Dashboard | null
+  loading: {
+    carousel: boolean
+    navigation: boolean
+    dashboard: boolean
+  }
+  errors: Array<{
+    code: string
+    message: string
+    source: 'carousel' | 'navigation' | 'dashboard'
+  }>
+  isInitialized: boolean
+}
 
 export interface RoleAssignments {
   roleTypes: string[];

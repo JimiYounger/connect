@@ -138,13 +138,13 @@ class ContentService {
         // Transform placement and config properties to match our interface
         const { placement, config, ...rest } = widget as Record<string, any>
         
-        return {
+        return ({
           ...rest,
           shape,
           size_ratio: sizeRatio,
           placement: placement || undefined,
           config: config || undefined
-        } as DashboardWidget
+        } as unknown) as DashboardWidget
       })
       .filter((widget): widget is DashboardWidget => widget !== null)
   }
