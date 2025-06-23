@@ -474,6 +474,13 @@ export type Database = {
             referencedRelation: "video_files"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "carousel_banners_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "video_org_analytics"
+            referencedColumns: ["video_id"]
+          },
         ]
       }
       contact_tag_assignments: {
@@ -1919,6 +1926,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "video_chunks_video_file_id_fkey"
+            columns: ["video_file_id"]
+            isOneToOne: false
+            referencedRelation: "video_org_analytics"
+            referencedColumns: ["video_id"]
+          },
+          {
             foreignKeyName: "video_chunks_video_transcript_id_fkey"
             columns: ["video_transcript_id"]
             isOneToOne: false
@@ -2099,6 +2113,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "video_search_logs_top_result_video_id_fkey"
+            columns: ["top_result_video_id"]
+            isOneToOne: false
+            referencedRelation: "video_org_analytics"
+            referencedColumns: ["video_id"]
+          },
+          {
             foreignKeyName: "video_search_logs_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -2226,6 +2247,13 @@ export type Database = {
             referencedRelation: "video_files"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "video_tag_assignments_video_file_id_fkey"
+            columns: ["video_file_id"]
+            isOneToOne: false
+            referencedRelation: "video_org_analytics"
+            referencedColumns: ["video_id"]
+          },
         ]
       }
       video_tags: {
@@ -2291,6 +2319,13 @@ export type Database = {
             referencedRelation: "video_files"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "video_transcripts_video_file_id_fkey"
+            columns: ["video_file_id"]
+            isOneToOne: false
+            referencedRelation: "video_org_analytics"
+            referencedColumns: ["video_id"]
+          },
         ]
       }
       video_versions: {
@@ -2351,6 +2386,13 @@ export type Database = {
             referencedRelation: "video_files"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "video_versions_video_file_id_fkey"
+            columns: ["video_file_id"]
+            isOneToOne: false
+            referencedRelation: "video_org_analytics"
+            referencedColumns: ["video_id"]
+          },
         ]
       }
       video_visibility: {
@@ -2382,6 +2424,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "video_files"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_visibility_video_file_id_fkey"
+            columns: ["video_file_id"]
+            isOneToOne: false
+            referencedRelation: "video_org_analytics"
+            referencedColumns: ["video_id"]
           },
         ]
       }
@@ -2448,6 +2497,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "video_files"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_watches_video_file_id_fkey"
+            columns: ["video_file_id"]
+            isOneToOne: false
+            referencedRelation: "video_org_analytics"
+            referencedColumns: ["video_id"]
           },
         ]
       }
@@ -2724,6 +2780,13 @@ export type Database = {
             referencedRelation: "video_files"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "carousel_banners_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "video_org_analytics"
+            referencedColumns: ["video_id"]
+          },
         ]
       }
       navigation_items_active: {
@@ -2781,6 +2844,22 @@ export type Database = {
           },
         ]
       }
+      video_org_analytics: {
+        Row: {
+          area: string | null
+          avg_completion_rate: number | null
+          last_watched: string | null
+          region: string | null
+          role_type: string | null
+          team: string | null
+          title: string | null
+          total_views: number | null
+          unique_viewers: number | null
+          video_id: string | null
+          vimeo_duration: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       binary_quantize: {
@@ -2823,6 +2902,16 @@ export type Database = {
         Args: { p_subcategory_id: string; p_fallback_subcategory_id: string }
         Returns: Json
       }
+      get_daily_engagement_metrics: {
+        Args: { start_date?: string; end_date?: string }
+        Returns: {
+          date: string
+          total_views: number
+          unique_viewers: number
+          unique_videos_watched: number
+          avg_completion_rate: number
+        }[]
+      }
       get_navigation_for_user: {
         Args: {
           p_user_id: string
@@ -2847,6 +2936,17 @@ export type Database = {
       get_organization_structure: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      get_trending_videos: {
+        Args: { days?: number; limit_count?: number }
+        Returns: {
+          video_id: string
+          title: string
+          total_views: number
+          unique_viewers: number
+          avg_completion_rate: number
+          trend_score: number
+        }[]
       }
       get_user_carousel_banners: {
         Args: {
@@ -2937,6 +3037,33 @@ export type Database = {
           total_duration: number
           percent_complete: number
           last_position: number
+          completed: boolean
+          last_watched: string
+        }[]
+      }
+      get_video_org_breakdown: {
+        Args: { video_id: string; timeframe?: number }
+        Returns: {
+          org_level: string
+          org_value: string
+          total_views: number
+          unique_viewers: number
+          avg_completion_rate: number
+          last_watched: string
+        }[]
+      }
+      get_video_user_details: {
+        Args: { video_id: string; org_filters?: Json }
+        Returns: {
+          user_id: string
+          first_name: string
+          last_name: string
+          email: string
+          region: string
+          area: string
+          team: string
+          watched_seconds: number
+          percent_complete: number
           completed: boolean
           last_watched: string
         }[]
