@@ -31,8 +31,8 @@ export const bannerFormSchema = z.object({
       }
     }, "Please enter a valid URL"),
   openInIframe: z.boolean().default(false),
-  vimeoVideoId: z.string().nullable().optional(),
-  vimeoVideoTitle: z.string().nullable().optional(),
+  videoId: z.string().nullable().optional(),
+  videoTitle: z.string().nullable().optional(),
   fileId: z.string().min(1, "Banner image is required"),
   startDate: z.date().nullable().optional(),
   endDate: z.date().nullable().optional(),
@@ -64,5 +64,3 @@ export interface CarouselBannerRole {
   role_type: string
   created_at: string
 }
-
-export type { VimeoVideo } from './types/index'

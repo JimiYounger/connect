@@ -113,8 +113,8 @@ export const CACHE_KEYS = {
 export const CACHE_TTL = {
   CATEGORIES: 4 * 60 * 60 * 1000, // 4 hours (since categories only change 1-2x per week)
   USER_PERMISSIONS: 30 * 60 * 1000, // 30 minutes
-  SUBCATEGORY_VIDEOS: 60 * 60 * 1000, // 1 hour (videos don't change often)
-  SUBCATEGORY_COUNT: 60 * 60 * 1000, // 1 hour
+  SUBCATEGORY_VIDEOS: 10 * 60 * 1000, // 10 minutes
+  SUBCATEGORY_COUNT: 15 * 60 * 1000, // 15 minutes
 } as const
 
 // Cleanup expired items every hour

@@ -416,6 +416,8 @@ export type Database = {
           title: string
           updated_at: string | null
           url: string | null
+          video_id: string | null
+          video_title: string | null
           vimeo_video_id: string | null
           vimeo_video_title: string | null
         }
@@ -433,6 +435,8 @@ export type Database = {
           title: string
           updated_at?: string | null
           url?: string | null
+          video_id?: string | null
+          video_title?: string | null
           vimeo_video_id?: string | null
           vimeo_video_title?: string | null
         }
@@ -450,6 +454,8 @@ export type Database = {
           title?: string
           updated_at?: string | null
           url?: string | null
+          video_id?: string | null
+          video_title?: string | null
           vimeo_video_id?: string | null
           vimeo_video_title?: string | null
         }
@@ -459,6 +465,13 @@ export type Database = {
             columns: ["file_id"]
             isOneToOne: false
             referencedRelation: "files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "carousel_banners_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "video_files"
             referencedColumns: ["id"]
           },
         ]
@@ -2690,6 +2703,8 @@ export type Database = {
           title: string | null
           updated_at: string | null
           url: string | null
+          video_id: string | null
+          video_title: string | null
           vimeo_video_id: string | null
           vimeo_video_title: string | null
           visible_to_roles: string | null
@@ -2700,6 +2715,13 @@ export type Database = {
             columns: ["file_id"]
             isOneToOne: false
             referencedRelation: "files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "carousel_banners_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "video_files"
             referencedColumns: ["id"]
           },
         ]
@@ -2834,28 +2856,30 @@ export type Database = {
           user_region: string
         }
         Returns: {
-          banner_url: string | null
-          click_behavior: string | null
-          created_at: string | null
-          description: string | null
-          end_date: string | null
-          file_id: string | null
-          id: string | null
-          is_active: boolean | null
-          is_currently_active: boolean | null
-          open_in_iframe: boolean | null
-          order_index: number | null
-          original_filename: string | null
-          role_count: number | null
-          role_details: Json | null
-          role_ids: string[] | null
-          start_date: string | null
-          title: string | null
-          updated_at: string | null
-          url: string | null
-          vimeo_video_id: string | null
-          vimeo_video_title: string | null
-          visible_to_roles: string | null
+          banner_url: string
+          click_behavior: string
+          created_at: string
+          description: string
+          end_date: string
+          file_id: string
+          id: string
+          is_active: boolean
+          is_currently_active: boolean
+          open_in_iframe: boolean
+          order_index: number
+          original_filename: string
+          role_count: number
+          role_details: Json
+          role_ids: string[]
+          start_date: string
+          title: string
+          updated_at: string
+          url: string
+          vimeo_video_id: string
+          vimeo_video_title: string
+          video_id: string
+          video_title: string
+          visible_to_roles: string
         }[]
       }
       get_user_dashboard: {

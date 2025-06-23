@@ -1,106 +1,66 @@
-// my-app/src/features/content/types/index.ts
-import type { Json } from '@/types/supabase'
-import type { Widget, WidgetConfigData, PublishedWidgetPlacement } from '@/features/widgets/types'
+// src/features/carousel/types.ts
 
-export interface CarouselBanner {
-  banner_url: string | null
-  click_behavior: string | null
-  created_at: string | null
-  description: string | null
-  end_date: string | null
-  file_id: string | null
-  id: string | null
-  is_active: boolean | null
-  is_currently_active: boolean | null
-  open_in_iframe: boolean | null
-  order_index: number | null
-  original_filename: string | null
-  role_count: number | null
-  role_details: Json | null
-  role_ids: string[] | null
-  start_date: string | null
-  title: string | null
-  updated_at: string | null
-  url: string | null
-  vimeo_video_id: string | null
-  vimeo_video_title: string | null
-  visible_to_roles: string | null
+import { z } from "zod"
+import type { Tables } from "@/types/supabase"
+
+export type CarouselBanner = Tables<"carousel_banners">
+export type CarouselBannerDetailed = Tables<"carousel_banners_detailed">
+
+export interface RoleAssignments {
+  roleTypes: string[];
+  teams: string[];
+  areas: string[];
+  regions: string[];
 }
 
-export interface NavigationItem {
+export const bannerFormSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  description: z.string().nullable().optional(),
+  isActive: z.boolean().default(true),
+  clickBehavior: z.enum(["url", "video"], {
+    required_error: "Please select a click behavior",
+  }),
+  url: z.string().nullable().optional()
+    .refine((val) => {
+      if (!val) return true
+      try {
+        new URL(val)
+        return true
+      } catch {
+        return false
+      }
+    }, "Please enter a valid URL"),
+  openInIframe: z.boolean().default(false),
+  videoId: z.string().nullable().optional(),
+  videoTitle: z.string().nullable().optional(),
+  fileId: z.string().min(1, "Banner image is required"),
+  startDate: z.date().nullable().optional(),
+  endDate: z.date().nullable().optional(),
+  roleAssignments: z.object({
+    roleTypes: z.array(z.string()).default([]),
+    teams: z.array(z.string()).default([]),
+    areas: z.array(z.string()).default([]),
+    regions: z.array(z.string()).default([]),
+  }).default({
+    roleTypes: [],
+    teams: [],
+    areas: [],
+    regions: []
+  }),
+  orderIndex: z.number().optional(),
+})
+
+export type BannerFormData = z.infer<typeof bannerFormSchema>
+
+export interface BannerFormDataWithId extends BannerFormData {
   id: string
-  menu_id: string
-  parent_id: string
-  title: string
-  url: string
-  description: string
-  dynamic_variables: Json
-  is_external: boolean
-  open_in_iframe: boolean
-  order_index: number
-  is_active: boolean
-  is_public: boolean
-  start_date: string
-  end_date: string
-  created_at: string
-  updated_at: string
-  created_by: string
-  is_currently_active: boolean
-  visible_to_roles: string
-  role_ids: string[]
-  role_details: Json
-  depth: number
-  path: string[]
 }
 
-// Updated to match widget types structure
-export interface DashboardWidget extends Widget {
-  config?: WidgetConfigData
-  placement?: Omit<PublishedWidgetPlacement, 'widget'> // Use the placement type but exclude the widget property to avoid circular reference
-}
+export type RoleType = string
 
-export interface Dashboard {
+export interface CarouselBannerRole {
   id: string
-  name: string
-  description: string
+  banner_id: string
   role_type: string
-  version_id: string
-  version_number: number
-  version_name: string
-  widgets: DashboardWidget[]
-}
-
-export interface ContentError {
-  code: string
-  message: string
-  details?: unknown
-  source: 'carousel' | 'navigation' | 'dashboard'
-}
-
-export interface LoadingState {
-  carousel: boolean
-  navigation: boolean
-  dashboard: boolean
-}
-
-export interface ContentState {
-  carouselBanners: CarouselBanner[] | null
-  navigationItems: NavigationItem[] | null
-  dashboard: Dashboard | null
-  loading: LoadingState
-  errors: ContentError[]
-  isInitialized: boolean
-}
-
-export const initialContentState: ContentState = {
-  carouselBanners: null,
-  navigationItems: null,
-  dashboard: null,
-  loading: {
-    carousel: false,
-    navigation: false,
-    dashboard: false
-  },
-  errors: [],
-  isInitialized: false
+  created_at: string
 }

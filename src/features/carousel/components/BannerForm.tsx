@@ -20,15 +20,8 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import {
-  Dialog,
-  DialogContent,
-  DialogTrigger,
-  DialogTitle,
-  DialogClose,
-} from "@/components/ui/dialog"
 import { UploadcareUploader } from "@/components/uploadcare-uploader"
-import { VimeoGallery } from "@/features/vimeo/components/VimeoGallery"
+import { VideoLibraryGallery } from "@/features/videoLibrary/components/VideoLibraryGallery"
 import { useToast } from "@/hooks/use-toast"
 import { useBanners } from "../hooks/useBanners"
 import { BannerFormData, BannerFormDataWithId, bannerFormSchema } from '../types'
@@ -78,21 +71,25 @@ export function BannerForm({ initialData, onSuccess, mode = 'create' }: BannerFo
     resolver: zodResolver(bannerFormSchema),
     defaultValues: {
       title: '',
-      description: '',
+      description: null,
       isActive: true,
-      clickBehavior: 'url',
-      url: '',
+      clickBehavior: 'url' as const,
+      url: null,
       openInIframe: false,
-      vimeoVideoId: '',
-      vimeoVideoTitle: '',
+      videoId: null,
+      videoTitle: null,
+      fileId: '',
+      startDate: null,
+      endDate: null,
       roleAssignments: {
         roleTypes: [],
         teams: [],
         areas: [],
         regions: []
       },
+      orderIndex: undefined,
       ...initialData,
-    },
+    } as Partial<BannerFormData & { id?: string }>,
   })
 
   // Fetch existing banner data if editing
@@ -133,8 +130,8 @@ export function BannerForm({ initialData, onSuccess, mode = 'create' }: BannerFo
                 clickBehavior: banner.click_behavior as "video" | "url",
                 url: banner.url || "",
                 openInIframe: banner.open_in_iframe || false,
-                vimeoVideoId: banner.vimeo_video_id || "",
-                vimeoVideoTitle: banner.vimeo_video_title || "",
+                videoId: banner.video_id || "",
+                videoTitle: banner.video_title || "",
                 startDate: banner.start_date ? new Date(banner.start_date) : null,
                 endDate: banner.end_date ? new Date(banner.end_date) : null,
                 roleAssignments: {
@@ -172,8 +169,8 @@ export function BannerForm({ initialData, onSuccess, mode = 'create' }: BannerFo
             click_behavior: data.clickBehavior,
             url: data.url || null,
             open_in_iframe: data.openInIframe,
-            vimeo_video_id: data.vimeoVideoId || null,
-            vimeo_video_title: data.vimeoVideoTitle || null,
+            video_id: data.videoId || null,
+            video_title: data.videoTitle || null,
             file_id: data.fileId || null,
             start_date: data.startDate?.toISOString() || null,
             end_date: data.endDate?.toISOString() || null,
@@ -266,8 +263,8 @@ export function BannerForm({ initialData, onSuccess, mode = 'create' }: BannerFo
           click_behavior: data.clickBehavior,
           url: data.url || null,
           open_in_iframe: data.openInIframe,
-          vimeo_video_id: data.vimeoVideoId || null,
-          vimeo_video_title: data.vimeoVideoTitle || null,
+          video_id: data.videoId || null,
+          video_title: data.videoTitle || null,
           file_id: fileData.id, // Use the ID from the newly inserted file
           start_date: data.startDate ? new Date(data.startDate).toISOString() : null,
           end_date: data.endDate ? new Date(data.endDate).toISOString() : null,
@@ -325,8 +322,8 @@ export function BannerForm({ initialData, onSuccess, mode = 'create' }: BannerFo
   }
 
   const handleVideoSelect = ({ id, title }: { id: string; title: string }) => {
-    form.setValue('vimeoVideoId', id)
-    form.setValue('vimeoVideoTitle', title)
+    form.setValue('videoId', id)
+    form.setValue('videoTitle', title)
     // Also set click behavior to video when a video is selected
     form.setValue('clickBehavior', 'video')
   }
@@ -492,67 +489,35 @@ export function BannerForm({ initialData, onSuccess, mode = 'create' }: BannerFo
 
           {form.watch('clickBehavior') === 'video' && (
             <div className="space-y-4">
-              {form.watch('vimeoVideoId') && form.watch('vimeoVideoTitle') && (
+              {form.watch('videoId') && form.watch('videoTitle') && (
                 <div className="rounded-lg border bg-muted/50 p-4">
                   <div className="font-medium text-sm mb-2">Selected Video:</div>
                   <div className="flex gap-4">
-                    {/* Thumbnail with Play Button */}
-                    <Dialog>
-                      <DialogTrigger asChild>
-                      <div className="relative w-48 h-auto cursor-pointer group">
-                        <div className="aspect-video bg-gray-100 rounded-md overflow-hidden">
-                          <Image
-                            src={`https://vumbnail.com/${form.watch('vimeoVideoId')}.jpg`}
-                            alt={form.watch('vimeoVideoTitle') || 'Video thumbnail'}
-                            fill
-                            className="object-cover"
-                            sizes="(max-width: 768px) 100vw, 192px"
-                            quality={90}
-                            priority={false}
-                          />
-                        </div>
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <div className="w-12 h-12 rounded-full bg-black/75 flex items-center justify-center">
-                            <Play className="w-6 h-6 text-white" />
-                          </div>
+                    {/* Video Info Display */}
+                    <div className="w-48 h-auto">
+                      <div className="aspect-video bg-gray-100 rounded-md overflow-hidden flex items-center justify-center">
+                        <div className="text-center p-4">
+                          <Play className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                          <div className="text-xs text-gray-500">Video Selected</div>
                         </div>
                       </div>
-                      </DialogTrigger>
-                      <DialogContent className="!max-w-dialog !w-dialog !h-dialog !p-0 overflow-hidden rounded-lg">
-                        <DialogTitle className="sr-only">
-                          {form.watch('vimeoVideoTitle') || 'Video Preview'}
-                        </DialogTitle>
-                        <DialogClose className="absolute right-4 top-4 z-50">
-                          <div className="rounded-full bg-black/75 p-2 hover:bg-black/90 transition-colors">
-                            <X className="h-6 w-6 text-white" />
-                          </div>
-                        </DialogClose>
-                        <div className="w-full h-full">
-                          <iframe
-                            src={`https://player.vimeo.com/video/${form.watch('vimeoVideoId')}?autoplay=1&h=00000000`}
-                            className="w-full h-full"
-                            allow="autoplay; fullscreen; picture-in-picture"
-                            title={form.watch('vimeoVideoTitle') || 'Video player'}
-                          />
-                        </div>
-                      </DialogContent>
-                    </Dialog>
+                    </div>
 
                     {/* Video Info */}
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium">
-                        {form.watch('vimeoVideoTitle')}
+                        {form.watch('videoTitle')}
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
-                        ID: {form.watch('vimeoVideoId')}
+                        ID: {form.watch('videoId')}
                       </div>
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() => {
-                          form.setValue('vimeoVideoId', '')
-                          form.setValue('vimeoVideoTitle', '')
+                          form.setValue('videoId', '')
+                          form.setValue('videoTitle', '')
                         }}
                         className="mt-2"
                       >
@@ -564,9 +529,9 @@ export function BannerForm({ initialData, onSuccess, mode = 'create' }: BannerFo
                 </div>
               )}
               
-              <VimeoGallery 
+              <VideoLibraryGallery 
                 onVideoSelect={handleVideoSelect}
-                selectedVideoId={form.watch('vimeoVideoId') || undefined}
+                selectedVideoId={form.watch('videoId') || undefined}
               />
             </div>
           )}
@@ -766,3 +731,5 @@ const createRoleAssignments = (
   
   return result;
 }; 
+
+

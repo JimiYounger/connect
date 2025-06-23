@@ -4,16 +4,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import useEmblaCarousel from 'embla-carousel-react'
-import { ChevronLeft, ChevronRight, Play, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Play } from 'lucide-react'
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogTrigger,
-  DialogTitle,
-  DialogClose,
-} from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
+import { useRouter } from 'next/navigation'
 import type { Tables } from '@/types/supabase'
 import Image from "next/image"
 import { BannerDateIndicator } from './BannerDateIndicator'
@@ -32,6 +26,7 @@ export function CarouselDisplay({ banners }: CarouselDisplayProps) {
   const [nextBtnEnabled, setNextBtnEnabled] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(0)
   const autoScrollIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined)
+  const router = useRouter()
 
   const resetAutoScroll = useCallback(() => {
     if (autoScrollIntervalRef.current) {
@@ -88,8 +83,28 @@ export function CarouselDisplay({ banners }: CarouselDisplayProps) {
     }
   }, [emblaApi, resetAutoScroll])
 
-  const handleBannerClick = (banner: Banner) => {
-    if (banner.click_behavior === 'url' && banner.url) {
+  const handleBannerClick = async (banner: Banner) => {
+    if (banner.click_behavior === 'video' && (banner.video_id || banner.vimeo_video_id)) {
+      let videoId = banner.video_id
+      
+      // If we have a vimeo_video_id but no video_id, look up the video by vimeo_id
+      if (!videoId && banner.vimeo_video_id) {
+        try {
+          const response = await fetch(`/api/video-library/by-vimeo-id/${banner.vimeo_video_id}`)
+          if (response.ok) {
+            const video = await response.json()
+            videoId = video.id
+          }
+        } catch (error) {
+          console.error('Failed to look up video by Vimeo ID:', error)
+          return
+        }
+      }
+      
+      if (videoId) {
+        router.push(`/videos/${videoId}`)
+      }
+    } else if (banner.click_behavior === 'url' && banner.url) {
       if (banner.open_in_iframe) {
         // Handle iframe opening
         console.log('Opening in iframe:', banner.url)
@@ -105,46 +120,27 @@ export function CarouselDisplay({ banners }: CarouselDisplayProps) {
         <div className="flex">
           {banners.map((banner, index) => (
             <div key={banner.id} className="relative flex-[0_0_100%]">
-              {banner.click_behavior === 'video' ? (
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <div className="relative aspect-video cursor-pointer group">
-                      <Image
-                        src={banner.banner_url || `/api/placeholder/1920/1080`}
-                        alt={banner.title || ''}
-                        width={1920}
-                        height={1080}
-                        className="w-full h-full object-cover"
-                        priority={index === 0}
-                      />
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Play className="w-16 h-16 text-white" />
-                      </div>
-                      {/* Add role indicator */}
-                      <BannerRoleIndicator banner={banner} />
-                      {/* Add date indicator */}
-                      <BannerDateIndicator banner={banner} />
-                    </div>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-4xl">
-                    <DialogTitle className="sr-only">
-                      {banner.title || 'Video Content'}
-                    </DialogTitle>
-                    <DialogClose className="absolute right-4 top-4 z-50">
-                      <div className="rounded-full bg-black/75 p-2 hover:bg-black/90 transition-colors">
-                        <X className="h-6 w-6 text-white" />
-                      </div>
-                    </DialogClose>
-                    {banner.vimeo_video_id && (
-                      <iframe
-                        src={`https://player.vimeo.com/video/${banner.vimeo_video_id}?autoplay=1`}
-                        className="w-full aspect-video"
-                        allow="autoplay; fullscreen"
-                        title={banner.title || 'Video content'}
-                      />
-                    )}
-                  </DialogContent>
-                </Dialog>
+              {banner.click_behavior === 'video' && (banner.video_id || banner.vimeo_video_id) ? (
+                <div
+                  onClick={() => handleBannerClick(banner)}
+                  className="cursor-pointer relative aspect-video group"
+                >
+                  <Image
+                    src={banner.banner_url || `/api/placeholder/1920/1080`}
+                    alt={banner.title || ''}
+                    width={1920}
+                    height={1080}
+                    className="w-full h-full object-cover"
+                    priority={index === 0}
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Play className="w-16 h-16 text-white" />
+                  </div>
+                  {/* Add role indicator */}
+                  <BannerRoleIndicator banner={banner} />
+                  {/* Add date indicator */}
+                  <BannerDateIndicator banner={banner} />
+                </div>
               ) : (
                 <div
                   onClick={() => handleBannerClick(banner)}
