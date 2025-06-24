@@ -100,6 +100,96 @@ function createHighlight(content: string, length: number = 300): string {
 }
 
 /**
+ * GET handler for simple text-based video search (used by VideoSearch component)
+ * Searches video titles and descriptions without semantic embeddings
+ */
+export async function GET(req: Request) {
+  try {
+    const url = new URL(req.url)
+    const query = url.searchParams.get('q')
+    const limit = parseInt(url.searchParams.get('limit') || '10')
+    
+    if (!query || query.trim() === '') {
+      return NextResponse.json({
+        success: false,
+        error: 'Search query is required'
+      }, { status: 400 })
+    }
+    
+    const supabase = await createClient()
+    
+    // Get the authenticated user
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    // Get user profile for permission checking
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('role_type, team, area, region')
+      .eq('user_id', user.id)
+      .single()
+
+    if (!userProfile) {
+      return NextResponse.json(
+        { success: false, error: 'User profile not found' },
+        { status: 404 }
+      )
+    }
+
+    // Simple text search on title and description
+    const { data: videos, error } = await supabase
+      .from('video_files')
+      .select(`
+        id,
+        title,
+        description,
+        vimeo_duration,
+        video_categories (name),
+        video_subcategories (name)
+      `)
+      .eq('library_status', 'approved')
+      .or(`title.ilike.%${query}%,description.ilike.%${query}%`)
+      .limit(limit)
+
+    if (error) {
+      console.error('Error searching videos:', error)
+      return NextResponse.json(
+        { success: false, error: 'Search failed' },
+        { status: 500 }
+      )
+    }
+
+    // Format results for VideoSearch component
+    const formattedResults = (videos || []).map((video: any) => ({
+      id: video.id,
+      title: video.title,
+      description: video.description,
+      category: video.video_categories?.name,
+      subcategory: video.video_subcategories?.name,
+      duration: video.vimeo_duration
+    }))
+
+    return NextResponse.json({
+      success: true,
+      data: formattedResults
+    })
+
+  } catch (error) {
+    console.error('Error in video search GET:', error)
+    return NextResponse.json(
+      { success: false, error: 'Search failed' },
+      { status: 500 }
+    )
+  }
+}
+
+/**
  * API route that performs semantic search on video chunks using OpenAI embeddings
  * 
  * This endpoint:

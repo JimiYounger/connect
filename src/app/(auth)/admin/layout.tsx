@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { useAuth } from '@/features/auth/context/auth-context'
 import { useProfile } from '@/features/users/hooks/useProfile'
 import { usePermissions } from '@/features/permissions/hooks/usePermissions'
-import { Loader2, LineChart, Activity, AlertOctagon, ImageIcon, MessageSquare, Settings, Users, BookText, Menu, X, Home, Video, Search } from 'lucide-react'
+import { Loader2, LineChart, Activity, AlertOctagon, ImageIcon, MessageSquare, Settings, Users, BookText, Menu, X, Home, Video, Search, BarChart3 } from 'lucide-react'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { UserProfileNav } from "@/features/users/components/UserProfileNav"
@@ -25,6 +25,7 @@ const navItems = [
   { name: "Carousel", icon: ImageIcon, href: "/admin/carousel" },
   { name: "Documents", icon: BookText, href: "/admin/document-library" },
   { name: "Videos", icon: Video, href: "/admin/video-library" },
+  { name: "Analytics", icon: BarChart3, href: "/admin/analytics" },
   { name: "Video Search Test", icon: Search, href: "/admin/video-library/search-test" },
   { name: "Activities", icon: Activity, href: "/admin/activities" },
   { name: "Errors", icon: AlertOctagon, href: "/admin/errors" },

@@ -7,7 +7,7 @@ import { usePermissions } from "@/features/permissions/hooks/usePermissions"
 import { hasPermissionLevel } from "@/features/permissions/constants/roles"
 import { Card } from "@/components/ui/card"
 import Link from "next/link"
-import { LineChart, Activity, AlertOctagon, ImageIcon, TrendingUp, TrendingDown, BookText, MessageSquare, Settings, Users, RefreshCw, Database } from "lucide-react"
+import { LineChart, Activity, AlertOctagon, ImageIcon, TrendingUp, TrendingDown, BookText, MessageSquare, Settings, Users, RefreshCw, Database, BarChart3 } from "lucide-react"
 import { LucideIcon } from 'lucide-react'
 import { useState } from 'react'
 
@@ -201,6 +201,14 @@ export default function AdminDashboard() {
               color: "text-emerald-500",
               bgColor: "bg-emerald-50",
               description: "Manage document resources"
+            },
+            {
+              title: "Video Analytics",
+              icon: BarChart3,
+              href: "/analytics",
+              color: "text-teal-500",
+              bgColor: "bg-teal-50",
+              description: "View video engagement analytics"
             },
             {
               title: "Activity Log",
