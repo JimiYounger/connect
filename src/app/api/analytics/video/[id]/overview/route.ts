@@ -63,8 +63,12 @@ export async function GET(req: Request, { params }: RouteParams) {
       )  
     }
 
+    // Get timeframe from query params (default 30 days)
+    const url = new URL(req.url)
+    const timeframe = parseInt(url.searchParams.get('timeframe') || '30')
+    
     // Fetch video overview statistics
-    const overview = await VideoAnalyticsService.getVideoOverview(videoId)
+    const overview = await VideoAnalyticsService.getVideoOverview(videoId, timeframe)
 
     if (!overview) {
       return NextResponse.json(

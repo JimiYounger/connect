@@ -173,25 +173,92 @@ export class VideoAnalyticsService {
     try {
       const supabase = await createClient()
       
-      const { data, error } = await supabase
-        .rpc('get_trending_videos', {
-          days: days,
-          limit_count: limit
-        })
+      // Calculate the start date for the trending period
+      const startDate = new Date()
+      startDate.setDate(startDate.getDate() - days)
+      
+      // First, get all video watches within the timeframe
+      const { data: watches, error: watchError } = await supabase
+        .from('video_watches')
+        .select(`
+          video_file_id,
+          user_id,
+          percent_complete,
+          created_at,
+          video_files!inner (
+            id,
+            title,
+            library_status
+          )
+        `)
+        .gte('created_at', startDate.toISOString())
+        .eq('video_files.library_status', 'approved')
 
-      if (error) {
-        console.error('Error fetching trending videos:', error)
+      if (watchError) {
+        console.error('Error fetching video watches:', watchError)
         return []
       }
 
-      return (data as any[] || []).map((row: any) => ({
-        videoId: row.video_id,
-        title: row.title,
-        totalViews: parseInt(row.total_views) || 0,
-        uniqueViewers: parseInt(row.unique_viewers) || 0,
-        avgCompletionRate: parseFloat(row.avg_completion_rate) || 0,
-        trendScore: parseFloat(row.trend_score) || 0
-      }))
+      if (!watches || watches.length === 0) {
+        return []
+      }
+
+      // Group watches by video and calculate metrics
+      const videoMetrics = new Map<string, {
+        videoId: string,
+        title: string,
+        totalViews: number,
+        uniqueViewers: Set<string>,
+        completions: number[]
+      }>()
+
+      watches.forEach((watch: any) => {
+        const videoId = watch.video_file_id
+        const userId = watch.user_id
+        const completion = parseFloat(watch.percent_complete) || 0
+        const title = watch.video_files.title
+
+        if (!videoMetrics.has(videoId)) {
+          videoMetrics.set(videoId, {
+            videoId,
+            title,
+            totalViews: 0,
+            uniqueViewers: new Set(),
+            completions: []
+          })
+        }
+
+        const metrics = videoMetrics.get(videoId)!
+        metrics.totalViews += 1
+        metrics.uniqueViewers.add(userId)
+        metrics.completions.push(completion)
+      })
+
+      // Calculate trend scores and create final results
+      const trendingVideos: TrendingVideo[] = Array.from(videoMetrics.values())
+        .map(metrics => {
+          const avgCompletionRate = metrics.completions.length > 0
+            ? metrics.completions.reduce((sum, rate) => sum + rate, 0) / metrics.completions.length
+            : 0
+
+          // Trend score formula: (total_views * unique_viewers * avg_completion_rate) / 100
+          // This gives higher scores to videos with more views, diverse viewership, and high completion
+          const trendScore = (metrics.totalViews * metrics.uniqueViewers.size * avgCompletionRate) / 100
+
+          return {
+            videoId: metrics.videoId,
+            title: metrics.title,
+            totalViews: metrics.totalViews,
+            uniqueViewers: metrics.uniqueViewers.size,
+            avgCompletionRate: avgCompletionRate,
+            trendScore: trendScore
+          }
+        })
+        .filter(video => video.totalViews > 0) // Only include videos with actual views
+        .sort((a, b) => b.trendScore - a.trendScore) // Sort by trend score descending
+        .slice(0, limit) // Limit results
+
+      return trendingVideos
     } catch (err) {
       console.error('Error in getTrendingVideos:', err)
       return []
@@ -200,8 +267,12 @@ export class VideoAnalyticsService {
 
   /**
    * Get video overview statistics
+   * Uses the same organizational data filtering as breakdown functions for consistency
    */
-  static async getVideoOverview(videoId: string): Promise<{
+  static async getVideoOverview(
+    videoId: string, 
+    timeframe: number = 30
+  ): Promise<{
     totalViews: number
     uniqueViewers: number
     avgCompletionRate: number
@@ -211,15 +282,30 @@ export class VideoAnalyticsService {
     try {
       const supabase = await createClient()
       
+      // Use the same join pattern as the org breakdown function to ensure consistency
+      const startDate = new Date()
+      startDate.setDate(startDate.getDate() - timeframe)
+      
       const { data, error } = await supabase
         .from('video_watches')
         .select(`
           watched_seconds,
           percent_complete,
           created_at,
-          user_id
+          user_id,
+          user_profiles!inner (
+            id,
+            region,
+            area,
+            team
+          )
         `)
         .eq('video_file_id', videoId)
+        .gte('created_at', startDate.toISOString())
+        .not('user_profiles.region', 'is', null)
+        .not('user_profiles.area', 'is', null)
+        .not('user_profiles.team', 'is', null)
+        .neq('user_profiles.team', '')
 
       if (error) {
         console.error('Error fetching video overview:', error)
