@@ -149,7 +149,11 @@ export default function VideoLibraryPage() {
               {/* Search Bar */}
               <button
                 onClick={() => setShowSearchModal(true)}
-                className="flex items-center gap-3 px-4 md:px-6 py-3 md:py-4 bg-gray-800/50 hover:bg-gray-700/50 active:bg-gray-700/70 rounded-xl transition-colors border border-gray-700 hover:border-gray-600 w-full max-w-2xl touch-manipulation"
+                className="flex items-center gap-3 px-4 md:px-6 py-3 md:py-4 bg-gray-800/50 hover:bg-gray-700/50 active:bg-gray-700/70 rounded-xl transition-colors border border-gray-700 hover:border-gray-600 w-full max-w-2xl"
+                style={{ 
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent'
+                }}
               >
                 <Search className="w-5 h-5 text-gray-400 flex-shrink-0" />
                 <span className="text-gray-400 text-base md:text-lg text-left truncate">Search training videos and company content...</span>
@@ -160,7 +164,7 @@ export default function VideoLibraryPage() {
       </div>
 
       {/* Category Carousels */}
-      <div className="pb-8 space-y-8">
+      <div className="pb-8 space-y-8" style={{ willChange: 'transform' }}>
         {categories.map((category) => (
           <CategoryCarousel
             key={category.id}
