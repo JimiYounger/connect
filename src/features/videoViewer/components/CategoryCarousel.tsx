@@ -83,7 +83,8 @@ export function CategoryCarousel({ category, onSubcategoryClick }: CategoryCarou
   const scroll = (direction: 'left' | 'right') => {
     if (!scrollRef.current) return
     
-    const scrollAmount = 320 // Width of one card plus gap
+    // Responsive scroll amount based on card size
+    const scrollAmount = 256 // ~w-40 (160px) + gap (12px) * 2 cards
     const newScrollLeft = scrollRef.current.scrollLeft + (direction === 'right' ? scrollAmount : -scrollAmount)
     
     scrollRef.current.scrollTo({
@@ -121,7 +122,7 @@ export function CategoryCarousel({ category, onSubcategoryClick }: CategoryCarou
         {/* Scrollable Container */}
         <div
           ref={scrollRef}
-          className="flex gap-3 overflow-x-auto overflow-y-hidden scrollbar-hide scroll-smooth-mobile carousel-scroll carousel-container"
+          className="flex gap-2 sm:gap-3 overflow-x-auto overflow-y-hidden scrollbar-hide scroll-smooth-mobile carousel-scroll carousel-container"
           style={{ 
             /* Allow both horizontal and vertical touch, prioritize vertical */
             touchAction: 'manipulation',
@@ -135,7 +136,7 @@ export function CategoryCarousel({ category, onSubcategoryClick }: CategoryCarou
             <div
               key={subcategory.id}
               onClick={() => onSubcategoryClick(subcategory)}
-              className="flex-none w-48 cursor-pointer group/card transition-transform duration-300 md:hover:scale-105 carousel-item"
+              className="flex-none w-36 sm:w-40 md:w-44 lg:w-48 cursor-pointer group/card transition-transform duration-300 md:hover:scale-105 carousel-item"
               style={{ 
                 /* Mobile-friendly touch handling */
                 touchAction: 'manipulation',
@@ -159,16 +160,16 @@ export function CategoryCarousel({ category, onSubcategoryClick }: CategoryCarou
                 </div>
 
                 {/* Video Count Badge */}
-                <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm rounded-full px-2 py-1">
+                <div className="absolute top-1 right-1 sm:top-2 sm:right-2 bg-black/60 backdrop-blur-sm rounded-full px-1.5 py-0.5 sm:px-2 sm:py-1">
                   <span className="text-white text-xs font-medium">
-                    {subcategory.videoCount} videos
+                    {subcategory.videoCount}
                   </span>
                 </div>
               </div>
 
               {/* Subcategory Info */}
               <div className="px-1">
-                <h3 className="text-white font-medium text-sm leading-tight mb-1 line-clamp-2">
+                <h3 className="text-white font-medium text-xs sm:text-sm leading-tight mb-1 line-clamp-2">
                   {subcategory.name}
                 </h3>
                 <p className="text-gray-400 text-xs">
