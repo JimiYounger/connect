@@ -250,12 +250,12 @@ export function SubcategoryModal({ subcategory, isOpen, onClose, userPermissions
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-start justify-center">
       {/* Modal Container */}
       <div 
-        className={`bg-gray-900 w-full h-full overflow-hidden transition-transform duration-300 ease-out ${
+        className={`bg-black w-full h-full overflow-hidden transition-transform duration-300 ease-out ${
           isAnimating ? 'translate-y-0' : 'translate-y-full'
         }`}
       >
         {/* Header */}
-        <div className="p-6 border-b border-gray-700 space-y-4">
+        <div className="p-6 border-b border-gray-800 space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold text-white">{subcategory.name}</h2>
@@ -277,7 +277,7 @@ export function SubcategoryModal({ subcategory, isOpen, onClose, userPermissions
             </div>
             <button
               onClick={handleClose}
-              className="w-10 h-10 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition-colors"
+              className="w-10 h-10 rounded-full bg-gray-900 hover:bg-gray-800 flex items-center justify-center transition-colors"
             >
               <X className="w-5 h-5 text-white" />
             </button>
@@ -293,7 +293,7 @@ export function SubcategoryModal({ subcategory, isOpen, onClose, userPermissions
               placeholder="Search videos..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             {searchQuery && (
               <button
@@ -333,7 +333,7 @@ export function SubcategoryModal({ subcategory, isOpen, onClose, userPermissions
                   <motion.div
                     key={video.id}
                     onClick={(e) => handleVideoClick(video, e)}
-                    className="flex gap-3 md:gap-4 p-3 md:p-4 rounded-xl bg-gray-800 hover:bg-gray-750 cursor-pointer transition-colors group"
+                    className="flex gap-3 md:gap-4 p-3 md:p-4 rounded-xl bg-gray-900 hover:bg-gray-800 cursor-pointer transition-colors group"
                     whileTap={{ scale: 0.98 }}
                     transition={{ type: "spring", stiffness: 400, damping: 25 }}
                   >

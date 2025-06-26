@@ -127,9 +127,9 @@ export default function VideoLibraryPage() {
           </div>
           
           {/* Logo - Top Right */}
-          <div className="absolute right-4 top-0">
+          <div className="absolute right-0 -top-3">
             <Link href="/">
-              <div className="cursor-pointer p-4">
+              <div className="cursor-pointer p-3">
                 <Image 
                   src="/favicon.ico" 
                   alt="Home" 
@@ -144,8 +144,6 @@ export default function VideoLibraryPage() {
           {/* Header Content */}
           <div className="px-4 py-6 md:py-8 pt-16 md:pt-20">
             <div className="flex flex-col space-y-4">
-              <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white">Video Library</h1>
-              
               {/* Search Bar */}
               <button
                 onClick={() => setShowSearchModal(true)}
@@ -163,9 +161,9 @@ export default function VideoLibraryPage() {
         </div>
       </div>
 
-      {/* Category Carousels */}
+      {/* Refactored Category Carousel */}
       <div 
-        className="pb-8 space-y-8"
+        className="pb-8"
         style={{ 
           /* Optimize for mobile scrolling performance */
           WebkitOverflowScrolling: 'touch',
@@ -173,13 +171,10 @@ export default function VideoLibraryPage() {
           WebkitTransform: 'translateZ(0)'
         }}
       >
-        {categories.map((category) => (
-          <CategoryCarousel
-            key={category.id}
-            category={category}
-            onSubcategoryClick={handleSubcategoryClick}
-          />
-        ))}
+        <CategoryCarousel
+          categories={categories}
+          onSubcategoryClick={handleSubcategoryClick}
+        />
       </div>
 
       {/* Subcategory Modal */}

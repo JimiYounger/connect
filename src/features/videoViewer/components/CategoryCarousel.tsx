@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, Play } from 'lucide-react'
+import { Play } from 'lucide-react'
 import Image from 'next/image'
 
 interface VideoSubcategory {
@@ -15,33 +15,39 @@ interface VideoSubcategory {
 interface VideoCategory {
   id: string
   name: string
+  thumbnailUrl?: string
+  thumbnailColor?: string
   subcategories: VideoSubcategory[]
 }
 
 interface CategoryCarouselProps {
-  category: VideoCategory
+  categories: VideoCategory[]
   onSubcategoryClick: (subcategory: VideoSubcategory) => void
 }
 
-// Optimized thumbnail component with lazy loading and skeleton states
-function LazyThumbnail({ subcategory }: { subcategory: VideoSubcategory }) {
+function LazyThumbnail({ 
+  item, 
+  type 
+}: { 
+  item: VideoCategory | VideoSubcategory
+  type: 'category' | 'subcategory'
+}) {
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
 
-  if (!subcategory.thumbnailUrl || hasError) {
-    // Fallback placeholder with custom color or gradient
+  if (!item.thumbnailUrl || hasError) {
     return (
       <div 
         className="w-full h-full flex items-center justify-center"
         style={{
-          backgroundColor: subcategory.thumbnailColor || '#6366f1',
-          backgroundImage: subcategory.thumbnailColor ? 'none' : `linear-gradient(135deg, ${subcategory.thumbnailColor || '#6366f1'}, ${subcategory.thumbnailColor || '#3b82f6'})`
+          backgroundColor: item.thumbnailColor || '#6366f1',
+          backgroundImage: item.thumbnailColor ? 'none' : `linear-gradient(135deg, ${item.thumbnailColor || '#6366f1'}, ${item.thumbnailColor || '#3b82f6'})`
         }}
       >
         <div className="text-center text-white">
-          <Play className="w-12 h-12 mx-auto mb-2 opacity-80" />
-          <p className="text-sm font-medium px-2 leading-tight">
-            {subcategory.name}
+          <Play className={`${type === 'category' ? 'w-16 h-16' : 'w-12 h-12'} mx-auto mb-2 opacity-80`} />
+          <p className={`${type === 'category' ? 'text-base' : 'text-sm'} font-medium px-2 leading-tight`}>
+            {item.name}
           </p>
         </div>
       </div>
@@ -50,23 +56,21 @@ function LazyThumbnail({ subcategory }: { subcategory: VideoSubcategory }) {
 
   return (
     <>
-      {/* Loading skeleton - shows while image loads */}
       {isLoading && (
         <div className="absolute inset-0 bg-gray-800 animate-pulse flex items-center justify-center">
-          <div className="w-12 h-12 bg-gray-700 rounded-full opacity-50"></div>
+          <div className={`${type === 'category' ? 'w-16 h-16' : 'w-12 h-12'} bg-gray-700 rounded-full opacity-50`}></div>
         </div>
       )}
       
-      {/* Actual image */}
       <Image
-        src={subcategory.thumbnailUrl}
-        alt={subcategory.name}
+        src={item.thumbnailUrl}
+        alt={item.name}
         fill
         className={`object-cover transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
         sizes="(max-width: 768px) 384px, (max-width: 1024px) 512px, 768px"
-        quality={85} // Reduced from 95 for faster loading
+        quality={85}
         priority={false}
-        loading="lazy" // Explicit lazy loading
+        loading="lazy"
         onLoad={() => setIsLoading(false)}
         onError={() => {
           setHasError(true)
@@ -77,110 +81,137 @@ function LazyThumbnail({ subcategory }: { subcategory: VideoSubcategory }) {
   )
 }
 
-export function CategoryCarousel({ category, onSubcategoryClick }: CategoryCarouselProps) {
+export function CategoryCarousel({ 
+  categories, 
+  onSubcategoryClick 
+}: CategoryCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const subcategoryScrollRef = useRef<HTMLDivElement>(null)
+  const [selectedCategory, setSelectedCategory] = useState<VideoCategory | null>(null)
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
 
-  const scroll = (direction: 'left' | 'right') => {
-    if (!scrollRef.current) return
-    
-    // Responsive scroll amount based on card size
-    const scrollAmount = 256 // ~w-40 (160px) + gap (12px) * 2 cards
-    const newScrollLeft = scrollRef.current.scrollLeft + (direction === 'right' ? scrollAmount : -scrollAmount)
-    
-    scrollRef.current.scrollTo({
-      left: newScrollLeft,
-      behavior: 'smooth'
-    })
+  const handleCategoryClick = (category: VideoCategory) => {
+    if (selectedCategory?.id === category.id && isDropdownOpen) {
+      // Close if clicking the same category
+      setIsDropdownOpen(false)
+      setSelectedCategory(null)
+    } else {
+      // Open new category dropdown
+      setSelectedCategory(category)
+      setIsDropdownOpen(true)
+    }
   }
 
+  const handleSubcategoryClick = (subcategory: VideoSubcategory) => {
+    setIsDropdownOpen(false)
+    setSelectedCategory(null)
+    onSubcategoryClick(subcategory)
+  }
 
   return (
     <div className="px-4">
-      {/* Category Title */}
-      <h2 className="text-xl md:text-2xl font-semibold text-white mb-4">
-        {category.name}
-      </h2>
+      {/* Main Title */}
+      <div className="mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">Video Library</h1>
+      </div>
 
-      {/* Carousel Container */}
-      <div className="relative group">
-        {/* Left Arrow - Desktop only */}
-        <button
-          onClick={() => scroll('left')}
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-black/60 rounded-full items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-black/80 hidden md:flex"
-        >
-          <ChevronLeft className="w-5 h-5 text-white" />
-        </button>
-
-        {/* Right Arrow - Desktop only */}
-        <button
-          onClick={() => scroll('right')}
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-black/60 rounded-full items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-black/80 hidden md:flex"
-        >
-          <ChevronRight className="w-5 h-5 text-white" />
-        </button>
-
+      {/* Main Category Carousel */}
+      <div className="relative group mb-4">
         {/* Scrollable Container */}
         <div
           ref={scrollRef}
-          className="flex gap-2 sm:gap-3 overflow-x-auto overflow-y-hidden scrollbar-hide scroll-smooth-mobile carousel-scroll carousel-container"
+          className="flex gap-3 sm:gap-4 overflow-x-auto overflow-y-visible scrollbar-hide scroll-smooth-mobile carousel-scroll carousel-container py-2 pl-2"
           style={{ 
-            /* Allow both horizontal and vertical touch, prioritize vertical */
             touchAction: 'manipulation',
             WebkitOverflowScrolling: 'touch',
-            /* Let vertical scrolling work naturally on mobile */
             overscrollBehaviorX: 'contain',
             overscrollBehaviorY: 'auto'
           }}
         >
-          {category.subcategories.map((subcategory) => (
-            <div
-              key={subcategory.id}
-              onClick={() => onSubcategoryClick(subcategory)}
-              className="flex-none w-36 sm:w-40 md:w-44 lg:w-48 cursor-pointer group/card transition-transform duration-300 md:hover:scale-105 carousel-item"
-              style={{ 
-                /* Mobile-friendly touch handling */
-                touchAction: 'manipulation',
-                WebkitTapHighlightColor: 'transparent',
-                /* Allow natural text selection on mobile */
-                userSelect: 'text',
-                WebkitUserSelect: 'text',
-                WebkitTouchCallout: 'none'
-              }}
-            >
-              {/* Thumbnail Container - 2:3 aspect ratio like Netflix */}
-              <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-gray-800 mb-2">
-                {/* Optimized lazy-loaded thumbnail */}
-                <LazyThumbnail subcategory={subcategory} />
-                
-                {/* Hover Overlay - Desktop only */}
-                <div className="absolute inset-0 bg-black/40 opacity-0 md:group-hover/card:opacity-100 transition-opacity duration-300 items-center justify-center hidden md:flex">
-                  <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
-                    <Play className="w-6 h-6 text-white ml-0.5" />
-                  </div>
+          {categories.map((category) => {
+            return (
+              <div
+                key={category.id}
+                onClick={() => handleCategoryClick(category)}
+                className="flex-none w-44 sm:w-48 md:w-52 lg:w-56 cursor-pointer group/card transition-transform duration-300 md:hover:scale-105 carousel-item"
+                style={{ 
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent',
+                  userSelect: 'text',
+                  WebkitUserSelect: 'text',
+                  WebkitTouchCallout: 'none'
+                }}
+              >
+                {/* Category Thumbnail Container - Slightly taller for categories */}
+                <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-gray-800 mb-3">
+                  <LazyThumbnail item={category} type="category" />
+                  
+
                 </div>
 
-                {/* Video Count Badge */}
-                <div className="absolute top-1 right-1 sm:top-2 sm:right-2 bg-black/60 backdrop-blur-sm rounded-full px-1.5 py-0.5 sm:px-2 sm:py-1">
-                  <span className="text-white text-xs font-medium">
-                    {subcategory.videoCount}
-                  </span>
+                {/* Category Info */}
+                <div className="px-1">
+                  <h3 className="text-white font-semibold text-sm sm:text-base leading-tight mb-1 line-clamp-2">
+                    {category.name}
+                  </h3>
                 </div>
               </div>
-
-              {/* Subcategory Info */}
-              <div className="px-1">
-                <h3 className="text-white font-medium text-xs sm:text-sm leading-tight mb-1 line-clamp-2">
-                  {subcategory.name}
-                </h3>
-                <p className="text-gray-400 text-xs">
-                  {subcategory.videoCount} video{subcategory.videoCount !== 1 ? 's' : ''}
-                </p>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 
+      {/* Dropdown Tray for Subcategories */}
+      {isDropdownOpen && selectedCategory && (
+        <div className="absolute left-0 right-0 bg-black py-4 mb-6 animate-in fade-in slide-in-from-top-4 duration-300" style={{ marginLeft: '-1rem', marginRight: '-1rem' }}>
+          <div className="px-4">
+
+          {/* Subcategory Carousel */}
+          <div className="relative group/sub">
+            {/* Subcategory Scrollable Container */}
+            <div
+              ref={subcategoryScrollRef}
+              className="flex gap-2 sm:gap-3 overflow-x-auto overflow-y-visible scrollbar-hide scroll-smooth-mobile py-2 pl-6"
+              style={{ 
+                touchAction: 'manipulation',
+                WebkitOverflowScrolling: 'touch',
+                overscrollBehaviorX: 'contain',
+                overscrollBehaviorY: 'auto'
+              }}
+            >
+              {selectedCategory.subcategories.map((subcategory) => (
+                <div
+                  key={subcategory.id}
+                  onClick={() => handleSubcategoryClick(subcategory)}
+                  className="flex-none w-32 sm:w-36 md:w-40 cursor-pointer group/subcard transition-transform duration-300 md:hover:scale-105"
+                  style={{ 
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'transparent',
+                    userSelect: 'text',
+                    WebkitUserSelect: 'text',
+                    WebkitTouchCallout: 'none'
+                  }}
+                >
+                  {/* Subcategory Thumbnail Container */}
+                  <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-gray-800 mb-2">
+                    <LazyThumbnail item={subcategory} type="subcategory" />
+                    
+
+                  </div>
+
+                  {/* Subcategory Info */}
+                  <div className="px-1">
+                    <h4 className="text-white font-medium text-xs sm:text-sm leading-tight mb-1 line-clamp-2">
+                      {subcategory.name}
+                    </h4>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -6,6 +6,8 @@ import type { VideoForViewing } from '../types'
 export interface VideoCategory {
   id: string
   name: string
+  thumbnailUrl?: string
+  thumbnailColor?: string
   subcategories: VideoSubcategory[]
 }
 

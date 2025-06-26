@@ -155,7 +155,7 @@ export function VideoSearchModal({ isOpen, onClose, userPermissions: _userPermis
       {/* Modal Container with emergence animation */}
       <div 
         ref={modalRef}
-        className={`absolute bg-gray-900 transition-all duration-400 ease-out ${
+        className={`absolute bg-black transition-all duration-400 ease-out ${
           isAnimating 
             ? 'inset-0 rounded-none opacity-100 scale-100' 
             : 'top-[140px] left-4 right-4 max-w-2xl mx-auto h-[60px] rounded-xl opacity-0 scale-95'
@@ -170,21 +170,21 @@ export function VideoSearchModal({ isOpen, onClose, userPermissions: _userPermis
           isAnimating ? 'opacity-100 delay-150' : 'opacity-0'
         }`}>
           {/* Mobile Header */}
-          <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-700 bg-gray-900 sticky top-0 z-10">
+          <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-800 bg-black sticky top-0 z-10">
             <div className="flex items-center gap-2 md:gap-3">
               <Search className="w-5 h-5 md:w-6 md:h-6 text-blue-400" />
               <h2 className="text-lg md:text-2xl font-bold text-white">Search Videos</h2>
             </div>
             <button
               onClick={handleClose}
-              className="w-10 h-10 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition-colors active:scale-95"
+              className="w-10 h-10 rounded-full bg-gray-900 hover:bg-gray-800 flex items-center justify-center transition-colors active:scale-95"
             >
               <X className="w-5 h-5 text-white" />
             </button>
           </div>
 
           {/* Search Input */}
-          <div className="p-4 md:p-6 border-b border-gray-700 bg-gray-900 sticky top-[73px] md:static z-10">
+          <div className="p-4 md:p-6 border-b border-gray-800 bg-black sticky top-[73px] md:static z-10">
             <div className="flex flex-col sm:flex-row gap-3">
               <input
                 type="text"
@@ -192,7 +192,7 @@ export function VideoSearchModal({ isOpen, onClose, userPermissions: _userPermis
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && performSearch()}
-                className="flex-1 px-4 py-3 md:py-3 bg-gray-800 text-white rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none text-base"
+                className="flex-1 px-4 py-3 md:py-3 bg-gray-900 text-white rounded-lg border border-gray-700 focus:border-white focus:outline-none text-base"
                 autoFocus
               />
               <button
@@ -249,7 +249,7 @@ export function VideoSearchModal({ isOpen, onClose, userPermissions: _userPermis
                   <motion.div
                     key={result.id}
                     onClick={(e) => handleVideoClick(result, e)}
-                    className="flex flex-col sm:flex-row gap-3 sm:gap-4 p-3 md:p-4 rounded-xl bg-gray-800 hover:bg-gray-750 active:bg-gray-700 cursor-pointer transition-colors group"
+                    className="flex flex-col sm:flex-row gap-3 sm:gap-4 p-3 md:p-4 rounded-xl bg-gray-900 hover:bg-gray-800 active:bg-gray-700 cursor-pointer transition-colors group"
                     whileTap={{ scale: 0.98 }}
                     transition={{ type: "spring", stiffness: 400, damping: 25 }}
                   >

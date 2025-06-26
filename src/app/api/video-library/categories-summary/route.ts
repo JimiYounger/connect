@@ -179,7 +179,7 @@ export async function POST() {
         video_category_id,
         video_subcategory_id,
         library_status,
-        video_categories (id, name, order_index),
+        video_categories (id, name, order_index, thumbnail_url, thumbnail_color, thumbnail_source),
         video_subcategories (id, name, order_index, thumbnail_url, thumbnail_color, thumbnail_source)
       `)
       .in('id', viewableVideoIds)
@@ -197,6 +197,9 @@ export async function POST() {
       id: string
       name: string
       order_index: number | null
+      thumbnailUrl?: string
+      thumbnailColor?: string
+      thumbnailSource?: string
       subcategories: Map<string, { 
         id: string, 
         name: string, 
@@ -216,6 +219,9 @@ export async function POST() {
             id: video.video_categories.id,
             name: video.video_categories.name,
             order_index: video.video_categories.order_index,
+            thumbnailUrl: video.video_categories.thumbnail_url || undefined,
+            thumbnailColor: video.video_categories.thumbnail_color || undefined,
+            thumbnailSource: video.video_categories.thumbnail_source || undefined,
             subcategories: new Map()
           })
         }
@@ -258,6 +264,8 @@ export async function POST() {
       .map(category => ({
         id: category.id,
         name: category.name,
+        thumbnailUrl: category.thumbnailUrl,
+        thumbnailColor: category.thumbnailColor,
         subcategories: Array.from(category.subcategories.values())
           .sort((a, b) => {
             // Sort subcategories by order_index (nulls last), then by name
