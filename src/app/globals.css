@@ -90,11 +90,15 @@ html.pwa-mode #pwa-main-content {
   height: 100%; /* Fill the fixed body */
   overflow-y: scroll;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
+  /* Allow natural momentum scrolling */
+  overscroll-behavior-y: auto;
   padding-top: env(safe-area-inset-top, 0); /* Only account for safe area, no extra padding */
   padding-bottom: env(safe-area-inset-bottom, 0);
   background-color: #000000;
   z-index: 1;
+  /* Improve scrolling performance */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
 /* Media query to adjust padding-top for desktop PWA nav height (70px) */
@@ -210,12 +214,14 @@ html.pwa-mode [contenteditable] {
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-x: contain;
-    overscroll-behavior-y: none;
+    /* Allow vertical momentum scrolling on mobile */
+    overscroll-behavior-y: auto;
   }
 
-  /* Carousel scroll snap for better UX */
+  /* Carousel scroll snap for better UX - mobile optimized */
   .carousel-scroll {
-    scroll-snap-type: x mandatory;
+    /* Use proximity instead of mandatory for less aggressive snapping */
+    scroll-snap-type: x proximity;
     scroll-padding: 16px;
   }
 
@@ -224,13 +230,53 @@ html.pwa-mode [contenteditable] {
     scroll-snap-stop: normal;
   }
 
-  /* Prevent text selection during carousel scrolling */
+  /* Mobile-friendly carousel container */
   .carousel-container {
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
+    /* Allow text selection but prevent drag */
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
     -webkit-touch-callout: none;
+    /* Ensure smooth scrolling performance */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+  }
+
+  /* Desktop-specific carousel optimizations */
+  @media (min-width: 768px) {
+    .carousel-scroll {
+      scroll-snap-type: x mandatory;
+    }
+    
+    .carousel-container {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+  }
+
+  /* Mobile video page optimizations */
+  .mobile-video-page {
+    /* Ensure smooth vertical scrolling */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: auto;
+    overscroll-behavior-x: none;
+    /* Hardware acceleration for smooth scrolling */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    /* Prevent horizontal scrolling on page level */
+    overflow-x: hidden;
+  }
+
+  @media (max-width: 767px) {
+    .mobile-video-page {
+      /* Enhanced mobile scrolling */
+      scroll-behavior: smooth;
+      /* Ensure touch events work properly */
+      touch-action: manipulation;
+    }
   }
   
   .page-header {

@@ -123,20 +123,26 @@ export function CategoryCarousel({ category, onSubcategoryClick }: CategoryCarou
           ref={scrollRef}
           className="flex gap-3 overflow-x-auto overflow-y-hidden scrollbar-hide scroll-smooth-mobile carousel-scroll carousel-container"
           style={{ 
-            touchAction: 'pan-x',
+            /* Allow both horizontal and vertical touch, prioritize vertical */
+            touchAction: 'manipulation',
             WebkitOverflowScrolling: 'touch',
+            /* Let vertical scrolling work naturally on mobile */
             overscrollBehaviorX: 'contain',
-            overscrollBehaviorY: 'none'
+            overscrollBehaviorY: 'auto'
           }}
         >
           {category.subcategories.map((subcategory) => (
             <div
               key={subcategory.id}
               onClick={() => onSubcategoryClick(subcategory)}
-              className="flex-none w-48 cursor-pointer group/card select-none transform transition-transform duration-300 md:hover:scale-105 carousel-item"
+              className="flex-none w-48 cursor-pointer group/card transition-transform duration-300 md:hover:scale-105 carousel-item"
               style={{ 
-                userSelect: 'none',
-                WebkitUserSelect: 'none',
+                /* Mobile-friendly touch handling */
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
+                /* Allow natural text selection on mobile */
+                userSelect: 'text',
+                WebkitUserSelect: 'text',
                 WebkitTouchCallout: 'none'
               }}
             >

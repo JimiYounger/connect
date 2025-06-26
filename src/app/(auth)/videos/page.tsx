@@ -117,7 +117,7 @@ export default function VideoLibraryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-black mobile-video-page">
       {/* Navigation Header */}
       <div className="relative bg-black">
         <div className="relative">
@@ -164,7 +164,15 @@ export default function VideoLibraryPage() {
       </div>
 
       {/* Category Carousels */}
-      <div className="pb-8 space-y-8" style={{ willChange: 'transform' }}>
+      <div 
+        className="pb-8 space-y-8"
+        style={{ 
+          /* Optimize for mobile scrolling performance */
+          WebkitOverflowScrolling: 'touch',
+          transform: 'translateZ(0)',
+          WebkitTransform: 'translateZ(0)'
+        }}
+      >
         {categories.map((category) => (
           <CategoryCarousel
             key={category.id}
