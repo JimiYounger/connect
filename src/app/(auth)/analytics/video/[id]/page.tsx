@@ -173,7 +173,7 @@ export default function VideoAnalyticsPage({ params }: { params: Promise<PagePar
   }
 
   // Handle filters change
-  const handleFiltersChange = (filters: any) => {
+  const _handleFiltersChange = (filters: any) => {
     fetchVideoAnalytics(filters)
   }
 
