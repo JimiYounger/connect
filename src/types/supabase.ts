@@ -1655,6 +1655,50 @@ export type Database = {
           },
         ]
       }
+      series_content: {
+        Row: {
+          content_id: string
+          content_type: string
+          created_at: string | null
+          id: string
+          module_name: string | null
+          order_index: number
+          season_number: number | null
+          series_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          content_id: string
+          content_type: string
+          created_at?: string | null
+          id?: string
+          module_name?: string | null
+          order_index?: number
+          season_number?: number | null
+          series_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          content_id?: string
+          content_type?: string
+          created_at?: string | null
+          id?: string
+          module_name?: string | null
+          order_index?: number
+          season_number?: number | null
+          series_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "series_content_series_id_fkey"
+            columns: ["series_id"]
+            isOneToOne: false
+            referencedRelation: "video_series"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       thumbnails: {
         Row: {
           created_at: string | null
@@ -1962,7 +2006,6 @@ export type Database = {
           transcript_status: string | null
           updated_at: string | null
           video_category_id: string | null
-          video_series_id: string | null
           video_subcategory_id: string | null
           vimeo_duration: number | null
           vimeo_id: string | null
@@ -1991,7 +2034,6 @@ export type Database = {
           transcript_status?: string | null
           updated_at?: string | null
           video_category_id?: string | null
-          video_series_id?: string | null
           video_subcategory_id?: string | null
           vimeo_duration?: number | null
           vimeo_id?: string | null
@@ -2020,7 +2062,6 @@ export type Database = {
           transcript_status?: string | null
           updated_at?: string | null
           video_category_id?: string | null
-          video_series_id?: string | null
           video_subcategory_id?: string | null
           vimeo_duration?: number | null
           vimeo_id?: string | null
@@ -2049,13 +2090,6 @@ export type Database = {
             columns: ["video_category_id"]
             isOneToOne: false
             referencedRelation: "video_categories"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "video_files_video_series_id_fkey"
-            columns: ["video_series_id"]
-            isOneToOne: false
-            referencedRelation: "video_series"
             referencedColumns: ["id"]
           },
           {
@@ -2130,30 +2164,60 @@ export type Database = {
       }
       video_series: {
         Row: {
+          content_count: number | null
           created_at: string | null
+          created_by: string | null
           description: string | null
+          has_seasons: boolean | null
           id: string
+          is_public: boolean | null
           name: string
           order_index: number | null
           parent_series_id: string | null
+          series_type: string | null
+          tags: string[] | null
+          thumbnail_color: string | null
+          thumbnail_source: string | null
+          thumbnail_url: string | null
+          total_duration: number | null
           updated_at: string | null
         }
         Insert: {
+          content_count?: number | null
           created_at?: string | null
+          created_by?: string | null
           description?: string | null
+          has_seasons?: boolean | null
           id?: string
+          is_public?: boolean | null
           name: string
           order_index?: number | null
           parent_series_id?: string | null
+          series_type?: string | null
+          tags?: string[] | null
+          thumbnail_color?: string | null
+          thumbnail_source?: string | null
+          thumbnail_url?: string | null
+          total_duration?: number | null
           updated_at?: string | null
         }
         Update: {
+          content_count?: number | null
           created_at?: string | null
+          created_by?: string | null
           description?: string | null
+          has_seasons?: boolean | null
           id?: string
+          is_public?: boolean | null
           name?: string
           order_index?: number | null
           parent_series_id?: string | null
+          series_type?: string | null
+          tags?: string[] | null
+          thumbnail_color?: string | null
+          thumbnail_source?: string | null
+          thumbnail_url?: string | null
+          total_duration?: number | null
           updated_at?: string | null
         }
         Relationships: [
@@ -3289,18 +3353,29 @@ export type Database = {
         }
         Returns: undefined
       }
+      update_series_metadata: {
+        Args: { series_id_param: string }
+        Returns: undefined
+      }
       update_video_processing_status: {
         Args: { video_id: string; status_type: string; status_value: string }
         Returns: undefined
       }
       update_video_watch_progress: {
-        Args: {
-          user_profile_id: string
-          video_id: string
-          current_position: number
-          video_duration: number
-          event_data?: Json
-        }
+        Args:
+          | {
+              user_profile_id: string
+              video_id: string
+              current_position: number
+              video_duration: number
+              event_data?: Json
+            }
+          | {
+              video_id: string
+              user_profile_id: string
+              current_position: number
+              event_data?: Json
+            }
         Returns: undefined
       }
       vector_avg: {

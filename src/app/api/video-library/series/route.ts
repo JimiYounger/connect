@@ -17,16 +17,25 @@ export async function GET() {
       )
     }
 
-    // Fetch series with count of videos
+    // Fetch series with enhanced metadata
     const { data: series, error } = await supabase
       .from('video_series')
       .select(`
         id,
         name,
         description,
+        series_type,
+        has_seasons,
+        thumbnail_url,
+        thumbnail_source,
+        thumbnail_color,
+        is_public,
+        content_count,
+        total_duration,
+        tags,
         created_at,
         updated_at,
-        video_files (count)
+        order_index
       `)
       .order('name')
 
@@ -38,15 +47,8 @@ export async function GET() {
       )
     }
 
-    // Process the data to include counts
-    const processedSeries = series.map(s => ({
-      id: s.id,
-      name: s.name,
-      description: s.description,
-      created_at: s.created_at,
-      updated_at: s.updated_at,
-      video_count: Array.isArray(s.video_files) ? s.video_files.length : 0
-    }))
+    // Process the data to include all new fields
+    const processedSeries = series
 
     return NextResponse.json({
       success: true,
@@ -93,11 +95,30 @@ export async function POST(req: Request) {
       )
     }
 
-    const { name, description } = await req.json()
+    const { 
+      name, 
+      description, 
+      series_type = 'playlist', 
+      has_seasons = false,
+      thumbnail_url,
+      thumbnail_source = 'default',
+      thumbnail_color = '#3b82f6',
+      is_public = false,
+      tags
+    } = await req.json()
 
     if (!name || typeof name !== 'string' || name.trim() === '') {
       return NextResponse.json(
         { success: false, error: 'Series name is required' },
+        { status: 400 }
+      )
+    }
+
+    // Validate series_type
+    const validTypes = ['playlist', 'course', 'collection']
+    if (series_type && !validTypes.includes(series_type)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid series type. Must be: playlist, course, or collection' },
         { status: 400 }
       )
     }
@@ -107,7 +128,15 @@ export async function POST(req: Request) {
       .from('video_series')
       .insert({
         name: name.trim(),
-        description: description?.trim() || null
+        description: description?.trim() || null,
+        series_type,
+        has_seasons,
+        thumbnail_url: thumbnail_url?.trim() || null,
+        thumbnail_source,
+        thumbnail_color,
+        is_public,
+        tags: tags || [],
+        created_by: user.id
       })
       .select()
       .single()

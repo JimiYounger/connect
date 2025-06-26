@@ -365,7 +365,6 @@ export async function POST(req: Request) {
           video_visibility (id, conditions),
           video_categories (id, name),
           video_subcategories (id, name),
-          video_series (id, name),
           video_tag_assignments (
             video_tags (id, name)
           )
@@ -467,8 +466,7 @@ export async function POST(req: Request) {
         highlight,
         matching_chunks: matchingChunks,
         category_name: videoData.video_categories?.name,
-        subcategory_name: videoData.video_subcategories?.name,
-        series_name: videoData.video_series?.name
+        subcategory_name: videoData.video_subcategories?.name
       })
     }
 
