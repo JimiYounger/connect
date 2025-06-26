@@ -1654,6 +1654,25 @@ export function AdminVideoLibrary() {
     )
   }
 
+  // Series tab content
+  const renderSeries = () => (
+    <div className="space-y-6">
+      {/* Header with description */}
+      <div className="text-center py-8">
+        <h2 className="text-xl font-semibold mb-2">Series Management</h2>
+        <p className="text-gray-600 mb-6">
+          Create and manage video series with mixed content support. Series allow you to organize videos and documents together in curated playlists, courses, or collections.
+        </p>
+        <Button asChild>
+          <Link href="/admin/video-library/series">
+            <List className="h-4 w-4 mr-2" />
+            Manage Series
+          </Link>
+        </Button>
+      </div>
+    </div>
+  )
+
   // Categories tab content
   const renderCategories = () => (
     <div className="space-y-6">
@@ -1956,7 +1975,7 @@ export function AdminVideoLibrary() {
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             Overview
@@ -1968,6 +1987,10 @@ export function AdminVideoLibrary() {
           <TabsTrigger value="categories" className="flex items-center gap-2">
             <FolderOpen className="h-4 w-4" />
             Categories
+          </TabsTrigger>
+          <TabsTrigger value="series" className="flex items-center gap-2">
+            <List className="h-4 w-4" />
+            Series
           </TabsTrigger>
         </TabsList>
         
@@ -1981,6 +2004,10 @@ export function AdminVideoLibrary() {
         
         <TabsContent value="categories" className="mt-6">
           {renderCategories()}
+        </TabsContent>
+        
+        <TabsContent value="series" className="mt-6">
+          {renderSeries()}
         </TabsContent>
       </Tabs>
 

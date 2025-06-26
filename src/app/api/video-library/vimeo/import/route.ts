@@ -131,7 +131,6 @@ export async function POST(req: Request) {
         vimeo_metadata: vimeoVideo,
         video_category_id: requestData.categoryId || null,
         video_subcategory_id: requestData.subcategoryId || null,
-        video_series_id: requestData.seriesId || null,
         admin_selected: true,
         library_status: 'pending',
         transcript_status: 'pending',
@@ -164,6 +163,36 @@ export async function POST(req: Request) {
       if (tagError) {
         console.warn('Error adding tags to video:', tagError)
         // Don't fail the entire operation for tag errors
+      }
+    }
+
+    // Add to series if provided
+    if (requestData.seriesId) {
+      // Get the highest order index for this series
+      const { data: maxOrderData } = await supabase
+        .from('series_content')
+        .select('order_index')
+        .eq('series_id', requestData.seriesId)
+        .order('order_index', { ascending: false })
+        .limit(1)
+
+      const nextOrderIndex = maxOrderData && maxOrderData.length > 0 
+        ? maxOrderData[0].order_index + 1 
+        : 0
+
+      const { error: seriesError } = await supabase
+        .from('series_content')
+        .insert({
+          series_id: requestData.seriesId,
+          content_type: 'video',
+          content_id: newVideo.id,
+          order_index: nextOrderIndex,
+          season_number: 1
+        })
+
+      if (seriesError) {
+        console.warn('Error adding video to series:', seriesError)
+        // Don't fail the entire operation for series errors
       }
     }
 

@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     const {
       video_category_id,
       video_subcategory_id,
-      video_series_id,
+      video_series_id: _video_series_id,
       tags: _tags,
       admin_selected,
       library_status,
@@ -78,8 +78,7 @@ export async function POST(req: Request) {
       .select(`
         *,
         video_categories (id, name),
-        video_subcategories (id, name, thumbnail_url, thumbnail_color, thumbnail_source),
-        video_series (id, name)
+        video_subcategories (id, name, thumbnail_url, thumbnail_color, thumbnail_source)
       `)
       
     // Apply category filter
@@ -92,10 +91,9 @@ export async function POST(req: Request) {
       query = query.eq('video_subcategory_id', video_subcategory_id)
     }
     
-    // Apply series filter
-    if (video_series_id) {
-      query = query.eq('video_series_id', video_series_id)
-    }
+    // Series filtering is now handled via the series_content junction table
+    // This parameter is kept for backward compatibility but no longer used
+    // TODO: Update clients to use series-specific endpoints instead
     
     // Apply admin_selected filter
     if (admin_selected !== undefined) {
@@ -141,9 +139,7 @@ export async function POST(req: Request) {
       countQuery = countQuery.eq('video_subcategory_id', video_subcategory_id)
     }
     
-    if (video_series_id) {
-      countQuery = countQuery.eq('video_series_id', video_series_id)
-    }
+    // Series filtering removed - no longer available via direct video_series_id
     
     if (admin_selected !== undefined) {
       countQuery = countQuery.eq('admin_selected', admin_selected)
