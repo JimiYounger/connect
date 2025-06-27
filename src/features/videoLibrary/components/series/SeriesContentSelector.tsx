@@ -2,11 +2,14 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { Search, Video, FileText, Plus } from 'lucide-react'
+import Image from 'next/image'
+import { Search, Video, FileText, Plus, Hash } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   Dialog,
   DialogContent,
@@ -36,14 +39,21 @@ interface ContentItem {
 
 interface SeriesContentSelectorProps {
   seriesId: string
+  existingSeasons: number[]
   onClose: () => void
   onSuccess: () => void
 }
 
-export default function SeriesContentSelector({ seriesId, onClose, onSuccess }: SeriesContentSelectorProps) {
+export default function SeriesContentSelector({ seriesId, existingSeasons, onClose, onSuccess }: SeriesContentSelectorProps) {
   const [search, setSearch] = useState('')
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
+  const [selectedSeason, setSelectedSeason] = useState<string>(existingSeasons.length > 0 ? existingSeasons[0].toString() : '')
+  const [newSeasonName, setNewSeasonName] = useState('')
+  const [isCreatingNewSeason, setIsCreatingNewSeason] = useState(existingSeasons.length === 0)
   const { toast } = useToast()
+
+  // Suggest the next available season number
+  const suggestedSeasonNumber = existingSeasons.length > 0 ? Math.max(...existingSeasons) + 1 : 1
 
   // Fetch available content
   const { data: content, isLoading } = useQuery({
@@ -67,6 +77,8 @@ export default function SeriesContentSelector({ seriesId, onClose, onSuccess }: 
   // Add content mutation
   const addContentMutation = useMutation({
     mutationFn: async (items: { content_type: string, content_id: string }[]) => {
+      const seasonNumber = isCreatingNewSeason ? suggestedSeasonNumber : parseInt(selectedSeason)
+      
       const promises = items.map(async (item, index) => {
         const response = await fetch(`/api/video-library/series/${seriesId}/content`, {
           method: 'POST',
@@ -75,7 +87,8 @@ export default function SeriesContentSelector({ seriesId, onClose, onSuccess }: 
             content_type: item.content_type,
             content_id: item.content_id,
             order_index: index,
-            season_number: 1,
+            season_number: seasonNumber,
+            module_name: isCreatingNewSeason && newSeasonName ? newSeasonName : null,
           }),
         })
         if (!response.ok) {
@@ -87,9 +100,12 @@ export default function SeriesContentSelector({ seriesId, onClose, onSuccess }: 
       return Promise.all(promises)
     },
     onSuccess: () => {
+      const seasonNumber = isCreatingNewSeason ? suggestedSeasonNumber : parseInt(selectedSeason)
+      const seasonName = isCreatingNewSeason && newSeasonName ? ` "${newSeasonName}"` : ''
+      
       toast({
         title: 'Success',
-        description: `Added ${selectedItems.size} item(s) to series`,
+        description: `Added ${selectedItems.size} item(s) to Season ${seasonNumber}${seasonName}`,
       })
       onSuccess()
     },
@@ -114,6 +130,16 @@ export default function SeriesContentSelector({ seriesId, onClose, onSuccess }: 
 
   const handleAddSelected = () => {
     if (selectedItems.size === 0) return
+
+    // Validate season selection
+    if (!isCreatingNewSeason && !selectedSeason) {
+      toast({
+        title: 'Error',
+        description: 'Please select a season or create a new one',
+        variant: 'destructive',
+      })
+      return
+    }
 
     const allContent = [...(content?.videos || []), ...(content?.documents || [])]
     const itemsToAdd = Array.from(selectedItems).map(itemId => {
@@ -153,9 +179,11 @@ export default function SeriesContentSelector({ seriesId, onClose, onSuccess }: 
                 {type === 'video' ? (
                   <div className="w-16 h-12 bg-gray-200 rounded flex items-center justify-center">
                     {item.thumbnail_url ? (
-                      <img 
+                      <Image 
                         src={item.thumbnail_url} 
                         alt={item.title}
+                        width={64}
+                        height={48}
                         className="w-full h-full object-cover rounded"
                       />
                     ) : (
@@ -165,9 +193,11 @@ export default function SeriesContentSelector({ seriesId, onClose, onSuccess }: 
                 ) : (
                   <div className="w-16 h-12 bg-gray-200 rounded flex items-center justify-center">
                     {item.preview_image_url ? (
-                      <img 
+                      <Image 
                         src={item.preview_image_url} 
                         alt={item.title}
+                        width={64}
+                        height={48}
                         className="w-full h-full object-cover rounded"
                       />
                     ) : (
@@ -230,6 +260,72 @@ export default function SeriesContentSelector({ seriesId, onClose, onSuccess }: 
               onChange={(e) => setSearch(e.target.value)}
               className="pl-10"
             />
+          </div>
+
+          {/* Season Selection */}
+          <div className="space-y-3 p-4 border rounded-lg bg-gray-50">
+            <div className="flex items-center space-x-2">
+              <Hash className="h-4 w-4 text-gray-600" />
+              <Label className="text-sm font-medium">Add to Season</Label>
+            </div>
+            
+            <div className="space-y-3">
+              {/* Existing Season Selection */}
+              {existingSeasons.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="existing-season"
+                      name="season-option"
+                      checked={!isCreatingNewSeason}
+                      onChange={() => setIsCreatingNewSeason(false)}
+                      className="h-4 w-4"
+                    />
+                    <Label htmlFor="existing-season" className="text-sm">Add to existing season</Label>
+                  </div>
+                  {!isCreatingNewSeason && (
+                    <Select value={selectedSeason} onValueChange={setSelectedSeason}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a season" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {existingSeasons.map(seasonNum => (
+                          <SelectItem key={seasonNum} value={seasonNum.toString()}>
+                            Season {seasonNum}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              )}
+
+              {/* New Season Creation */}
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="new-season"
+                    name="season-option"
+                    checked={isCreatingNewSeason}
+                    onChange={() => setIsCreatingNewSeason(true)}
+                    className="h-4 w-4"
+                  />
+                  <Label htmlFor="new-season" className="text-sm">
+                    Create new Season {suggestedSeasonNumber}
+                  </Label>
+                </div>
+                {isCreatingNewSeason && (
+                  <Input
+                    placeholder={`Season ${suggestedSeasonNumber} name (optional)`}
+                    value={newSeasonName}
+                    onChange={(e) => setNewSeasonName(e.target.value)}
+                    className="w-full"
+                  />
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Selected Count */}
@@ -301,7 +397,13 @@ export default function SeriesContentSelector({ seriesId, onClose, onSuccess }: 
               ) : (
                 <>
                   <Plus className="h-4 w-4 mr-2" />
-                  Add {selectedItems.size > 0 ? `${selectedItems.size} ` : ''}Selected
+                  Add {selectedItems.size > 0 ? `${selectedItems.size} ` : ''}to {
+                    isCreatingNewSeason 
+                      ? `Season ${suggestedSeasonNumber}` 
+                      : selectedSeason 
+                        ? `Season ${selectedSeason}` 
+                        : 'Season'
+                  }
                 </>
               )}
             </Button>

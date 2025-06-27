@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import Image from 'next/image'
 import {
   DndContext,
   closestCenter,
@@ -132,9 +133,11 @@ function SortableContentItem({
           {item.content_type === 'video' ? (
             <div className="w-16 h-12 bg-gray-200 rounded flex items-center justify-center">
               {item.content.thumbnail_url ? (
-                <img 
+                <Image 
                   src={item.content.thumbnail_url} 
                   alt={item.content.title}
+                  width={64}
+                  height={48}
                   className="w-full h-full object-cover rounded"
                 />
               ) : (
@@ -144,9 +147,11 @@ function SortableContentItem({
           ) : (
             <div className="w-16 h-12 bg-gray-200 rounded flex items-center justify-center">
               {item.content.preview_image_url ? (
-                <img 
+                <Image 
                   src={item.content.preview_image_url} 
                   alt={item.content.title}
+                  width={64}
+                  height={48}
                   className="w-full h-full object-cover rounded"
                 />
               ) : (
@@ -255,15 +260,18 @@ export default function SeriesContentManager({ seriesId }: SeriesContentManagerP
       }
       return response.json()
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['video-series', seriesId] })
-    },
     onError: (error: Error) => {
+      // If the mutation fails, refetch to restore correct state
+      queryClient.invalidateQueries({ queryKey: ['video-series', seriesId] })
       toast({
         title: 'Error',
         description: `Failed to reorder content: ${error.message}`,
         variant: 'destructive',
       })
+    },
+    onSuccess: () => {
+      // Refetch to ensure we have the latest data from server
+      queryClient.invalidateQueries({ queryKey: ['video-series', seriesId] })
     },
   })
 
@@ -307,7 +315,19 @@ export default function SeriesContentManager({ seriesId }: SeriesContentManagerP
     if (activeIndex !== overIndex) {
       const reorderedContent = arrayMove(seriesData.content, activeIndex, overIndex)
       
-      // Update order indices and prepare for API call
+      // First, optimistically update the UI immediately
+      queryClient.setQueryData(['video-series', seriesId], (old: any) => {
+        if (!old) return old
+        return {
+          ...old,
+          content: reorderedContent.map((item, index) => ({
+            ...item,
+            order_index: index
+          }))
+        }
+      })
+      
+      // Then prepare the API call
       const orderedContent = reorderedContent.map((item, index) => ({
         content_id: item.content_id,
         content_type: item.content_type,
@@ -316,6 +336,7 @@ export default function SeriesContentManager({ seriesId }: SeriesContentManagerP
         module_name: item.module_name,
       }))
 
+      // Make the API call
       reorderMutation.mutate(orderedContent)
     }
   }
@@ -374,7 +395,7 @@ export default function SeriesContentManager({ seriesId }: SeriesContentManagerP
             Drag to reorder • Click edit to manage seasons and modules
           </p>
         </div>
-        <Button onClick={handleAddContent}>
+        <Button onClick={handleAddContent} data-add-content-button>
           <Plus className="h-4 w-4 mr-2" />
           Add Content
         </Button>
@@ -440,6 +461,7 @@ export default function SeriesContentManager({ seriesId }: SeriesContentManagerP
       {showContentSelector && (
         <SeriesContentSelector
           seriesId={seriesId}
+          existingSeasons={seasons}
           onClose={() => setShowContentSelector(false)}
           onSuccess={handleContentAdded}
         />
@@ -457,6 +479,7 @@ export default function SeriesContentManager({ seriesId }: SeriesContentManagerP
           }}
         />
       )}
+
     </div>
   )
 }

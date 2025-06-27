@@ -48,8 +48,7 @@ export async function GET(req: Request, { params }: RouteParams) {
       .select(`
         *,
         video_categories (id, name, description),
-        video_subcategories (id, name, description),
-        video_series (id, name, description)
+        video_subcategories (id, name, description)
       `)
       .eq('id', videoId)
       .single()
@@ -162,7 +161,7 @@ export async function GET(req: Request, { params }: RouteParams) {
       vimeoMetadata: video.vimeo_metadata,
       category: video.video_categories,
       subcategory: video.video_subcategories,
-      series: video.video_series,
+      series: null, // Series data would need to be fetched separately via series_content table
       tags,
       libraryStatus: video.library_status,
       transcriptStatus: video.transcript_status,

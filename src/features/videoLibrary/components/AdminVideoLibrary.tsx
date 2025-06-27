@@ -65,6 +65,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { getVideoThumbnailUrl, type ThumbnailSource } from '../utils/thumbnailUtils'
 import { ThumbnailUpload } from './ThumbnailUpload'
+import SeriesManagement from './series/SeriesManagement'
 
 interface VideoFile {
   id: string
@@ -1657,19 +1658,7 @@ export function AdminVideoLibrary() {
   // Series tab content
   const renderSeries = () => (
     <div className="space-y-6">
-      {/* Header with description */}
-      <div className="text-center py-8">
-        <h2 className="text-xl font-semibold mb-2">Series Management</h2>
-        <p className="text-gray-600 mb-6">
-          Create and manage video series with mixed content support. Series allow you to organize videos and documents together in curated playlists, courses, or collections.
-        </p>
-        <Button asChild>
-          <Link href="/admin/video-library/series">
-            <List className="h-4 w-4 mr-2" />
-            Manage Series
-          </Link>
-        </Button>
-      </div>
+      <SeriesManagement />
     </div>
   )
 
