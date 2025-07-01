@@ -20,6 +20,7 @@ interface Series {
   thumbnail_source: 'vimeo' | 'upload' | 'url' | 'default'
   thumbnail_color?: string
   is_public: boolean
+  is_active: boolean
   content_count: number
   total_duration: number
   tags: string[]
@@ -74,10 +75,45 @@ export default function SeriesManagement() {
     },
   })
 
+  // Toggle active status mutation
+  const toggleActiveMutation = useMutation({
+    mutationFn: async ({ seriesId, isActive }: { seriesId: string; isActive: boolean }) => {
+      const response = await fetch(`/api/video-library/series/${seriesId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ is_active: isActive }),
+      })
+      if (!response.ok) {
+        throw new Error('Failed to update series status')
+      }
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['video-series'] })
+      toast({
+        title: 'Success',
+        description: 'Series status updated successfully',
+      })
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: `Failed to update series status: ${error.message}`,
+        variant: 'destructive',
+      })
+    },
+  })
+
   const handleDelete = async (seriesId: string, seriesName: string) => {
     if (window.confirm(`Are you sure you want to delete the series "${seriesName}"? This action cannot be undone.`)) {
       deleteMutation.mutate(seriesId)
     }
+  }
+
+  const handleToggleActive = (seriesId: string, currentStatus: boolean) => {
+    toggleActiveMutation.mutate({ seriesId, isActive: !currentStatus })
   }
 
   const handleEdit = (series: Series) => {
@@ -139,13 +175,14 @@ export default function SeriesManagement() {
 
       {/* Series Grid */}
       {series && series.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
           {series.map((seriesItem) => (
             <SeriesCard 
               key={seriesItem.id} 
               series={seriesItem}
               onEdit={() => handleEdit(seriesItem)}
               onDelete={() => handleDelete(seriesItem.id, seriesItem.name)}
+              onToggleActive={() => handleToggleActive(seriesItem.id, seriesItem.is_active)}
             />
           ))}
         </div>

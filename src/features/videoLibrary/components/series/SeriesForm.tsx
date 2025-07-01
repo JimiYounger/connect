@@ -34,6 +34,7 @@ interface Series {
   thumbnail_source: 'vimeo' | 'upload' | 'url' | 'default'
   thumbnail_color?: string
   is_public: boolean
+  is_active: boolean
   content_count: number
   total_duration: number
   tags: string[]
@@ -57,6 +58,7 @@ interface FormData {
   thumbnail_source: 'vimeo' | 'upload' | 'url' | 'default'
   thumbnail_color: string
   is_public: boolean
+  is_active: boolean
   tags: string
 }
 
@@ -73,6 +75,7 @@ export default function SeriesForm({ series, onClose, onSuccess }: SeriesFormPro
     thumbnail_source: 'default',
     thumbnail_color: '#3b82f6',
     is_public: false,
+    is_active: true,
     tags: '',
   })
 
@@ -90,6 +93,7 @@ export default function SeriesForm({ series, onClose, onSuccess }: SeriesFormPro
         thumbnail_source: series.thumbnail_source,
         thumbnail_color: series.thumbnail_color || '#3b82f6',
         is_public: series.is_public,
+        is_active: series.is_active ?? true,
         tags: series.tags?.join(', ') || '',
       })
     }
@@ -239,6 +243,14 @@ export default function SeriesForm({ series, onClose, onSuccess }: SeriesFormPro
                     onCheckedChange={(checked) => handleInputChange('is_public', checked)}
                   />
                   <Label htmlFor="is_public">Make Public</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="is_active"
+                    checked={formData.is_active}
+                    onCheckedChange={(checked) => handleInputChange('is_active', checked)}
+                  />
+                  <Label htmlFor="is_active">Active Series</Label>
                 </div>
               </div>
             </div>

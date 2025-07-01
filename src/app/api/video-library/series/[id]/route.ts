@@ -35,6 +35,7 @@ export async function GET(
         thumbnail_source,
         thumbnail_color,
         is_public,
+        is_active,
         content_count,
         total_duration,
         tags,
@@ -145,12 +146,30 @@ export async function GET(
       }
     }
 
+    const seriesData = {
+      id: series.id,
+      name: series.name,
+      description: series.description,
+      series_type: series.series_type,
+      has_seasons: series.has_seasons,
+      thumbnail_url: series.thumbnail_url,
+      thumbnail_source: series.thumbnail_source,
+      thumbnail_color: series.thumbnail_color,
+      is_public: series.is_public,
+      is_active: series.is_active,
+      content_count: series.content_count,
+      total_duration: series.total_duration,
+      tags: series.tags,
+      created_at: series.created_at,
+      updated_at: series.updated_at,
+      order_index: series.order_index,
+      created_by: series.created_by,
+      content: processedContent
+    }
+
     return NextResponse.json({
       success: true,
-      data: {
-        ...series,
-        content: processedContent
-      }
+      data: seriesData
     })
 
   } catch (error) {
@@ -206,6 +225,7 @@ export async function PUT(
       thumbnail_source,
       thumbnail_color,
       is_public,
+      is_active,
       tags
     } = await req.json()
 
@@ -230,6 +250,7 @@ export async function PUT(
     if (thumbnail_source !== undefined) updateData.thumbnail_source = thumbnail_source
     if (thumbnail_color !== undefined) updateData.thumbnail_color = thumbnail_color
     if (is_public !== undefined) updateData.is_public = is_public
+    if (is_active !== undefined) updateData.is_active = is_active
     if (tags !== undefined) updateData.tags = tags || []
 
     // Update the series

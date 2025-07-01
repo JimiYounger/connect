@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { MoreHorizontal, Edit, Trash2, Eye, Clock, Hash } from 'lucide-react'
-import Link from 'next/link'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { useRouter } from 'next/navigation'
+import Image from 'next/image'
+import { MoreHorizontal, Edit, Trash2, Power, Clock, Hash, Play } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -23,6 +23,7 @@ interface Series {
   thumbnail_source: 'vimeo' | 'upload' | 'url' | 'default'
   thumbnail_color?: string
   is_public: boolean
+  is_active: boolean
   content_count: number
   total_duration: number
   tags: string[]
@@ -35,10 +36,12 @@ interface SeriesCardProps {
   series: Series
   onEdit: () => void
   onDelete: () => void
+  onToggleActive: () => void
 }
 
-export default function SeriesCard({ series, onEdit, onDelete }: SeriesCardProps) {
+export default function SeriesCard({ series, onEdit, onDelete, onToggleActive }: SeriesCardProps) {
   const [imageError, setImageError] = useState(false)
+  const router = useRouter()
 
   const formatDuration = (seconds: number) => {
     if (!seconds) return '0 min'
@@ -54,11 +57,11 @@ export default function SeriesCard({ series, onEdit, onDelete }: SeriesCardProps
   const getSeriesTypeColor = (type: string) => {
     switch (type) {
       case 'course':
-        return 'bg-blue-100 text-blue-800'
+        return 'bg-blue-500/90 text-white'
       case 'collection':
-        return 'bg-purple-100 text-purple-800'
+        return 'bg-purple-500/90 text-white'
       default:
-        return 'bg-green-100 text-green-800'
+        return 'bg-green-500/90 text-white'
     }
   }
 
@@ -66,154 +69,206 @@ export default function SeriesCard({ series, onEdit, onDelete }: SeriesCardProps
     return type.charAt(0).toUpperCase() + type.slice(1)
   }
 
-  // Generate thumbnail
-  const thumbnailElement = () => {
+  // Generate background image or color
+  const getBackgroundStyle = () => {
     if (series.thumbnail_url && !imageError) {
-      return (
-        <img
-          src={series.thumbnail_url}
-          alt={series.name}
-          className="w-full h-32 object-cover"
-          onError={() => setImageError(true)}
-        />
-      )
+      return {
+        backgroundImage: `url(${series.thumbnail_url})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }
     }
+    return {
+      backgroundColor: series.thumbnail_color || '#3b82f6',
+    }
+  }
 
-    // Fallback to colored background
-    return (
-      <div 
-        className="w-full h-32 flex items-center justify-center text-white font-medium"
-        style={{ backgroundColor: series.thumbnail_color || '#3b82f6' }}
-      >
-        <div className="text-center">
-          <Hash className="h-8 w-8 mx-auto mb-1 opacity-75" />
-          <span className="text-sm opacity-90">{getSeriesTypeLabel(series.series_type)}</span>
-        </div>
-      </div>
-    )
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Prevent click when clicking on dropdown or buttons
+    if ((e.target as HTMLElement).closest('[data-dropdown-trigger]') || 
+        (e.target as HTMLElement).closest('button')) {
+      return
+    }
+    router.push(`/admin/video-library/series/${series.id}`)
   }
 
   return (
-    <Card className="group hover:shadow-lg transition-shadow duration-200">
-      <CardHeader className="p-0">
-        <div className="relative">
-          {thumbnailElement()}
-          
-          {/* Overlay with actions */}
-          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
-            <div className="flex items-center space-x-2">
-              <Link href={`/admin/video-library/series/${series.id}`}>
-                <Button size="sm" variant="secondary" className="bg-white text-gray-900 hover:bg-gray-100">
-                  <Eye className="h-4 w-4 mr-1" />
-                  View
-                </Button>
-              </Link>
+    <div className="group cursor-pointer space-y-2" onClick={handleCardClick}>
+      {/* Main card container */}
+      <div 
+        className="relative w-full rounded-lg overflow-hidden transition-all duration-300 group-hover:scale-105 group-hover:shadow-2xl"
+        style={{ aspectRatio: '2/3', ...getBackgroundStyle() }}
+      >
+        {/* Gradient overlay - Only visible on hover */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        
+        {/* Status badges - Always visible */}
+        <div className="absolute top-3 left-3 flex flex-col gap-1">
+          <Badge className={getSeriesTypeColor(series.series_type)}>
+            {getSeriesTypeLabel(series.series_type)}
+          </Badge>
+          <Badge 
+            className={series.is_active 
+              ? "bg-green-500/90 text-white" 
+              : "bg-red-500/90 text-white"
+            }
+          >
+            {series.is_active ? 'Active' : 'Inactive'}
+          </Badge>
+        </div>
+
+        {/* Actions dropdown - Visible on hover */}
+        <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-8 w-8 p-0 bg-black/50 hover:bg-black/70 text-white border-none"
+                data-dropdown-trigger
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-white">
+              <DropdownMenuItem onClick={onEdit}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit Series
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onToggleActive}>
+                <Power className="h-4 w-4 mr-2" />
+                {series.is_active ? 'Deactivate' : 'Activate'}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={onDelete}
+                className="text-red-600 focus:text-red-600"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Series
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {/* Fallback icon for default thumbnails */}
+        {(!series.thumbnail_url || imageError) && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center text-white/80">
+              <Play className="h-12 w-12 mx-auto mb-2 opacity-60" />
+              <span className="text-sm font-medium opacity-80">{getSeriesTypeLabel(series.series_type)}</span>
             </div>
           </div>
+        )}
 
-          {/* Status badges */}
-          <div className="absolute top-2 left-2 flex items-center space-x-1">
-            <Badge className={getSeriesTypeColor(series.series_type)}>
-              {getSeriesTypeLabel(series.series_type)}
-            </Badge>
-            {series.is_public && (
-              <Badge variant="secondary" className="bg-green-100 text-green-800">
-                Public
-              </Badge>
-            )}
-            {series.has_seasons && (
-              <Badge variant="secondary" className="bg-orange-100 text-orange-800">
-                Seasons
-              </Badge>
-            )}
-          </div>
-
-          {/* Actions dropdown */}
-          <div className="absolute top-2 right-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-8 w-8 p-0 bg-white/80 hover:bg-white text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={onEdit}>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit Series
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={onDelete}
-                  className="text-red-600 focus:text-red-600"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete Series
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      </CardHeader>
-
-      <CardContent className="p-4">
-        <div className="space-y-3">
-          {/* Title and Description */}
-          <div>
-            <h3 className="font-semibold text-gray-900 line-clamp-1" title={series.name}>
-              {series.name}
-            </h3>
+        {/* Hover overlay with additional info */}
+        <div className="absolute bottom-0 left-0 right-0 p-4 rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 space-y-2">
+            {/* Description */}
             {series.description && (
-              <p className="text-sm text-gray-600 line-clamp-2 mt-1" title={series.description}>
+              <p className="text-white/90 text-xs line-clamp-3" title={series.description}>
                 {series.description}
               </p>
             )}
-          </div>
 
-          {/* Stats */}
-          <div className="flex items-center justify-between text-sm text-gray-500">
-            <div className="flex items-center space-x-4">
-              <span className="flex items-center">
-                <Hash className="h-3 w-3 mr-1" />
+            {/* Stats */}
+            <div className="flex items-center gap-3 text-white/80 text-xs">
+              <span className="flex items-center gap-1">
+                <Hash className="h-3 w-3" />
                 {series.content_count} items
               </span>
               {series.total_duration > 0 && (
-                <span className="flex items-center">
-                  <Clock className="h-3 w-3 mr-1" />
+                <span className="flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
                   {formatDuration(series.total_duration)}
                 </span>
               )}
             </div>
-          </div>
 
-          {/* Tags */}
-          {series.tags && series.tags.length > 0 && (
+            {/* Tags */}
+            {series.tags && series.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {series.tags.slice(0, 3).map((tag, index) => (
+                  <Badge 
+                    key={index} 
+                    variant="outline" 
+                    className="text-xs px-1.5 py-0.5 bg-white/20 text-white border-white/30 hover:bg-white/30"
+                  >
+                    {tag}
+                  </Badge>
+                ))}
+                {series.tags.length > 3 && (
+                  <Badge 
+                    variant="outline" 
+                    className="text-xs px-1.5 py-0.5 bg-white/20 text-white border-white/30"
+                  >
+                    +{series.tags.length - 3}
+                  </Badge>
+                )}
+              </div>
+            )}
+
+            {/* Secondary badges */}
             <div className="flex flex-wrap gap-1">
-              {series.tags.slice(0, 3).map((tag, index) => (
-                <Badge 
-                  key={index} 
-                  variant="outline" 
-                  className="text-xs px-2 py-0"
-                >
-                  {tag}
+              {series.is_public && (
+                <Badge className="bg-blue-500/80 text-white text-xs">
+                  Public
                 </Badge>
-              ))}
-              {series.tags.length > 3 && (
-                <Badge variant="outline" className="text-xs px-2 py-0">
-                  +{series.tags.length - 3}
+              )}
+              {series.has_seasons && (
+                <Badge className="bg-orange-500/80 text-white text-xs">
+                  Seasons
                 </Badge>
               )}
             </div>
-          )}
 
-          {/* Updated date */}
-          <div className="text-xs text-gray-400 pt-1 border-t">
-            Updated {new Date(series.updated_at).toLocaleDateString()}
+            {/* Action buttons */}
+            <div className="flex gap-2 pt-2">
+              <Button 
+                size="sm" 
+                className="bg-white/20 hover:bg-white/30 text-white border-white/30 text-xs h-7"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onEdit()
+                }}
+              >
+                <Edit className="h-3 w-3 mr-1" />
+                Edit
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline"
+                className="bg-white/20 hover:bg-white/30 text-white border-white/30 text-xs h-7"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onToggleActive()
+                }}
+              >
+                <Power className="h-3 w-3 mr-1" />
+                {series.is_active ? 'Deactivate' : 'Activate'}
+              </Button>
+            </div>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+
+        {/* Hidden image for error handling */}
+        {series.thumbnail_url && (
+          <Image
+            src={series.thumbnail_url}
+            alt=""
+            width={1}
+            height={1}
+            className="hidden"
+            onError={() => setImageError(true)}
+            onLoad={() => setImageError(false)}
+          />
+        )}
+      </div>
+
+      {/* Series title - Below the card */}
+      <div className="px-1">
+        <h3 className="text-gray-900 font-medium text-sm line-clamp-2 leading-tight" title={series.name}>
+          {series.name}
+        </h3>
+      </div>
+    </div>
   )
 }

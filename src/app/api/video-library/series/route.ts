@@ -30,6 +30,7 @@ export async function GET() {
         thumbnail_source,
         thumbnail_color,
         is_public,
+        is_active,
         content_count,
         total_duration,
         tags,
@@ -104,6 +105,7 @@ export async function POST(req: Request) {
       thumbnail_source = 'default',
       thumbnail_color = '#3b82f6',
       is_public = false,
+      is_active = true,
       tags
     } = await req.json()
 
@@ -135,6 +137,7 @@ export async function POST(req: Request) {
         thumbnail_source,
         thumbnail_color,
         is_public,
+        is_active,
         tags: tags || [],
         created_by: user.id
       })
