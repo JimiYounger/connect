@@ -212,12 +212,120 @@ export function VideoSearchModal({ isOpen, onClose, userPermissions: _userPermis
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto px-4 py-4 md:p-6">
-            {/* Loading */}
+            {/* F1-Style Loading Animation */}
             {loading && (
-              <div className="flex items-center justify-center py-16">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                  <p className="text-gray-400">Searching...</p>
+              <div className="flex items-center justify-center py-2">
+                <div className="text-center max-w-lg mx-auto">
+                  {/* Speed Lines and Central Element */}
+                  <div className="relative w-48 h-32 mx-auto mb-4">
+                    {/* Central Racing Element */}
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                      <div className="w-12 h-5 bg-gradient-to-r from-red-500 via-orange-400 to-yellow-300 rounded-sm shadow-lg" 
+                           style={{ animation: 'racingPulse 0.8s ease-in-out infinite alternate' }}></div>
+                    </div>
+                    
+                    {/* Speed Lines */}
+                    {[...Array(12)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="absolute bg-gradient-to-r from-transparent via-red-400/40 to-transparent h-px"
+                        style={{
+                          top: `${40 + i * 2}%`,
+                          left: '15%',
+                          width: '70%',
+                          animation: `speedLine 1.2s ease-out infinite`,
+                          animationDelay: `${i * 0.08}s`
+                        }}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Performance Metrics */}
+                  <div className="space-y-4 font-mono">
+                    <motion.div
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.5, type: "spring", stiffness: 200 }}
+                      className="flex items-center justify-between px-6 py-2 bg-gray-900/50 rounded border-l-2 border-red-500"
+                    >
+                      <span className="text-red-400 font-semibold text-sm tracking-wide">READING YOUR REQUEST</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                        <span className="text-green-400 text-xs font-bold">ACTIVE</span>
+                      </div>
+                    </motion.div>
+                    
+                    <motion.div
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 1.2, type: "spring", stiffness: 200 }}
+                      className="flex items-center justify-between px-6 py-2 bg-gray-900/50 rounded border-l-2 border-orange-500"
+                    >
+                      <span className="text-orange-400 font-semibold text-sm tracking-wide">SEARCHING CONTENT</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                        <span className="text-green-400 text-xs font-bold">ACTIVE</span>
+                      </div>
+                    </motion.div>
+                    
+                    <motion.div
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 1.9, type: "spring", stiffness: 200 }}
+                      className="flex items-center justify-between px-6 py-2 bg-gray-900/50 rounded border-l-2 border-yellow-500"
+                    >
+                      <span className="text-yellow-400 font-semibold text-sm tracking-wide">FINDING MATCHES</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                        <span className="text-green-400 text-xs font-bold">ACTIVE</span>
+                      </div>
+                    </motion.div>
+                    
+                    <motion.div
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 2.6, type: "spring", stiffness: 200 }}
+                      className="flex items-center justify-between px-6 py-2 bg-gray-900/50 rounded border-l-2 border-green-500"
+                    >
+                      <span className="text-green-400 font-semibold text-sm tracking-wide">PREPARING RESULTS</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" style={{ animationDelay: '0.6s' }}></div>
+                        <span className="text-green-400 text-xs font-bold">ACTIVE</span>
+                      </div>
+                    </motion.div>
+                  </div>
+
+                  {/* Racing-style Progress Track */}
+                  <div className="mt-8 relative">
+                    <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden relative">
+                      <div className="absolute inset-0 bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 opacity-30"></div>
+                      <div className="h-full bg-gradient-to-r from-red-500 via-orange-400 to-yellow-300 rounded-full" 
+                           style={{ 
+                             width: '100%',
+                             animation: 'raceProgress 2.5s ease-in-out infinite'
+                           }}>
+                      </div>
+                      {/* Racing stripes */}
+                      <div className="absolute inset-y-0 left-0 w-full">
+                        {[...Array(20)].map((_, i) => (
+                          <div
+                            key={i}
+                            className="absolute top-0 w-px h-full bg-white/20"
+                            style={{ left: `${i * 5}%` }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500 mt-2 font-mono">
+                      <span>0%</span>
+                      <span className="text-red-400 font-bold animate-pulse">SEARCHING</span>
+                      <span>100%</span>
+                    </div>
+                  </div>
+                  
+                  <p className="text-gray-500 text-xs mt-4 font-mono tracking-wider">
+                    AI PERFORMANCE ENGINE • PRECISION SEARCH
+                  </p>
                 </div>
               </div>
             )}

@@ -332,7 +332,7 @@ export async function POST(req: Request) {
       })
     }
 
-    // Group results by video_id
+    // Group results by video_id and process with metadata already included
     const videoGroups = new Map<string, MatchVideoResult[]>()
     
     for (const result of searchResults) {
@@ -343,80 +343,56 @@ export async function POST(req: Request) {
       videoGroups.get(videoId)!.push(result)
     }
 
-    // For each video, get additional metadata and check visibility
+    // Get unique video IDs for tag lookup
+    const uniqueVideoIds = Array.from(videoGroups.keys())
+    
+    // Get tags for all videos in one query
+    const { data: videoTags } = await supabase
+      .rpc('get_video_tags', { video_ids: uniqueVideoIds })
+    
+    // Create a map of video_id to tags
+    const tagsMap = new Map<string, string[]>()
+    if (Array.isArray(videoTags)) {
+      videoTags.forEach((vt: any) => {
+        tagsMap.set(vt.video_id, vt.tags || [])
+      })
+    }
+
+    // Process results with metadata already included
     const enrichedResults: SearchResultVideo[] = []
 
     for (const [videoId, chunks] of videoGroups) {
-      // Get video details
-      const { data: videoData, error: videoError } = await supabase
-        .from('video_files')
-        .select(`
-          id,
-          title,
-          description,
-          vimeo_id,
-          vimeo_duration,
-          vimeo_thumbnail_url,
-          custom_thumbnail_url,
-          thumbnail_source,
-          created_at,
-          updated_at,
-          embedding_status,
-          video_visibility (id, conditions),
-          video_categories (id, name),
-          video_subcategories (id, name),
-          video_tag_assignments (
-            video_tags (id, name)
-          )
-        `)
-        .eq('id', videoId)
-        .single()
-
-      if (videoError || !videoData) {
-        console.warn(`Failed to fetch video data for ID ${videoId}:`, videoError)
-        continue
-      }
-
-      // Check visibility permissions
+      // Get the first chunk which contains all the video metadata
+      const firstChunk = chunks[0]
+      
+      // Check visibility permissions using the included visibility_conditions
       let hasAccess = true
 
       // If user is not admin, check visibility conditions
       if (!userProfile.role_type || userProfile.role_type.toLowerCase() !== 'admin') {
-        if (videoData.video_visibility && videoData.video_visibility.length > 0) {
+        if (firstChunk.visibility_conditions) {
+          const conditions = firstChunk.visibility_conditions as VideoVisibilityConditions
           hasAccess = false
 
-          // Check each visibility condition
-          for (const visibility of videoData.video_visibility) {
-            const conditions = visibility.conditions as VideoVisibilityConditions
-
-            // If no conditions or empty conditions, video is public
-            if (!conditions || Object.keys(conditions).length === 0) {
-              hasAccess = true
-              break
-            }
-
+          // If no conditions or empty conditions, video is public
+          if (!conditions || Object.keys(conditions).length === 0) {
+            hasAccess = true
+          } else {
             // Check role type
             if (conditions.roleTypes && userProfile.role_type && conditions.roleTypes.includes(userProfile.role_type)) {
               hasAccess = true
-              break
             }
-
             // Check team
-            if (conditions.teams && userProfile.team && conditions.teams.includes(userProfile.team)) {
+            else if (conditions.teams && userProfile.team && conditions.teams.includes(userProfile.team)) {
               hasAccess = true
-              break
             }
-
             // Check area
-            if (conditions.areas && userProfile.area && conditions.areas.includes(userProfile.area)) {
+            else if (conditions.areas && userProfile.area && conditions.areas.includes(userProfile.area)) {
               hasAccess = true
-              break
             }
-
             // Check region
-            if (conditions.regions && userProfile.region && conditions.regions.includes(userProfile.region)) {
+            else if (conditions.regions && userProfile.region && conditions.regions.includes(userProfile.region)) {
               hasAccess = true
-              break
             }
           }
         }
@@ -444,29 +420,27 @@ export async function POST(req: Request) {
         timestamp_end: chunk.timestamp_end
       }))
 
-      // Extract tags
-      const tags = videoData.video_tag_assignments
-        ? videoData.video_tag_assignments.map((ta: any) => ta.video_tags?.name).filter(Boolean)
-        : []
+      // Get tags from the map
+      const tags = tagsMap.get(videoId) || []
 
       enrichedResults.push({
-        id: videoData.id,
-        title: videoData.title,
-        description: videoData.description,
-        vimeo_id: videoData.vimeo_id,
-        vimeo_duration: videoData.vimeo_duration,
-        vimeo_thumbnail_url: videoData.vimeo_thumbnail_url,
-        custom_thumbnail_url: videoData.custom_thumbnail_url,
-        thumbnail_source: videoData.thumbnail_source,
-        created_at: videoData.created_at,
-        updated_at: videoData.updated_at,
-        embedding_status: videoData.embedding_status,
+        id: firstChunk.video_id,
+        title: firstChunk.video_title,
+        description: firstChunk.video_description,
+        vimeo_id: firstChunk.vimeo_id,
+        vimeo_duration: firstChunk.vimeo_duration,
+        vimeo_thumbnail_url: firstChunk.vimeo_thumbnail_url,
+        custom_thumbnail_url: firstChunk.custom_thumbnail_url,
+        thumbnail_source: firstChunk.thumbnail_source,
+        created_at: firstChunk.video_created_at,
+        updated_at: firstChunk.video_updated_at,
+        embedding_status: firstChunk.embedding_status,
         tags,
         similarity: avgSimilarity,
         highlight,
         matching_chunks: matchingChunks,
-        category_name: videoData.video_categories?.name,
-        subcategory_name: videoData.video_subcategories?.name
+        category_name: firstChunk.category_name,
+        subcategory_name: firstChunk.subcategory_name
       })
     }
 

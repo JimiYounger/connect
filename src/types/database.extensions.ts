@@ -18,6 +18,24 @@ export interface MatchVideoResult {
   similarity: number;
   timestamp_start?: number;
   timestamp_end?: number;
+  // Video metadata
+  video_title: string;
+  video_description?: string;
+  vimeo_id?: string;
+  vimeo_duration?: number;
+  vimeo_thumbnail_url?: string;
+  custom_thumbnail_url?: string;
+  thumbnail_source?: string;
+  video_created_at?: string;
+  video_updated_at?: string;
+  embedding_status?: string;
+  // Category info
+  category_id?: string;
+  category_name?: string;
+  subcategory_id?: string;
+  subcategory_name?: string;
+  // Visibility info
+  visibility_conditions?: any;
 }
 
 // Create our extended database type
