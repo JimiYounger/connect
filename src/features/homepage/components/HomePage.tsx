@@ -312,7 +312,7 @@ export function HomePage({ theme = 'dark' }: { theme?: 'dark' | 'light' }) {
         
         <div className="container mx-auto px-4">
           <div style={{ marginTop: '-5px' }}> {/* Negative margin to reduce gap by 5px */}
-            <Carousel autoplayInterval={7000} />
+            <Carousel autoplayInterval={4000} />
           </div>
           
           {/* Dashboard section with reduced spacing */}

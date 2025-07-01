@@ -67,7 +67,8 @@ export function CarouselItem({ banner, isActive, hideOverlay = false }: Carousel
               src={banner.banner_url}
               alt={banner.title || 'Video banner'}
               fill
-              sizes="100vw"
+              sizes="(max-width: 1023px) 100vw, 992px"
+              quality={95}
               priority
               className="object-cover"
               onLoad={() => setLoaded(true)}
@@ -105,7 +106,8 @@ export function CarouselItem({ banner, isActive, hideOverlay = false }: Carousel
           src={banner.banner_url}
           alt={banner.title || 'Banner'}
           fill
-          sizes="100vw"
+          sizes="(max-width: 1023px) 100vw, 992px"
+          quality={95}
           priority
           className="object-cover"
           onLoad={() => setLoaded(true)}
