@@ -216,7 +216,7 @@ export default function SeriesCard({ series, onEdit, onDelete, onToggleActive }:
               )}
               {series.has_seasons && (
                 <Badge className="bg-orange-500/80 text-white text-xs">
-                  Seasons
+                  {series.series_type === 'course' ? 'Modules' : 'Seasons'}
                 </Badge>
               )}
             </div>

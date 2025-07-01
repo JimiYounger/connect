@@ -2,6 +2,7 @@
 
 import { useState, use } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import Image from 'next/image'
 import { Edit, Settings, Users, Clock, Hash } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -21,6 +22,7 @@ interface Series {
   thumbnail_source: 'vimeo' | 'upload' | 'url' | 'default'
   thumbnail_color?: string
   is_public: boolean
+  is_active: boolean
   content_count: number
   total_duration: number
   tags: string[]
@@ -140,9 +142,11 @@ export default function SeriesDetailView({ params }: SeriesDetailViewProps) {
   const thumbnailElement = () => {
     if (series.thumbnail_url) {
       return (
-        <img
+        <Image
           src={series.thumbnail_url}
           alt={series.name}
+          width={400}
+          height={192}
           className="w-full h-48 object-cover rounded-lg"
         />
       )
@@ -188,7 +192,7 @@ export default function SeriesDetailView({ params }: SeriesDetailViewProps) {
                     )}
                     {series.has_seasons && (
                       <Badge variant="secondary" className="bg-orange-100 text-orange-800">
-                        Seasons
+                        {series.series_type === 'course' ? 'Modules' : 'Seasons'}
                       </Badge>
                     )}
                   </div>

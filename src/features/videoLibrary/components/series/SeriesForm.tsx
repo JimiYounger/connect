@@ -234,8 +234,18 @@ export default function SeriesForm({ series, onClose, onSuccess }: SeriesFormPro
                     checked={formData.has_seasons}
                     onCheckedChange={(checked) => handleInputChange('has_seasons', checked)}
                   />
-                  <Label htmlFor="has_seasons">Has Seasons/Modules</Label>
+                  <Label htmlFor="has_seasons">
+                    Has {formData.series_type === 'course' ? 'Modules' : 'Seasons'}
+                  </Label>
                 </div>
+                {formData.has_seasons && (
+                  <div className="ml-6 mt-2 text-xs text-gray-600">
+                    {formData.series_type === 'course' 
+                      ? 'Content will be organized into modules' 
+                      : 'Content will be organized into seasons'
+                    }
+                  </div>
+                )}
                 <div className="flex items-center space-x-2">
                   <Switch
                     id="is_public"

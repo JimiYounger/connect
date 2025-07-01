@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Image from 'next/image'
 import {
@@ -30,7 +30,8 @@ import {
   Edit, 
   Trash2, 
   Clock,
-  Hash
+  Hash,
+  Settings
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -70,6 +71,7 @@ interface Series {
   name: string
   content_count: number
   has_seasons: boolean
+  series_type: 'playlist' | 'course' | 'collection'
   content?: SeriesContent[]
 }
 
@@ -223,6 +225,8 @@ function SortableContentItem({
 export default function SeriesContentManager({ seriesId }: SeriesContentManagerProps) {
   const [showContentSelector, setShowContentSelector] = useState(false)
   const [editingItem, setEditingItem] = useState<SeriesContent | null>(null)
+  const [editingSeasonTitle, setEditingSeasonTitle] = useState<{seasonNumber: number, currentTitle: string} | null>(null)
+  const [seasonTitles, setSeasonTitles] = useState<Record<number, string>>({})
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
@@ -246,6 +250,31 @@ export default function SeriesContentManager({ seriesId }: SeriesContentManagerP
       return result.data as Series
     },
   })
+
+  // Fetch season titles
+  const { data: seasonTitlesData } = useQuery({
+    queryKey: ['season-titles', seriesId],
+    queryFn: async () => {
+      const response = await fetch(`/api/video-library/series/${seriesId}/seasons`)
+      if (!response.ok) {
+        throw new Error('Failed to fetch season titles')
+      }
+      const result = await response.json()
+      return result.data as Array<{season_number: number, title: string}>
+    },
+    enabled: !!seriesData?.has_seasons,
+  })
+
+  // Convert season titles to lookup object
+  useEffect(() => {
+    if (seasonTitlesData) {
+      const titlesMap = seasonTitlesData.reduce((acc, item) => {
+        acc[item.season_number] = item.title
+        return acc
+      }, {} as Record<number, string>)
+      setSeasonTitles(titlesMap)
+    }
+  }, [seasonTitlesData])
 
   // Reorder content mutation
   const reorderMutation = useMutation({
@@ -299,6 +328,38 @@ export default function SeriesContentManager({ seriesId }: SeriesContentManagerP
       toast({
         title: 'Error',
         description: `Failed to remove content: ${error.message}`,
+        variant: 'destructive',
+      })
+    },
+  })
+
+  // Update season title mutation
+  const updateSeasonTitleMutation = useMutation({
+    mutationFn: async ({ seasonNumber, title }: { seasonNumber: number, title: string }) => {
+      const response = await fetch(`/api/video-library/series/${seriesId}/seasons`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          season_number: seasonNumber,
+          title: title.trim() || null,
+        }),
+      })
+      if (!response.ok) {
+        throw new Error('Failed to update season title')
+      }
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['season-titles', seriesId] })
+      toast({
+        title: 'Success',
+        description: 'Season title updated successfully',
+      })
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: `Failed to update season title: ${error.message}`,
         variant: 'destructive',
       })
     },
@@ -361,6 +422,24 @@ export default function SeriesContentManager({ seriesId }: SeriesContentManagerP
   const handleContentAdded = () => {
     setShowContentSelector(false)
     queryClient.invalidateQueries({ queryKey: ['video-series', seriesId] })
+  }
+
+  const handleSeasonTitleEdit = (seasonNumber: number) => {
+    const currentTitle = seasonTitles[seasonNumber] || ''
+    setEditingSeasonTitle({ seasonNumber, currentTitle })
+  }
+
+  const handleSeasonTitleSave = (seasonNumber: number, title: string) => {
+    updateSeasonTitleMutation.mutate({ seasonNumber, title })
+    setEditingSeasonTitle(null)
+  }
+
+  const getSeasonTitle = (seasonNumber: number) => {
+    const customTitle = seasonTitles[seasonNumber]
+    if (customTitle) return customTitle
+    
+    const terminology = seriesData?.series_type === 'course' ? 'Module' : 'Season'
+    return `${terminology} ${seasonNumber}`
   }
 
   // Group content by seasons
@@ -428,12 +507,22 @@ export default function SeriesContentManager({ seriesId }: SeriesContentManagerP
             {seasons.map(seasonNumber => (
               <Card key={seasonNumber}>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Hash className="h-5 w-5" />
-                    Season {seasonNumber}
-                    <Badge variant="secondary">
-                      {contentBySeasons[seasonNumber].length} items
-                    </Badge>
+                  <CardTitle className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Hash className="h-5 w-5" />
+                      {getSeasonTitle(seasonNumber)}
+                      <Badge variant="secondary">
+                        {contentBySeasons[seasonNumber].length} items
+                      </Badge>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSeasonTitleEdit(seasonNumber)}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Button>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -477,6 +566,17 @@ export default function SeriesContentManager({ seriesId }: SeriesContentManagerP
             setEditingItem(null)
             queryClient.invalidateQueries({ queryKey: ['video-series', seriesId] })
           }}
+        />
+      )}
+
+      {/* Edit Season Title Modal */}
+      {editingSeasonTitle && (
+        <SeasonTitleEditModal
+          seasonNumber={editingSeasonTitle.seasonNumber}
+          currentTitle={editingSeasonTitle.currentTitle}
+          terminology={seriesData?.series_type === 'course' ? 'Module' : 'Season'}
+          onClose={() => setEditingSeasonTitle(null)}
+          onSave={handleSeasonTitleSave}
         />
       )}
 
@@ -595,6 +695,64 @@ function ContentEditModal({
               disabled={updateMutation.isPending}
             >
               {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// Season Title Edit Modal Component
+function SeasonTitleEditModal({ 
+  seasonNumber, 
+  currentTitle, 
+  terminology,
+  onClose, 
+  onSave 
+}: { 
+  seasonNumber: number, 
+  currentTitle: string, 
+  terminology: string,
+  onClose: () => void, 
+  onSave: (seasonNumber: number, title: string) => void 
+}) {
+  const [title, setTitle] = useState(currentTitle)
+
+  const handleSave = () => {
+    onSave(seasonNumber, title)
+  }
+
+  const defaultTitle = `${terminology} ${seasonNumber}`
+
+  return (
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Edit {terminology} Title</DialogTitle>
+        </DialogHeader>
+        
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="title">{terminology} Title</Label>
+            <Input
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder={defaultTitle}
+              className="mt-1"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Leave empty to use default: &quot;{defaultTitle}&quot;
+            </p>
+          </div>
+
+          <div className="flex items-center justify-end space-x-2 pt-4">
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave}>
+              Save Title
             </Button>
           </div>
         </div>
