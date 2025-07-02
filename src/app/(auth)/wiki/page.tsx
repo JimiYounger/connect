@@ -355,7 +355,7 @@ export default function SemanticSearchTestPage() {
           <SemanticSearch
             placeholder="What are you looking for?"
             autoFocus={true}
-            matchThreshold={0.5}
+            matchThreshold={0.2}
             matchCount={20}
             initialSortBy="similarity"
             onResults={handleResults}

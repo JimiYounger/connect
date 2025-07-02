@@ -178,7 +178,7 @@ export function SemanticSearch({
   onResults,
   filters = {},
   autoFocus = true,
-  matchThreshold = 0.5,
+  matchThreshold = 0.2,
   matchCount = 10,
   initialSortBy = 'similarity',
   className = '',

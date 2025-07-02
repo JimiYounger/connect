@@ -34,7 +34,7 @@ function mapListResultToSearchResult(item: any): SearchResult {
  */
 export const useSemanticSearch = ({
   initialFilters = {},
-  initialMatchThreshold = 0.5,
+  initialMatchThreshold = 0.2,
   initialMatchCount = 10,
   initialSortBy = 'similarity',
   onResults,

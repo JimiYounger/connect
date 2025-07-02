@@ -136,7 +136,7 @@ export async function POST(req: Request) {
     
     const { 
       query, 
-      match_threshold = 0.5, // Make threshold configurable
+      match_threshold = 0.2, // Balanced threshold for good results
       match_count = 10, // Make count configurable
       sort_by = 'similarity', // Default sort order
       log_search = true // Default to logging search
@@ -252,93 +252,17 @@ export async function POST(req: Request) {
 
       console.log('Raw match results:', matchResults ? matchResults.length : 'none')
       
-      // For test purposes, if no results from real search, generate mock data
+      // Use real search results only - no mock data fallback
       let testResults: MatchDocumentResult[] = matchResults || [];
+      
       if (testResults.length === 0) {
-        // In development mode, provide sample data for testing the UI
-        if (process.env.NODE_ENV === 'development') {
-          console.log('Generating mock results for development testing')
-          
-          // Create mock data based on filters
-          const mockTestDocs = [
-            {
-              document_id: 'test-doc-1',
-              chunk_index: 0,
-              content: 'This is a sample content chunk about inverters. An inverter converts DC power from solar panels into AC power that can be used in homes.',
-              similarity: 0.89,
-              metadata: {
-                category: 'Energy',
-                subcategory: 'Renewable',
-                tags: ['Solar', 'Inverter', 'Energy']
-              }
-            },
-            {
-              document_id: 'test-doc-2',
-              chunk_index: 1,
-              content: 'Inverters are an essential component of solar energy systems, allowing the power generated to be used by household appliances.',
-              similarity: 0.78,
-              metadata: {
-                category: 'Technology',
-                subcategory: 'Electronics',
-                tags: ['Solar', 'Energy', 'Electronics']
-              }
-            },
-            {
-              document_id: 'test-doc-3',
-              chunk_index: 0,
-              content: 'Financial planning for renewable energy projects requires careful consideration of incentives and long-term ROI calculations.',
-              similarity: 0.72,
-              metadata: {
-                category: 'Finance',
-                subcategory: 'Investment',
-                tags: ['Investment', 'Renewable', 'Energy']
-              }
-            },
-            {
-              document_id: 'test-doc-4',
-              chunk_index: 0,
-              content: 'HR training materials for new technicians should include safety protocols for working with high-voltage solar systems.',
-              similarity: 0.68,
-              metadata: {
-                category: 'HR',
-                subcategory: 'Training',
-                tags: ['Training', 'Safety', 'HR']
-              }
-            }
-          ];
-          
-          // Filter mock data based on provided filters
-          let filteredMockDocs = [...mockTestDocs];
-          
-          if (filters && Object.keys(filters).length > 0) {
-            console.log('Filtering mock data with:', filters);
-            
-            if (filters.category) {
-              filteredMockDocs = filteredMockDocs.filter(doc => 
-                doc.metadata.category === filters.category
-              );
-              console.log(`After category filter: ${filteredMockDocs.length} docs`);
-            }
-            
-            if (filters.subcategory) {
-              filteredMockDocs = filteredMockDocs.filter(doc => 
-                doc.metadata.subcategory === filters.subcategory
-              );
-              console.log(`After subcategory filter: ${filteredMockDocs.length} docs`);
-            }
-            
-            if (filters.tags && Array.isArray(filters.tags)) {
-              filteredMockDocs = filteredMockDocs.filter(doc => 
-                doc.metadata.tags.some(tag => filters.tags.includes(tag))
-              );
-              console.log(`After tag filter: ${filteredMockDocs.length} docs`);
-            }
-          }
-          
-          // Use the filtered mock docs
-          testResults = filteredMockDocs;
-          console.log(`Generated ${testResults.length} mock results after filtering`);
-        }
+        console.log(`No semantic search results found for query "${sanitizedQuery}" with threshold ${match_threshold}`)
+        console.log('This could be due to:')
+        console.log('- Match threshold too high (try lowering from', match_threshold, 'to 0.3 or 0.1)')
+        console.log('- Query not semantically similar to document content')
+        console.log('- Missing or corrupted embeddings')
+      } else {
+        console.log(`Found ${testResults.length} semantic search results`)
       }
 
       if (testResults.length === 0) {
@@ -370,71 +294,8 @@ export async function POST(req: Request) {
       let documents: Document[] = [];
       let documentsError;
       
-      // For test documents, create mock document data
-      if (documentIds.some(id => id.startsWith('test-doc'))) {
-        console.log('Using mock document data for test documents')
-        documents = documentIds.map(id => {
-          // Get test document info based on ID
-          let title, category, subcategory, tagsList;
-          
-          switch(id) {
-            case 'test-doc-1':
-              title = 'Understanding Solar Inverters';
-              category = 'Energy';
-              subcategory = 'Renewable';
-              tagsList = ['Solar', 'Inverter', 'Energy'];
-              break;
-            case 'test-doc-2':
-              title = 'Solar Power Components';
-              category = 'Technology';
-              subcategory = 'Electronics';
-              tagsList = ['Solar', 'Energy', 'Electronics'];
-              break;
-            case 'test-doc-3':
-              title = 'Financial Planning for Renewable Energy';
-              category = 'Finance';
-              subcategory = 'Investment';
-              tagsList = ['Investment', 'Renewable', 'Energy'];
-              break;
-            case 'test-doc-4':
-              title = 'HR Training for Solar Technicians';
-              category = 'HR';
-              subcategory = 'Training';
-              tagsList = ['Training', 'Safety', 'HR'];
-              break;
-            default:
-              title = `Document ${id}`;
-              category = 'Uncategorized';
-              subcategory = 'General';
-              tagsList = ['Document'];
-          }
-          
-          // Create document with appropriate metadata
-          return {
-            id,
-            title,
-            description: 'Sample document for testing the semantic search UI',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            embedding_status: 'complete',
-            tags: tagsList,
-            // Include mock document categories and subcategories for filtering tests
-            document_category: {
-              id: `cat-${id.split('-')[2]}`,
-              name: category
-            },
-            document_subcategory: {
-              id: `sub-${id.split('-')[2]}`,
-              name: subcategory
-            },
-            // Will be extracted to category_name and subcategory_name in the results
-            category_name: category,
-            subcategory_name: subcategory
-          };
-        });
-      } else {
-        // Real document lookup - with category and subcategory joins
-        const result = await supabase
+      // Always fetch real document data from database
+      const result = await supabase
           .from('documents')
           .select(`
             *,
@@ -459,11 +320,10 @@ export async function POST(req: Request) {
           `)
           .in('id', documentIds)
           .eq('embedding_status', 'complete')
-        
-        // Ensure we handle null safely
-        documents = result.data || [];
-        documentsError = result.error;
-      }
+      
+      // Ensure we handle null safely
+      documents = result.data || [];
+      documentsError = result.error;
 
       if (documentsError) {
         console.error('Error retrieving documents:', documentsError)
