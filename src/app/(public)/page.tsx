@@ -108,6 +108,7 @@ export default function Home() {
         style={{
           background: `radial-gradient(600px at ${mousePosition.x}px ${mousePosition.y}px, rgba(196, 255, 51, 0.1), transparent 80%)`,
         }}
+        suppressHydrationWarning
       />
 
       {/* New High-End Background Animations */}

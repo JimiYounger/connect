@@ -81,13 +81,14 @@ export function HomePage({ theme = 'dark' }: { theme?: 'dark' | 'light' }) {
     return () => clearTimeout(timer);
   }, []);
   
-  // Simulate loading progress
+  // Simulate loading progress with deterministic values
   useEffect(() => {
     if (isAuthenticated && 
       (content.loading.carousel || content.loading.navigation || content.loading.dashboard)) {
       const interval = setInterval(() => {
         setLoadingProgress(prev => {
-          const increment = Math.random() * 15;
+          // Use deterministic increment instead of Math.random() to prevent hydration issues
+          const increment = 12; // Fixed increment value
           return Math.min(prev + increment, 90);
         });
       }, 500);
@@ -184,7 +185,7 @@ export function HomePage({ theme = 'dark' }: { theme?: 'dark' | 'light' }) {
                   LOADING
                 </div>
                 
-                <div className="ml-auto tracking-wide text-sm opacity-80 font-light fade-up delay-100">
+                <div className="ml-auto tracking-wide text-sm opacity-80 font-light fade-up delay-100" suppressHydrationWarning>
                   {Math.round(loadingProgress)}%
                 </div>
               </div>
@@ -192,7 +193,8 @@ export function HomePage({ theme = 'dark' }: { theme?: 'dark' | 'light' }) {
             
             {/* Dynamic messaging - athletic/performant */}
             <div className="text-2xl font-extralight tracking-tight fade-up delay-200"
-                style={{ fontFamily: "'Helvetica Neue', sans-serif" }}>
+                style={{ fontFamily: "'Helvetica Neue', sans-serif" }}
+                suppressHydrationWarning>
               {loadingProgress < 40 ? "Preparing your experience" :
                loadingProgress < 75 ? "Loading performance data" :
                "Optimizing your view"}
@@ -202,7 +204,7 @@ export function HomePage({ theme = 'dark' }: { theme?: 'dark' | 'light' }) {
             <div className="h-px w-12 bg-white opacity-20 my-4"></div>
             
             {/* Minimal sporting theme text */}
-            <p className="text-sm font-light opacity-60 fade-up delay-300">
+            <p className="text-sm font-light opacity-60 fade-up delay-300" suppressHydrationWarning>
               {loadingProgress < 30 ? "Personalized content loading..." :
                loadingProgress < 70 ? "Almost there..." :
                "Setting up your experience..."}

@@ -28,7 +28,7 @@ export function BannerDateIndicator({ banner }: BannerDateIndicatorProps) {
   if (!isBeforeStart && !isAfterEnd) return null
   
   return (
-    <div className="absolute bottom-4 left-4 bg-black/70 text-white px-3 py-2 rounded-md flex items-center z-10 text-sm">
+    <div className="absolute bottom-4 left-4 bg-black/70 text-white px-3 py-2 rounded-md flex items-center z-10 text-sm" suppressHydrationWarning>
       <CalendarIcon className="h-4 w-4 mr-2" />
       {isBeforeStart ? (
         <span>
