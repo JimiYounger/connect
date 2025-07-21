@@ -10,12 +10,15 @@ const compat = new FlatCompat({
   baseDirectory: __dirname,
 });
 
-export default [
+const config = [
   // 1) Add this object to ignore .next and node_modules:
   {
     ignores: [
       '.next',
       'node_modules',
+      'public/sw*.js',
+      'public/workbox-*.js',
+      'react-jsx.d.ts',
     ],
   },
   // 2) Then continue with your existing config:
@@ -53,3 +56,5 @@ export default [
     },
   },
 ];
+
+export default config;

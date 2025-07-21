@@ -1,6 +1,5 @@
 import React from 'react';
 import { dashboardService } from '@/features/widgets/services/dashboard-service';
-import { widgetService } from '@/features/widgets/services/widget-service';
 import { render, screen, waitFor, prettyDOM } from '@testing-library/react';
 import { DashboardView } from '@/features/widgets/components/dashboard-view';
 import { useWidgets } from '@/features/widgets/hooks/use-widgets';

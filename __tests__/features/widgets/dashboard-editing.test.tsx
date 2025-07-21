@@ -1,7 +1,7 @@
 import React from 'react';
 import { dashboardService } from '@/features/widgets/services/dashboard-service';
 import { widgetService } from '@/features/widgets/services/widget-service';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { DashboardEditor } from '@/features/widgets/components/admin/dashboard-editor';
 import userEvent from '@testing-library/user-event';
 

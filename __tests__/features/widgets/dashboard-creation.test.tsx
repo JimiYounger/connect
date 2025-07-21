@@ -1,7 +1,6 @@
-import React from 'react';
 import { dashboardService } from '@/features/widgets/services/dashboard-service';
 import { widgetService } from '@/features/widgets/services/widget-service';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act } from '@testing-library/react';
 
 // Mock the services
 jest.mock('@/features/widgets/services/dashboard-service');
