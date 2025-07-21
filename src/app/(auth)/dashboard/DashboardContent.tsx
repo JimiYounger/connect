@@ -23,6 +23,9 @@ import { useLoadingState } from "@/hooks/use-loading-state"
 import { motion, useTransform, useViewportScroll } from "framer-motion"
 import { useState } from "react"
 import { Modal } from "@/components/ui/modal"
+import { Navigation } from "@/features/homepage/components/Navigation/Navigation"
+import Link from "next/link"
+import Image from "next/image"
 
 interface StatCardData {
   icon: React.ReactNode
@@ -114,9 +117,61 @@ function DashboardContent({ profile: initialProfile }: { profile: UserProfile })
   }
 
   return (
-    <main className="relative flex flex-col min-h-screen w-full overflow-hidden">
-      {/* Background & floating shapes */}
-      <div className="absolute inset-0 -z-50 overflow-hidden bg-gradient-to-b from-black via-[#0f0f0f] to-[#151515]" />
+    <div className="relative flex flex-col min-h-screen w-full overflow-hidden">
+      {/* Navigation wrapper for PWA compatibility */}
+      <div 
+        className="navigation-wrapper sticky top-0 z-50 bg-black bg-opacity-90 backdrop-blur-sm" 
+        id="navigation-wrapper"
+      >
+        {/* Menu positioned */}
+        <div 
+          className="absolute nav-menu-positioner" 
+          style={{ 
+            left: '18px',
+            top: '12px'
+          }}
+          id="nav-menu-container"
+        >
+          <Navigation />
+        </div>
+        
+        {/* Logo positioned */}
+        <div 
+          className="absolute nav-logo-positioner" 
+          style={{ 
+            right: '18px',
+            top: '0px'
+          }}
+          id="nav-logo-container"
+        >
+          <Link href="/dashboard">
+            <div 
+              className="cursor-pointer touch-manipulation"
+              style={{ 
+                padding: '15px',
+                margin: '-15px',
+                zIndex: 1050,
+                WebkitTapHighlightColor: 'transparent'
+              }}
+            >
+              <Image 
+                src="/favicon.ico" 
+                alt="Home" 
+                width={48} 
+                height={48}
+                priority
+                style={{
+                  pointerEvents: 'none'
+                }}
+              />
+            </div>
+          </Link>
+        </div>
+      </div>
+
+      <main className="relative flex flex-col min-h-screen w-full overflow-hidden">
+        {/* Background & floating shapes */}
+        <div className="absolute inset-0 -z-50 overflow-hidden bg-gradient-to-b from-black via-[#0f0f0f] to-[#151515]" />
       <motion.div
         style={{ y: shape1Y }}
         className="absolute top-[-10rem] left-[-10rem] w-[40rem] h-[40rem]
@@ -265,7 +320,8 @@ function DashboardContent({ profile: initialProfile }: { profile: UserProfile })
           onLoad={() => setIframeLoading(false)}
         />
       </Modal>
-    </main>
+      </main>
+    </div>
   )
 }
 

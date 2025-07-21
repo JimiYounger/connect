@@ -87,6 +87,20 @@ export default function PWAHandler() {
                   navElement.style.display = 'none';
                   void navElement.offsetHeight; // Force reflow
                   navElement.style.display = '';
+                  
+                  // Also ensure positioners are properly positioned
+                  const menuPositioner = navWrapper.querySelector('.nav-menu-positioner');
+                  const logoPositioner = navWrapper.querySelector('.nav-logo-positioner');
+                  
+                  if (menuPositioner) {
+                    (menuPositioner as HTMLElement).style.position = 'absolute';
+                    (menuPositioner as HTMLElement).style.pointerEvents = 'auto';
+                  }
+                  
+                  if (logoPositioner) {
+                    (logoPositioner as HTMLElement).style.position = 'absolute';
+                    (logoPositioner as HTMLElement).style.pointerEvents = 'auto';
+                  }
                 }
               }, 100);
             }

@@ -122,6 +122,24 @@ html.pwa-mode * {
   -webkit-tap-highlight-color: transparent;
   user-select: none;
 }
+
+/* Ensure navigation wrapper doesn't cause content overlap and is stable after page transitions */
+html.pwa-mode .navigation-wrapper {
+  position: relative !important;
+  min-height: 60px;
+  margin-bottom: 0 !important;
+  /* Ensure it stays in place when returning to page */
+  transform: translateZ(0); /* Force GPU acceleration for stability */
+}
+
+/* Make sure positioners are properly anchored */
+html.pwa-mode .nav-menu-positioner,
+html.pwa-mode .nav-logo-positioner {
+  position: absolute !important;
+  pointer-events: auto !important;
+  /* Prevent layout shifts */
+  transform: translateZ(0);
+}
 html.pwa-mode input,
 html.pwa-mode textarea,
 html.pwa-mode [contenteditable] {
