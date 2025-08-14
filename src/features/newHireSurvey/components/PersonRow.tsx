@@ -16,37 +16,39 @@ export function PersonRow({ person, onViewDetails }: PersonRowProps) {
   };
 
   return (
-    <Card className="p-3 hover:bg-gray-50 transition-colors cursor-pointer" onClick={handleClick}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between mb-2">
-            <h4 className="font-medium text-gray-900 truncate">
-              {person.name}
-            </h4>
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="text-xs px-2 py-1 h-auto flex-shrink-0"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleClick();
-              }}
-            >
-              View Details
-            </Button>
-          </div>
-          
-          <HighlightTable 
-            highlights={person.highlights}
-            className="mt-2"
-          />
-          
-          {person.qa.length === 0 && (
-            <div className="text-sm text-gray-500 italic mt-2">
-              No survey responses available
-            </div>
-          )}
+    <Card className="p-4 bg-gray-800 hover:bg-gray-750 hover:shadow-md transition-all cursor-pointer border-l-4 border-l-blue-400 border border-gray-600" onClick={handleClick}>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <h4 className="text-lg font-semibold text-white flex-1">
+            {person.name}
+          </h4>
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="text-sm px-4 py-2 h-auto flex-shrink-0 font-medium border-gray-500 text-white bg-gray-700 hover:bg-gray-600 hover:text-white"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleClick();
+            }}
+          >
+            View Details
+          </Button>
         </div>
+        
+        {person.highlights.length > 0 ? (
+          <div className="mt-4">
+            <div className="text-sm font-medium text-white mb-3">
+              Survey Highlights
+            </div>
+            <HighlightTable 
+              highlights={person.highlights}
+            />
+          </div>
+        ) : (
+          <div className="text-sm text-gray-300 italic py-4 text-center border border-dashed border-gray-500 rounded-lg bg-gray-700">
+            No survey responses available
+          </div>
+        )}
       </div>
     </Card>
   );

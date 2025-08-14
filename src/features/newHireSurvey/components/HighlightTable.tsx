@@ -19,34 +19,34 @@ function formatValue(value: string | number | boolean | null): string {
   return String(value);
 }
 
-function truncateText(text: string, maxLength = 40): string {
+function truncateText(text: string, maxLength = 80): string {
   if (text.length <= maxLength) return text;
   return text.slice(0, maxLength).trim() + '...';
 }
 
 function getValueColor(value: string | number | boolean | null): string {
   if (value === null || value === '' || value === 'N/A' || value === 'No response') {
-    return 'text-gray-400';
+    return 'text-gray-300';
   }
   
   if (typeof value === 'boolean') {
-    return value ? 'text-green-600' : 'text-red-500';
+    return value ? 'text-green-300' : 'text-red-300';
   }
   
   if (typeof value === 'number') {
-    if (value <= 3) return 'text-red-500';
-    if (value <= 6) return 'text-yellow-600';
-    if (value >= 7) return 'text-green-600';
-    return 'text-gray-700';
+    if (value <= 3) return 'text-red-300';
+    if (value <= 6) return 'text-yellow-300';
+    if (value >= 7) return 'text-green-300';
+    return 'text-white';
   }
   
-  return 'text-gray-700';
+  return 'text-white';
 }
 
 export function HighlightTable({ highlights, className = '' }: HighlightTableProps) {
   if (!highlights.length) {
     return (
-      <div className={`text-sm text-gray-500 italic ${className}`}>
+      <div className={`text-sm text-gray-400 italic ${className}`}>
         No survey responses yet
       </div>
     );
@@ -58,17 +58,17 @@ export function HighlightTable({ highlights, className = '' }: HighlightTablePro
         {highlights.map((item, index) => {
           const formattedValue = formatValue(item.value);
           const truncatedValue = truncateText(formattedValue);
-          const needsTooltip = formattedValue.length > 40;
+          const needsTooltip = formattedValue.length > 80;
           const colorClass = getValueColor(item.value);
 
           const content = (
-            <div key={index} className="flex justify-between items-start gap-2 text-xs">
-              <span className="font-medium text-gray-600 flex-shrink-0 min-w-0 break-words">
-                {truncateText(item.key, 25)}:
-              </span>
-              <span className={`${colorClass} text-right flex-shrink-0 min-w-0 break-words`}>
+            <div key={index} className="grid grid-cols-1 gap-1 py-2 px-3 bg-gray-700 rounded-lg border border-gray-500">
+              <div className="text-sm font-medium text-white leading-relaxed">
+                {truncateText(item.key, 60)}
+              </div>
+              <div className={`text-sm ${colorClass} font-semibold leading-relaxed`}>
                 {truncatedValue}
-              </span>
+              </div>
             </div>
           );
 
@@ -80,10 +80,10 @@ export function HighlightTable({ highlights, className = '' }: HighlightTablePro
                     {content}
                   </div>
                 </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-xs">
+                <TooltipContent side="top" className="max-w-md">
                   <div className="text-sm">
-                    <div className="font-medium mb-1">{item.key}</div>
-                    <div>{formattedValue}</div>
+                    <div className="font-medium mb-2 text-white">{item.key}</div>
+                    <div className="text-gray-300">{formattedValue}</div>
                   </div>
                 </TooltipContent>
               </Tooltip>

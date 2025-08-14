@@ -26,61 +26,63 @@ function formatValue(value: string | number | boolean | null): string {
 
 function getValueColor(value: string | number | boolean | null): string {
   if (value === null || value === '' || value === 'N/A' || value === 'No response') {
-    return 'text-gray-400';
+    return 'text-gray-300';
   }
   
   if (typeof value === 'boolean') {
-    return value ? 'text-green-600' : 'text-red-500';
+    return value ? 'text-green-300' : 'text-red-300';
   }
   
   if (typeof value === 'number') {
-    if (value <= 3) return 'text-red-500';
-    if (value <= 6) return 'text-yellow-600';
-    if (value >= 7) return 'text-green-600';
-    return 'text-gray-700';
+    if (value <= 3) return 'text-red-300';
+    if (value <= 6) return 'text-yellow-300';
+    if (value >= 7) return 'text-green-300';
+    return 'text-white';
   }
   
-  return 'text-gray-700';
+  return 'text-white';
 }
 
 function DetailContent({ person }: { person: Person }) {
   if (!person.qa.length) {
     return (
-      <div className="text-center py-8">
-        <div className="text-gray-500">
-          <p className="text-lg mb-2">No Survey Responses</p>
-          <p className="text-sm">This person hasn&apos;t completed the new hire survey yet.</p>
+      <div className="text-center py-12">
+        <div className="text-gray-400">
+          <p className="text-xl font-medium mb-3 text-white">No Survey Responses</p>
+          <p className="text-base">This person hasn&apos;t completed the new hire survey yet.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <ScrollArea className="h-full max-h-[70vh]">
-      <div className="space-y-4 pr-4">
-        <div className="flex items-center gap-2 mb-4">
-          <Badge variant="secondary">{person.area}</Badge>
-          <span className="text-sm text-gray-500">
-            {person.qa.length} responses
-          </span>
-        </div>
+    <div className="flex flex-col h-full">
+      <div className="flex items-center gap-3 pb-4 border-b border-gray-600 flex-shrink-0">
+        <Badge variant="outline" className="text-sm px-3 py-1.5 font-medium border-gray-500 text-gray-200">
+          {person.area}
+        </Badge>
+        <span className="text-sm text-gray-300 font-medium">
+          {person.qa.length} survey responses
+        </span>
+      </div>
 
-        <div className="space-y-4">
+      <ScrollArea className="flex-1 mt-5">
+        <div className="space-y-4 pr-2 pb-4">
           {person.qa.map((qa, index) => (
-            <div key={index} className="border-b border-gray-100 pb-4 last:border-b-0">
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium text-gray-900 leading-relaxed">
+            <div key={index} className="bg-gray-700 rounded-xl p-4 border border-gray-500 shadow-sm">
+              <div className="space-y-3">
+                <h4 className="text-base font-semibold text-white leading-relaxed">
                   {qa.key}
                 </h4>
-                <div className={`text-sm leading-relaxed ${getValueColor(qa.value)}`}>
+                <div className={`text-base leading-relaxed font-semibold px-4 py-3 rounded-lg bg-gray-800 border border-gray-500 ${getValueColor(qa.value)}`}>
                   {formatValue(qa.value)}
                 </div>
               </div>
             </div>
           ))}
         </div>
-      </div>
-    </ScrollArea>
+      </ScrollArea>
+    </div>
   );
 }
 
@@ -92,13 +94,15 @@ export function PersonDetail({ person, open, onClose }: PersonDetailProps) {
   if (isMobile) {
     return (
       <Sheet open={open} onOpenChange={onClose}>
-        <SheetContent side="bottom" className="h-[85vh]">
-          <SheetHeader className="pb-4">
-            <SheetTitle className="text-left">
+        <SheetContent side="bottom" className="h-[92vh] px-5 pb-4 flex flex-col bg-black text-white">
+          <SheetHeader className="pb-5 border-b border-gray-600 flex-shrink-0 pt-2">
+            <SheetTitle className="text-left text-2xl font-bold text-white leading-tight">
               {person.name}
             </SheetTitle>
           </SheetHeader>
-          <DetailContent person={person} />
+          <div className="flex-1 mt-5 min-h-0">
+            <DetailContent person={person} />
+          </div>
         </SheetContent>
       </Sheet>
     );
@@ -106,11 +110,15 @@ export function PersonDetail({ person, open, onClose }: PersonDetailProps) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh]">
-        <DialogHeader>
-          <DialogTitle>{person.name}</DialogTitle>
+      <DialogContent className="max-w-4xl max-h-[90vh] p-6 flex flex-col bg-black text-white border border-gray-600">
+        <DialogHeader className="pb-6 border-b border-gray-600 flex-shrink-0">
+          <DialogTitle className="text-2xl font-bold text-white">
+            {person.name}
+          </DialogTitle>
         </DialogHeader>
-        <DetailContent person={person} />
+        <div className="flex-1 mt-6 min-h-0">
+          <DetailContent person={person} />
+        </div>
       </DialogContent>
     </Dialog>
   );

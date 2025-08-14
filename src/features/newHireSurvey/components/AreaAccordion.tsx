@@ -34,10 +34,10 @@ export function AreaAccordion({ areas, people }: AreaAccordionProps) {
 
   if (areas.length === 0) {
     return (
-      <div className="text-center py-8">
-        <div className="text-gray-500">
-          <p className="text-lg mb-2">No Data Available</p>
-          <p className="text-sm">No new hire survey data found.</p>
+      <div className="text-center py-16">
+        <div className="text-gray-400">
+          <p className="text-2xl font-semibold mb-3 text-white">No Data Available</p>
+          <p className="text-lg">No new hire survey data found.</p>
         </div>
       </div>
     );
@@ -45,7 +45,7 @@ export function AreaAccordion({ areas, people }: AreaAccordionProps) {
 
   return (
     <>
-      <Accordion type="multiple" className="w-full space-y-2">
+      <Accordion type="multiple" className="w-full space-y-4">
         {areas.map((area) => {
           const areaPeople = peopleByArea[area] || [];
           
@@ -53,27 +53,27 @@ export function AreaAccordion({ areas, people }: AreaAccordionProps) {
             <AccordionItem
               key={area}
               value={area}
-              className="border border-gray-200 rounded-lg px-4 py-2"
+              className="border-2 border-gray-700 rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition-shadow bg-gray-800"
             >
-              <AccordionTrigger className="hover:no-underline">
+              <AccordionTrigger className="hover:no-underline py-4">
                 <div className="flex items-center justify-between w-full mr-4">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-semibold text-gray-900">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-xl font-bold text-white">
                       {area}
                     </h3>
-                    <Badge variant="secondary" className="text-xs">
-                      {areaPeople.length}
+                    <Badge variant="outline" className="text-sm px-3 py-1 font-semibold border-2 border-gray-600 text-gray-300">
+                      {areaPeople.length} {areaPeople.length === 1 ? 'person' : 'people'}
                     </Badge>
                   </div>
                 </div>
               </AccordionTrigger>
-              <AccordionContent className="pt-4">
+              <AccordionContent className="pt-6">
                 {areaPeople.length === 0 ? (
-                  <div className="text-sm text-gray-500 italic py-4">
+                  <div className="text-base text-gray-400 italic py-8 text-center border border-dashed border-gray-600 rounded-lg">
                     No people found in this area
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {areaPeople.map((person) => (
                       <PersonRow
                         key={person.id}
