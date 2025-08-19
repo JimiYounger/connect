@@ -16,13 +16,19 @@ export async function GET(_req: NextRequest) {
       );
     }
     
-    // Fetch contacts with department names
+    // Fetch contacts with department names and FAQ data
     const { data: contacts, error: contactsError } = await supabase
       .from('contacts')
       .select(`
         *,
         departments:department_id (
-          name
+          name,
+          typical_questions,
+          first_step_method,
+          first_step_details,
+          queue_name,
+          has_phone_line,
+          order_index
         )
       `)
       .order('last_name', { ascending: true });

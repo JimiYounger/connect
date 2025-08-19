@@ -686,6 +686,35 @@ export function AdminVideoLibrary() {
     }
   }
 
+  const deleteVideo = async (videoId: string, videoTitle: string) => {
+    if (!confirm(`Are you sure you want to delete "${videoTitle}"? This action cannot be undone.`)) {
+      return
+    }
+
+    setDeleting(videoId)
+    
+    try {
+      const response = await fetch(`/api/video-library/video/${videoId}`, {
+        method: 'DELETE',
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        // Remove video from local state
+        setVideos(prevVideos => prevVideos.filter(v => v.id !== videoId))
+        setError('')
+      } else {
+        setError(data.error || 'Failed to delete video')
+      }
+    } catch (err) {
+      console.error('Error deleting video:', err)
+      setError('Failed to delete video')
+    } finally {
+      setDeleting(null)
+    }
+  }
+
   // Reorder categories
   const reorderCategories = async (newCategories: Category[]) => {
     try {
@@ -1319,6 +1348,22 @@ export function AdminVideoLibrary() {
                         <ExternalLink className="h-3 w-3" />
                       </Button>
                     )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        deleteVideo(video.id, video.title)
+                      }}
+                      disabled={deleting === video.id}
+                    >
+                      {deleting === video.id ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3 w-3" />
+                      )}
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -1472,6 +1517,22 @@ export function AdminVideoLibrary() {
                           <ExternalLink className="h-3 w-3" />
                         </Button>
                       )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          deleteVideo(video.id, video.title)
+                        }}
+                        disabled={deleting === video.id}
+                      >
+                        {deleting === video.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3 w-3" />
+                        )}
+                      </Button>
                     </div>
                   </div>
                 </div>

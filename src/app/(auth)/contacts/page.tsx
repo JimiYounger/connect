@@ -68,7 +68,7 @@ export default function ContactsDirectoryPage() {
   };
 
   return (
-    <div className="container mx-auto py-6 px-4 md:px-8 lg:max-w-6xl">
+    <div className="container mx-auto py-4 md:py-6 px-3 md:px-8 lg:max-w-6xl">
       <div className="mb-6">
         <p className="text-slate-600">
           Find and connect with team members across all departments

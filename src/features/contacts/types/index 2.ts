@@ -20,9 +20,6 @@ export interface Contact {
     id: string;
     name: string;
   }>;
-  // FAQ-specific fields
-  is_escalation_contact?: boolean;
-  escalation_role?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -30,13 +27,6 @@ export interface Contact {
 export interface Department {
   id: string;
   name: string;
-  // FAQ-specific fields
-  typical_questions?: string[];
-  first_step_method?: 'fresh_service' | 'qrt_chat' | 'phone_line';
-  first_step_details?: string;
-  queue_name?: string | null;
-  has_phone_line?: boolean;
-  order_index?: number;
 }
 
 export interface SortableContactItem {

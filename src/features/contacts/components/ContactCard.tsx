@@ -15,22 +15,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Contact } from '../types';
 import { useState } from 'react';
 
-// Google Chat icon component
-const GChatIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9-9v18" />
-  </svg>
-);
 
 interface ContactCardProps {
   contact: Contact;
@@ -141,25 +125,6 @@ export function ContactCard({ contact }: ContactCardProps) {
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="md:hidden">Text</TooltipContent>
-            </Tooltip>
-          )}
-          
-          {contact.email && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" className="h-9 w-9 md:h-8 md:w-auto md:px-3 bg-white hover:bg-blue-50 border-slate-200 text-slate-700 hover:text-blue-600" asChild>
-                  <a 
-                    href={`https://contacts.google.com/${contact.email}`} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    aria-label={`Google Contacts - ${fullName}`}
-                  >
-                    <GChatIcon />
-                    <span className="sr-only md:not-sr-only md:inline ml-1">Contacts</span>
-                  </a>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="md:hidden">Contacts</TooltipContent>
             </Tooltip>
           )}
           

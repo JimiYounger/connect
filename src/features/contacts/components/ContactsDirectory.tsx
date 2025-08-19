@@ -175,17 +175,6 @@ export function ContactsDirectory({
                         <span className="sr-only">Text</span>
                       </a>
                     )}
-                    {contact.email && (
-                      <a 
-                        href={`https://contacts.google.com/${contact.email}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-slate-500 hover:text-blue-500 p-1.5 rounded-full hover:bg-slate-100"
-                      >
-                        <MessageSquare className="h-4 w-4" />
-                        <span className="sr-only">GChat</span>
-                      </a>
-                    )}
                     {typeof navigator !== 'undefined' && 'share' in navigator && (
                       <button 
                         onClick={() => handleShare(contact)}

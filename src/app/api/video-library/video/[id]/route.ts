@@ -385,3 +385,152 @@ export async function PUT(req: Request, { params }: RouteParams) {
     )
   }
 }
+
+// DELETE: Delete video and all related data
+export async function DELETE(req: Request, { params }: RouteParams) {
+  try {
+    const { id } = await params
+    
+    // Validate video ID
+    const videoId = validateUUID(id, 'Video ID')
+    
+    const supabase = await createClient()
+    
+    // Get the authenticated user
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    // Check if user is admin
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('role_type')
+      .eq('user_id', user.id)
+      .single()
+
+    if (!userProfile || userProfile.role_type?.toLowerCase() !== 'admin') {
+      return NextResponse.json(
+        { success: false, error: 'Admin access required' },
+        { status: 403 }
+      )
+    }
+
+    // Check if video exists
+    const { data: video, error: fetchError } = await supabase
+      .from('video_files')
+      .select('id, title, vimeo_id')
+      .eq('id', videoId)
+      .single()
+
+    if (fetchError || !video) {
+      return NextResponse.json(
+        { success: false, error: 'Video not found' },
+        { status: 404 }
+      )
+    }
+
+    // Delete related data in correct order (foreign key dependencies)
+    // 1. Delete video tag assignments
+    const { error: tagError } = await supabase
+      .from('video_tag_assignments')
+      .delete()
+      .eq('video_file_id', videoId)
+
+    if (tagError) {
+      console.error('Error deleting video tags:', tagError)
+      return NextResponse.json(
+        { success: false, error: `Failed to delete video tags: ${tagError.message}` },
+        { status: 500 }
+      )
+    }
+
+    // 2. Delete video visibility settings
+    const { error: visibilityError } = await supabase
+      .from('video_visibility')
+      .delete()
+      .eq('video_file_id', videoId)
+
+    if (visibilityError) {
+      console.error('Error deleting video visibility:', visibilityError)
+      return NextResponse.json(
+        { success: false, error: `Failed to delete video visibility: ${visibilityError.message}` },
+        { status: 500 }
+      )
+    }
+
+    // 3. Delete video watch records
+    const { error: watchError } = await supabase
+      .from('video_watches')
+      .delete()
+      .eq('video_file_id', videoId)
+
+    if (watchError) {
+      console.error('Error deleting video watches:', watchError)
+      return NextResponse.json(
+        { success: false, error: `Failed to delete video watches: ${watchError.message}` },
+        { status: 500 }
+      )
+    }
+
+    // 4. Delete series content entries (removes video from series)
+    const { error: seriesError } = await supabase
+      .from('series_content')
+      .delete()
+      .eq('content_id', videoId)
+
+    if (seriesError) {
+      console.error('Error deleting series content:', seriesError)
+      return NextResponse.json(
+        { success: false, error: `Failed to delete series content: ${seriesError.message}` },
+        { status: 500 }
+      )
+    }
+
+    // 5. Finally, delete the video file record
+    const { error: deleteError } = await supabase
+      .from('video_files')
+      .delete()
+      .eq('id', videoId)
+
+    if (deleteError) {
+      console.error('Error deleting video:', deleteError)
+      return NextResponse.json(
+        { success: false, error: `Failed to delete video: ${deleteError.message}` },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `Video "${video.title}" deleted successfully`,
+      deletedVideoId: videoId
+    })
+
+  } catch (error) {
+    console.error('Error deleting video:', error)
+    
+    // Handle validation errors with 400 status
+    if (error instanceof Error && (error.message.includes('Invalid') || error.message.includes('must be a valid UUID'))) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: error.message 
+        },
+        { status: 400 }
+      )
+    }
+    
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error occurred' 
+      },
+      { status: 500 }
+    )
+  }
+}
