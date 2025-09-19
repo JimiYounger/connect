@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "12.2.3 (519615d)"
+  }
   public: {
     Tables: {
       activity_logs: {
@@ -580,9 +585,11 @@ export type Database = {
           created_by: string | null
           department_id: string | null
           email: string
+          escalation_role: string | null
           first_name: string
           google_user_id: string | null
           id: string
+          is_escalation_contact: boolean | null
           job_title: string | null
           last_name: string
           last_updated_at: string | null
@@ -601,9 +608,11 @@ export type Database = {
           created_by?: string | null
           department_id?: string | null
           email: string
+          escalation_role?: string | null
           first_name: string
           google_user_id?: string | null
           id?: string
+          is_escalation_contact?: boolean | null
           job_title?: string | null
           last_name: string
           last_updated_at?: string | null
@@ -622,9 +631,11 @@ export type Database = {
           created_by?: string | null
           department_id?: string | null
           email?: string
+          escalation_role?: string | null
           first_name?: string
           google_user_id?: string | null
           id?: string
+          is_escalation_contact?: boolean | null
           job_title?: string | null
           last_name?: string
           last_updated_at?: string | null
@@ -787,23 +798,38 @@ export type Database = {
       departments: {
         Row: {
           created_at: string | null
+          first_step_details: string | null
+          first_step_method: string | null
+          has_phone_line: boolean | null
           id: string
           name: string
           order_index: number
+          queue_name: string | null
+          typical_questions: string[] | null
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
+          first_step_details?: string | null
+          first_step_method?: string | null
+          has_phone_line?: boolean | null
           id?: string
           name: string
           order_index?: number
+          queue_name?: string | null
+          typical_questions?: string[] | null
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
+          first_step_details?: string | null
+          first_step_method?: string | null
+          has_phone_line?: boolean | null
           id?: string
           name?: string
           order_index?: number
+          queue_name?: string | null
+          typical_questions?: string[] | null
           updated_at?: string | null
         }
         Relationships: []
@@ -920,6 +946,54 @@ export type Database = {
             foreignKeyName: "document_content_document_id_fkey"
             columns: ["document_id"]
             isOneToOne: true
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_custom_metadata: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          document_id: string
+          id: string
+          meeting_date: string | null
+          metadata_type: string
+          presented_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          document_id: string
+          id?: string
+          meeting_date?: string | null
+          metadata_type: string
+          presented_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          document_id?: string
+          id?: string
+          meeting_date?: string | null
+          metadata_type?: string
+          presented_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_custom_metadata_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_custom_metadata_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
             referencedRelation: "documents"
             referencedColumns: ["id"]
           },
@@ -1363,6 +1437,131 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      forecast_answers: {
+        Row: {
+          answer_number: number | null
+          answer_text: string | null
+          created_at: string | null
+          id: string
+          question_id: string
+          response_id: string
+        }
+        Insert: {
+          answer_number?: number | null
+          answer_text?: string | null
+          created_at?: string | null
+          id?: string
+          question_id: string
+          response_id: string
+        }
+        Update: {
+          answer_number?: number | null
+          answer_text?: string | null
+          created_at?: string | null
+          id?: string
+          question_id?: string
+          response_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forecast_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "forecast_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "forecast_answers_response_id_fkey"
+            columns: ["response_id"]
+            isOneToOne: false
+            referencedRelation: "forecast_responses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      forecast_questions: {
+        Row: {
+          created_at: string | null
+          id: string
+          include_text_area: boolean | null
+          is_active: boolean | null
+          options: Json | null
+          order_index: number
+          question_text: string
+          question_type: Database["public"]["Enums"]["question_type"]
+          section: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          include_text_area?: boolean | null
+          is_active?: boolean | null
+          options?: Json | null
+          order_index: number
+          question_text: string
+          question_type?: Database["public"]["Enums"]["question_type"]
+          section: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          include_text_area?: boolean | null
+          is_active?: boolean | null
+          options?: Json | null
+          order_index?: number
+          question_text?: string
+          question_type?: Database["public"]["Enums"]["question_type"]
+          section?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      forecast_responses: {
+        Row: {
+          area: string | null
+          created_at: string | null
+          id: string
+          region: string | null
+          submitted_at: string | null
+          team: string | null
+          updated_at: string | null
+          user_id: string | null
+          week_of: string
+        }
+        Insert: {
+          area?: string | null
+          created_at?: string | null
+          id?: string
+          region?: string | null
+          submitted_at?: string | null
+          team?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          week_of: string
+        }
+        Update: {
+          area?: string | null
+          created_at?: string | null
+          id?: string
+          region?: string | null
+          submitted_at?: string | null
+          team?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          week_of?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forecast_responses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       messages: {
         Row: {
@@ -2974,65 +3173,65 @@ export type Database = {
       }
       create_audio_file_with_version: {
         Args: {
-          p_title: string
-          p_description: string
           p_audio_series_id: string
           p_created_by: string
+          p_description: string
           p_file_path: string
           p_file_type: string
+          p_title: string
         }
         Returns: Json
       }
       create_video_chunks_from_transcript: {
         Args: {
-          video_id: string
-          transcript_id: string
-          full_transcript: string
           chunk_duration?: number
+          full_transcript: string
+          transcript_id: string
+          video_id: string
         }
         Returns: number
       }
       delete_category_and_reassign: {
         Args: {
           p_category_id: string
-          p_fallback_category_id: string
           p_document_overrides: Json
+          p_fallback_category_id: string
         }
         Returns: Json
       }
       delete_subcategory_and_reassign: {
-        Args: { p_subcategory_id: string; p_fallback_subcategory_id: string }
+        Args: { p_fallback_subcategory_id: string; p_subcategory_id: string }
         Returns: Json
       }
       get_daily_engagement_metrics: {
-        Args: { start_date?: string; end_date?: string }
+        Args: { end_date?: string; start_date?: string }
         Returns: {
+          avg_completion_rate: number
           date: string
           total_views: number
-          unique_viewers: number
           unique_videos_watched: number
-          avg_completion_rate: number
+          unique_viewers: number
         }[]
       }
       get_navigation_for_user: {
         Args: {
-          p_user_id: string
-          p_role_type?: string
-          p_team?: string
           p_area?: string
           p_region?: string
+          p_role_type?: string
+          p_team?: string
+          p_user_id: string
         }
         Returns: {
+          description: string
           id: string
+          is_external: boolean
+          level: number
           menu_id: string
+          open_in_iframe: boolean
+          order_index: number
           parent_id: string
           title: string
           url: string
-          description: string
-          is_external: boolean
-          open_in_iframe: boolean
-          order_index: number
-          level: number
         }[]
       }
       get_organization_structure: {
@@ -3042,20 +3241,20 @@ export type Database = {
       get_trending_videos: {
         Args: { days?: number; limit_count?: number }
         Returns: {
-          video_id: string
+          avg_completion_rate: number
           title: string
           total_views: number
-          unique_viewers: number
-          avg_completion_rate: number
           trend_score: number
+          unique_viewers: number
+          video_id: string
         }[]
       }
       get_user_carousel_banners: {
         Args: {
-          user_role_type: string
-          user_team: string
           user_area: string
           user_region: string
+          user_role_type: string
+          user_team: string
         }
         Returns: {
           banner_url: string
@@ -3077,104 +3276,104 @@ export type Database = {
           title: string
           updated_at: string
           url: string
-          vimeo_video_id: string
-          vimeo_video_title: string
           video_id: string
           video_title: string
+          vimeo_video_id: string
+          vimeo_video_title: string
           visible_to_roles: string
         }[]
       }
       get_user_dashboard: {
         Args: { user_role_type: string }
         Returns: {
+          description: string
           id: string
           name: string
-          description: string
           role_type: string
           version_id: string
-          version_number: number
           version_name: string
+          version_number: number
           widgets: Json
         }[]
       }
       get_user_navigation_items: {
         Args: {
-          user_role_type: string
-          user_team: string
           user_area: string
           user_region: string
+          user_role_type: string
+          user_team: string
         }
         Returns: {
-          id: string
-          menu_id: string
-          parent_id: string
-          title: string
-          url: string
+          created_at: string
+          created_by: string
+          depth: number
           description: string
           dynamic_variables: Json
+          end_date: string
+          id: string
+          is_active: boolean
+          is_currently_active: boolean
           is_external: boolean
+          is_public: boolean
+          menu_id: string
           open_in_iframe: boolean
           order_index: number
-          is_active: boolean
-          is_public: boolean
-          start_date: string
-          end_date: string
-          created_at: string
-          updated_at: string
-          created_by: string
-          is_currently_active: boolean
-          visible_to_roles: string
-          role_ids: string[]
-          role_details: Json
-          depth: number
+          parent_id: string
           path: string[]
+          role_details: Json
+          role_ids: string[]
+          start_date: string
+          title: string
+          updated_at: string
+          url: string
+          visible_to_roles: string
         }[]
       }
       get_user_video_progress: {
         Args: { user_profile_id: string; video_id?: string }
         Returns: {
+          completed: boolean
+          last_position: number
+          last_watched: string
+          percent_complete: number
+          total_duration: number
           video_file_id: string
           video_title: string
           watched_seconds: number
-          total_duration: number
-          percent_complete: number
-          last_position: number
-          completed: boolean
-          last_watched: string
         }[]
       }
       get_video_org_breakdown: {
-        Args: { video_id: string; timeframe?: number }
+        Args: { timeframe?: number; video_id: string }
         Returns: {
+          avg_completion_rate: number
+          last_watched: string
           org_level: string
           org_value: string
           total_views: number
           unique_viewers: number
-          avg_completion_rate: number
-          last_watched: string
         }[]
       }
       get_video_tags: {
         Args: { video_ids: string[] }
         Returns: {
-          video_id: string
           tags: string[]
+          video_id: string
         }[]
       }
       get_video_user_details: {
-        Args: { video_id: string; org_filters?: Json }
+        Args: { org_filters?: Json; video_id: string }
         Returns: {
-          user_id: string
+          area: string
+          completed: boolean
+          email: string
           first_name: string
           last_name: string
-          email: string
-          region: string
-          area: string
-          team: string
-          watched_seconds: number
-          percent_complete: number
-          completed: boolean
           last_watched: string
+          percent_complete: number
+          region: string
+          team: string
+          user_id: string
+          watched_seconds: number
         }[]
       }
       halfvec_avg: {
@@ -3210,11 +3409,11 @@ export type Database = {
         Returns: unknown
       }
       is_banner_currently_active: {
-        Args: { p_is_active: boolean; p_start_date: string; p_end_date: string }
+        Args: { p_end_date: string; p_is_active: boolean; p_start_date: string }
         Returns: boolean
       }
       is_navigation_item_currently_active: {
-        Args: { p_is_active: boolean; p_start_date: string; p_end_date: string }
+        Args: { p_end_date: string; p_is_active: boolean; p_start_date: string }
         Returns: boolean
       }
       ivfflat_bit_support: {
@@ -3239,87 +3438,87 @@ export type Database = {
       }
       log_navigation_interaction: {
         Args: {
-          p_navigation_item_id: string
-          p_user_id: string
           p_interaction_type: string
           p_metadata?: Json
+          p_navigation_item_id: string
+          p_user_id: string
         }
         Returns: string
       }
       match_chunks: {
         Args:
           | {
-              query_embedding: string
               match_count?: number
+              query_embedding: string
               similarity_threshold?: number
             }
           | {
+              match_count?: number
               query_embedding: string
               similarity_threshold?: number
-              match_count?: number
             }
         Returns: {
-          id: string
-          document_id: string
           content: string
+          document_id: string
+          id: string
           similarity: number
         }[]
       }
       match_documents: {
         Args: {
-          query_embedding: string
-          match_threshold?: number
           match_count?: number
+          match_threshold?: number
+          query_embedding: string
         }
         Returns: {
-          document_id: string
           chunk_index: number
           content: string
+          document_id: string
           similarity: number
         }[]
       }
       match_video_chunks: {
         Args: {
-          query_embedding: string
-          match_threshold?: number
-          match_count?: number
           filter_category_id?: string
-          filter_subcategory_id?: string
           filter_series_id?: string
+          filter_subcategory_id?: string
           filter_tag_ids?: string[]
+          match_count?: number
+          match_threshold?: number
+          query_embedding: string
         }
         Returns: {
-          video_id: string
+          category_id: string
+          category_name: string
           chunk_id: string
           chunk_index: number
           content: string
-          similarity: number
-          timestamp_start: number
-          timestamp_end: number
-          video_title: string
-          video_description: string
-          vimeo_id: string
-          vimeo_duration: number
-          vimeo_thumbnail_url: string
           custom_thumbnail_url: string
-          thumbnail_source: string
-          video_created_at: string
-          video_updated_at: string
           embedding_status: string
-          category_id: string
-          category_name: string
+          similarity: number
           subcategory_id: string
           subcategory_name: string
+          thumbnail_source: string
+          timestamp_end: number
+          timestamp_start: number
+          video_created_at: string
+          video_description: string
+          video_id: string
+          video_title: string
+          video_updated_at: string
+          vimeo_duration: number
+          vimeo_id: string
+          vimeo_thumbnail_url: string
           visibility_conditions: Json
         }[]
       }
       matches_user_criteria: {
         Args: {
           role_details: Json
-          user_role_type: string
-          user_team: string
           user_area: string
           user_region: string
+          user_role_type: string
+          user_team: string
         }
         Returns: boolean
       }
@@ -3329,38 +3528,38 @@ export type Database = {
       }
       search_similar_chunks: {
         Args: {
-          query_embedding: string
-          user_filters: Json
-          threshold?: number
           match_count?: number
+          query_embedding: string
+          threshold?: number
+          user_filters: Json
         }
         Returns: {
           chunk_id: string
-          document_id: string
           chunk_index: number
           content: string
+          document_id: string
           similarity: number
         }[]
       }
       search_video_content: {
         Args: {
-          query_embedding: string
-          match_threshold?: number
           match_count?: number
+          match_threshold?: number
+          query_embedding: string
         }
         Returns: {
-          video_id: string
           chunk_id: string
           content: string
-          start_time: number
           end_time: number
           similarity: number
+          start_time: number
+          video_id: string
           video_title: string
           vimeo_id: string
         }[]
       }
       set_widget_configuration: {
-        Args: { p_widget_id: string; p_config: Json; p_created_by?: string }
+        Args: { p_config: Json; p_created_by?: string; p_widget_id: string }
         Returns: Json
       }
       sparsevec_out: {
@@ -3377,25 +3576,25 @@ export type Database = {
       }
       sync_user_profile: {
         Args: {
-          p_email: string
           p_airtable_record_id: string
-          p_first_name: string
-          p_last_name: string
-          p_role: string
-          p_role_type: string
-          p_team: string
           p_area: string
-          p_region: string
+          p_department?: string
+          p_email: string
+          p_first_name: string
+          p_google_user_id: string
+          p_health_dashboard: string
+          p_hire_date: string
+          p_last_name: string
           p_phone: string
           p_profile_pic_url: string
-          p_google_user_id: string
-          p_hire_date: string
-          p_user_key: string
           p_recruiting_record_id: string
-          p_health_dashboard: string
+          p_region: string
+          p_role: string
+          p_role_type: string
           p_salesforce_id: string
           p_shirt_size?: string
-          p_department?: string
+          p_team: string
+          p_user_key: string
         }
         Returns: undefined
       }
@@ -3418,23 +3617,23 @@ export type Database = {
         Returns: undefined
       }
       update_video_processing_status: {
-        Args: { video_id: string; status_type: string; status_value: string }
+        Args: { status_type: string; status_value: string; video_id: string }
         Returns: undefined
       }
       update_video_watch_progress: {
         Args:
           | {
-              user_profile_id: string
-              video_id: string
               current_position: number
-              video_duration: number
               event_data?: Json
+              user_profile_id: string
+              video_duration: number
+              video_id: string
             }
           | {
-              video_id: string
-              user_profile_id: string
               current_position: number
               event_data?: Json
+              user_profile_id: string
+              video_id: string
             }
         Returns: undefined
       }
@@ -3464,7 +3663,12 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      question_type:
+        | "text"
+        | "number"
+        | "select"
+        | "multiline"
+        | "people_multi_select"
     }
     CompositeTypes: {
       contact_order_update: {
@@ -3477,21 +3681,25 @@ export type Database = {
   }
 }
 
-type DefaultSchema = Database[Extract<keyof Database, "public">]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
@@ -3509,14 +3717,16 @@ export type Tables<
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
@@ -3532,14 +3742,16 @@ export type TablesInsert<
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
@@ -3555,14 +3767,16 @@ export type TablesUpdate<
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
@@ -3570,20 +3784,30 @@ export type Enums<
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      question_type: [
+        "text",
+        "number",
+        "select",
+        "multiline",
+        "people_multi_select",
+      ],
+    },
   },
 } as const
