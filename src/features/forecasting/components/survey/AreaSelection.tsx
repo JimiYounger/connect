@@ -39,8 +39,16 @@ export function AreaSelection({
     }
   }, [selectedArea, areas]);
 
-  const handleContinue = () => {
+  const handleContinue = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Continue button clicked/touched', { selectedArea, selectedRegion, defaultWeek });
     onAreaSelected(selectedArea, selectedRegion, defaultWeek);
+  };
+
+  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    console.log('Select changed to:', e.target.value);
+    setSelectedArea(e.target.value);
   };
 
 
@@ -65,9 +73,10 @@ export function AreaSelection({
             </Label>
             <select
               value={selectedArea}
-              onChange={(e) => setSelectedArea(e.target.value)}
-              className="w-full text-lg p-4 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white"
+              onChange={handleSelectChange}
+              className="w-full text-lg p-4 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white touch-manipulation"
               disabled={isLoading}
+              style={{ touchAction: 'manipulation' }}
             >
               {areas.map((areaOption) => (
                 <option key={areaOption.area} value={areaOption.area}>
@@ -79,11 +88,13 @@ export function AreaSelection({
 
 
           {/* Continue Button */}
-          <div className="pt-4">
+          <div className="pt-6 mt-6">
             <Button
               onClick={handleContinue}
+              onTouchEnd={handleContinue}
               disabled={isLoading}
-              className="w-full flex items-center justify-center gap-2 text-lg p-6"
+              className="w-full flex items-center justify-center gap-2 text-lg p-6 touch-manipulation select-none"
+              style={{ touchAction: 'manipulation' }}
             >
               Continue to Questions
               <ChevronRight className="h-5 w-5" />

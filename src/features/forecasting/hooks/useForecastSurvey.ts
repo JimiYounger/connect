@@ -174,16 +174,22 @@ export function useForecastSurvey() {
   }, [questions.length]);
 
   const selectArea = useCallback((area: string, region: string, week: string) => {
-    setSurveyState(prev => ({
-      ...prev,
-      selectedArea: area,
-      selectedRegion: region,
-      selectedWeek: week,
-      showAreaSelection: false,
-      // Reset answers when switching areas to avoid confusion
-      answers: new Map(),
-      currentQuestionIndex: 0
-    }));
+    console.log('selectArea called with:', { area, region, week });
+    setSurveyState(prev => {
+      console.log('Previous survey state:', prev);
+      const newState = {
+        ...prev,
+        selectedArea: area,
+        selectedRegion: region,
+        selectedWeek: week,
+        showAreaSelection: false,
+        // Reset answers when switching areas to avoid confusion
+        answers: new Map(),
+        currentQuestionIndex: 0
+      };
+      console.log('New survey state:', newState);
+      return newState;
+    });
     // Invalidate and refetch survey data for the new area
     queryClient.invalidateQueries({ queryKey: ['forecast-survey'] });
   }, [queryClient]);
