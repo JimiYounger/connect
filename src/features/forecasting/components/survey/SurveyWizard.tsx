@@ -2,7 +2,7 @@
 
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Send } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Send, Loader2 } from 'lucide-react';
 import { useForecastSurvey } from '../../hooks/useForecastSurvey';
 import { QuestionCard } from './QuestionCard';
 import { ProgressBar } from './ProgressBar';
@@ -26,6 +26,7 @@ export function SurveyWizard() {
     isLoading,
     error,
     isSubmitting,
+    isNavigating,
     isLastQuestion,
     isFirstQuestion,
     progress,
@@ -89,11 +90,13 @@ export function SurveyWizard() {
     );
   }
 
-  const handleNext = () => {
+  const handleNext = async () => {
+    if (isNavigating || isSubmitting) return;
+
     if (isLastQuestion) {
       handleSubmit();
     } else {
-      nextQuestion();
+      await nextQuestion();
     }
   };
 
@@ -120,7 +123,9 @@ export function SurveyWizard() {
 
       {/* Question Card */}
       <div className="flex-1 flex items-center justify-center p-4">
-        <div className="w-full max-w-2xl">
+        <div className={`w-full max-w-2xl transition-all duration-300 ${
+          isNavigating ? 'opacity-50 scale-95' : 'opacity-100 scale-100'
+        }`}>
           <QuestionCard
             question={currentQuestion}
             value={currentAnswer}
@@ -139,30 +144,52 @@ export function SurveyWizard() {
           <Button
             variant="outline"
             onClick={previousQuestion}
-            disabled={isFirstQuestion || isSubmitting}
-            className="flex items-center gap-2"
+            disabled={isFirstQuestion || isSubmitting || isNavigating}
+            className="flex items-center gap-2 transition-all duration-200"
           >
-            <ChevronLeft className="h-4 w-4" />
+            {isNavigating ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
             Previous
           </Button>
 
           {isLastQuestion ? (
             <Button
               onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+              disabled={isSubmitting || isNavigating}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 transition-all duration-200"
             >
-              {isSubmitting ? 'Submitting...' : 'Submit Forecast'}
-              <Send className="h-4 w-4" />
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Submitting Forecast...
+                </>
+              ) : (
+                <>
+                  Submit Forecast
+                  <Send className="h-4 w-4" />
+                </>
+              )}
             </Button>
           ) : (
             <Button
               onClick={handleNext}
-              disabled={isSubmitting}
-              className="flex items-center gap-2"
+              disabled={isSubmitting || isNavigating}
+              className="flex items-center gap-2 transition-all duration-200"
             >
-              Next
-              <ChevronRight className="h-4 w-4" />
+              {isNavigating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading...
+                </>
+              ) : (
+                <>
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </>
+              )}
             </Button>
           )}
         </div>

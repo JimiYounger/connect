@@ -39,6 +39,8 @@ export function useForecastSurvey() {
     showAreaSelection: true
   });
 
+  const [isNavigating, setIsNavigating] = useState(false);
+
   // Fetch questions and existing response
   const { data, isLoading, error } = useQuery({
     queryKey: ['forecast-survey', surveyState.selectedArea],
@@ -152,18 +154,32 @@ export function useForecastSurvey() {
     });
   }, []);
 
-  const nextQuestion = useCallback(() => {
+  const nextQuestion = useCallback(async () => {
+    setIsNavigating(true);
+
+    // Add a brief delay for loading effect
+    await new Promise(resolve => setTimeout(resolve, 200));
+
     setSurveyState(prev => ({
       ...prev,
       currentQuestionIndex: Math.min(prev.currentQuestionIndex + 1, questions.length - 1)
     }));
+
+    setIsNavigating(false);
   }, [questions.length]);
 
-  const previousQuestion = useCallback(() => {
+  const previousQuestion = useCallback(async () => {
+    setIsNavigating(true);
+
+    // Add a brief delay for loading effect
+    await new Promise(resolve => setTimeout(resolve, 200));
+
     setSurveyState(prev => ({
       ...prev,
       currentQuestionIndex: Math.max(prev.currentQuestionIndex - 1, 0)
     }));
+
+    setIsNavigating(false);
   }, []);
 
   const goToQuestion = useCallback((index: number) => {
@@ -174,22 +190,16 @@ export function useForecastSurvey() {
   }, [questions.length]);
 
   const selectArea = useCallback((area: string, region: string, week: string) => {
-    console.log('selectArea called with:', { area, region, week });
-    setSurveyState(prev => {
-      console.log('Previous survey state:', prev);
-      const newState = {
-        ...prev,
-        selectedArea: area,
-        selectedRegion: region,
-        selectedWeek: week,
-        showAreaSelection: false,
-        // Reset answers when switching areas to avoid confusion
-        answers: new Map(),
-        currentQuestionIndex: 0
-      };
-      console.log('New survey state:', newState);
-      return newState;
-    });
+    setSurveyState(prev => ({
+      ...prev,
+      selectedArea: area,
+      selectedRegion: region,
+      selectedWeek: week,
+      showAreaSelection: false,
+      // Reset answers when switching areas to avoid confusion
+      answers: new Map(),
+      currentQuestionIndex: 0
+    }));
     // Invalidate and refetch survey data for the new area
     queryClient.invalidateQueries({ queryKey: ['forecast-survey'] });
   }, [queryClient]);
@@ -238,6 +248,7 @@ export function useForecastSurvey() {
     isLoading: isLoading || usersLoading || areasLoading,
     error: error?.message || surveyState.error,
     isSubmitting: surveyState.isSubmitting || submitMutation.isPending,
+    isNavigating,
     isLastQuestion: surveyState.currentQuestionIndex === questions.length - 1,
     isFirstQuestion: surveyState.currentQuestionIndex === 0,
     progress: questions.length > 0 ? ((surveyState.currentQuestionIndex + 1) / questions.length) * 100 : 0,

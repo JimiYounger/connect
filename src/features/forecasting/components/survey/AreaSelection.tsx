@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Loader2 } from 'lucide-react';
 
 interface AreaOption {
   area: string;
@@ -30,6 +30,7 @@ export function AreaSelection({
 }: AreaSelectionProps) {
   const [selectedArea, setSelectedArea] = useState(currentUserArea);
   const [selectedRegion, setSelectedRegion] = useState(currentUserRegion);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   // Update region when area changes
   useEffect(() => {
@@ -39,15 +40,21 @@ export function AreaSelection({
     }
   }, [selectedArea, areas]);
 
-  const handleContinue = (e: React.MouseEvent | React.TouchEvent) => {
+  const handleContinue = async (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('Continue button clicked/touched', { selectedArea, selectedRegion, defaultWeek });
+
+    if (isTransitioning || isLoading) return;
+
+    setIsTransitioning(true);
+
+    // Add a small delay to show loading state
+    await new Promise(resolve => setTimeout(resolve, 300));
+
     onAreaSelected(selectedArea, selectedRegion, defaultWeek);
   };
 
   const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    console.log('Select changed to:', e.target.value);
     setSelectedArea(e.target.value);
   };
 
@@ -74,9 +81,12 @@ export function AreaSelection({
             <select
               value={selectedArea}
               onChange={handleSelectChange}
-              className="w-full text-lg p-4 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white touch-manipulation"
-              disabled={isLoading}
-              style={{ touchAction: 'manipulation' }}
+              className="w-full text-lg p-4 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white touch-manipulation transition-opacity"
+              disabled={isLoading || isTransitioning}
+              style={{
+                touchAction: 'manipulation',
+                opacity: isTransitioning ? 0.6 : 1
+              }}
             >
               {areas.map((areaOption) => (
                 <option key={areaOption.area} value={areaOption.area}>
@@ -92,12 +102,21 @@ export function AreaSelection({
             <Button
               onClick={handleContinue}
               onTouchEnd={handleContinue}
-              disabled={isLoading}
-              className="w-full flex items-center justify-center gap-2 text-lg p-6 touch-manipulation select-none"
+              disabled={isLoading || isTransitioning}
+              className="w-full flex items-center justify-center gap-2 text-lg p-6 touch-manipulation select-none transition-all duration-200"
               style={{ touchAction: 'manipulation' }}
             >
-              Continue to Questions
-              <ChevronRight className="h-5 w-5" />
+              {isTransitioning ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Loading Questions...
+                </>
+              ) : (
+                <>
+                  Continue to Questions
+                  <ChevronRight className="h-5 w-5" />
+                </>
+              )}
             </Button>
           </div>
         </div>
