@@ -108,6 +108,15 @@ export function MobileSelect({
     }
   };
 
+  // Additional PWA-specific touch handlers
+  const handleButtonTouchStart = (e: React.TouchEvent) => {
+    e.stopPropagation();
+  };
+
+  const handleButtonTouchMove = (e: React.TouchEvent) => {
+    e.stopPropagation();
+  };
+
   return (
     <div className="relative">
       {/* Hidden input for form submission */}
@@ -126,6 +135,8 @@ export function MobileSelect({
         type="button"
         disabled={disabled}
         onClick={handleButtonClick}
+        onTouchStart={handleButtonTouchStart}
+        onTouchMove={handleButtonTouchMove}
         onTouchEnd={handleButtonTouch}
         className={cn(
           // Base styles
@@ -168,7 +179,7 @@ export function MobileSelect({
           ref={dropdownRef}
           className={cn(
             // Positioning
-            'absolute z-[9999] mt-1 w-full',
+            'absolute z-[60] mt-1 w-full',
             // Styling
             'rounded-md border bg-background shadow-lg',
             // Animation
@@ -226,9 +237,19 @@ function OptionItem({
     }
   };
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    e.stopPropagation();
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    e.stopPropagation();
+  };
+
   return (
     <div
       onClick={handleClick}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
       onTouchEnd={handleTouch}
       className={cn(
         // Base styles

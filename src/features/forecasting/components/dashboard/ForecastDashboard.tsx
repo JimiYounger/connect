@@ -200,7 +200,7 @@ export function ForecastDashboard() {
       {/* Content Layer */}
       <div className="relative z-10 min-h-screen flex flex-col">
         {/* Header */}
-        <div className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 relative z-50">
+        <div className="bg-white/95 backdrop-blur-sm border-b border-gray-200/50 relative z-40">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div className="space-y-2">
@@ -224,7 +224,7 @@ export function ForecastDashboard() {
 
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 {/* Week Selector */}
-                <div className="sm:min-w-[280px] relative z-[60]">
+                <div className="sm:min-w-[280px] relative z-50">
                   <MobileSelect
                     options={availableWeeks.map((week) => ({
                       value: week.value,

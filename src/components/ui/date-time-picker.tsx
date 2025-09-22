@@ -31,6 +31,7 @@ export function DateTimePicker({
   const [selectedDateTime, setSelectedDateTime] = React.useState<Date | undefined>(
     date
   )
+  const [isOpen, setIsOpen] = React.useState(false)
 
   // Update internal state when external date changes
   React.useEffect(() => {
@@ -67,17 +68,35 @@ export function DateTimePicker({
     setSelectedDateTime(newDateTime)
   }
 
+  // PWA touch event handlers
+  const handleTriggerTouch = (e: React.TouchEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsOpen(!isOpen)
+  }
+
+  const handleTriggerClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsOpen(!isOpen)
+  }
+
   return (
     <div className={cn("grid gap-2", className)}>
-      <Popover>
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <Button
             id="date"
             variant={"outline"}
             className={cn(
               "w-full justify-start text-left font-normal",
+              // PWA touch optimizations
+              "touch-manipulation [-webkit-tap-highlight-color:transparent] min-h-[44px]",
               !date && "text-muted-foreground"
             )}
+            onClick={handleTriggerClick}
+            onTouchEnd={handleTriggerTouch}
+            mobileOptimized
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
             {date ? (
@@ -87,7 +106,11 @@ export function DateTimePicker({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
+        <PopoverContent
+          className="w-auto p-0"
+          align="start"
+          onInteractOutside={() => setIsOpen(false)}
+        >
           <Calendar
             mode="single"
             selected={selectedDateTime}
@@ -99,7 +122,7 @@ export function DateTimePicker({
               type="time"
               onChange={handleTimeChange}
               value={selectedDateTime ? format(selectedDateTime, 'HH:mm') : ''}
-              className="w-full"
+              className="w-full touch-manipulation [-webkit-tap-highlight-color:transparent] min-h-[44px]"
             />
           </div>
         </PopoverContent>
