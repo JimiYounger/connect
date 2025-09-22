@@ -42,6 +42,11 @@ const nextConfig: NextConfig = {
         hostname: 'mxrxeqzmlwpqahkhjzdw.supabase.co',
         pathname: '/storage/v1/object/public/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'plpower.link',
+        pathname: '/**',
+      },
     ],
     formats: ['image/webp', 'image/avif'],
   },

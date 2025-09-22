@@ -120,6 +120,7 @@ export interface UserProfile {
   area: string | null;
   region: string | null;
   role: string | null;
+  user_key: string | null;
 }
 
 // Combined answer type for people + text questions

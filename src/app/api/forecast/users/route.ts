@@ -25,7 +25,7 @@ export async function GET() {
     // Get all users for people selection
     const { data: users, error: usersError } = await supabase
       .from('user_profiles')
-      .select('id, first_name, last_name, email, team, area, region, role')
+      .select('id, first_name, last_name, email, team, area, region, role, user_key')
       .order('first_name');
 
     if (usersError) {

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { X, Search } from 'lucide-react';
+import Image from 'next/image';
 import type { UserProfile } from '../../types';
 
 interface PeopleMultiSelectProps {
@@ -84,13 +85,24 @@ export function PeopleMultiSelect({
           <label className="text-sm font-medium text-gray-700">Selected:</label>
           <div className="flex flex-wrap gap-2">
             {selectedUsers.map(user => (
-              <Badge key={user.id} variant="secondary" className="pr-1">
-                {user.first_name} {user.last_name}
+              <Badge key={user.id} variant="secondary" className="pr-1 pl-1 flex items-center gap-2">
+                {user.user_key && (
+                  <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
+                    <Image
+                      src={`https://plpower.link/${user.user_key}.pic`}
+                      alt={`${user.first_name} ${user.last_name}`}
+                      width={24}
+                      height={24}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+                <span className="truncate">{user.first_name} {user.last_name}</span>
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="min-h-[32px] min-w-[32px] p-0 ml-1 hover:bg-gray-200 touch-manipulation"
+                  className="min-h-[32px] min-w-[32px] p-0 ml-1 hover:bg-gray-200 touch-manipulation flex-shrink-0"
                   onClick={() => handleRemoveUser(user.id)}
                   mobileOptimized
                 >
@@ -135,11 +147,26 @@ export function PeopleMultiSelect({
                 }`}
                 onClick={() => handleUserSelect(user)}
               >
-                <div className="font-medium text-base">
-                  {user.first_name} {user.last_name}
-                </div>
-                <div className="text-sm text-gray-500 mt-1">
-                  {user.area && user.team ? `${user.area} - ${user.team}` : user.area || user.team || 'No team assigned'}
+                <div className="flex items-center gap-3">
+                  {user.user_key && (
+                    <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
+                      <Image
+                        src={`https://plpower.link/${user.user_key}.pic`}
+                        alt={`${user.first_name} ${user.last_name}`}
+                        width={40}
+                        height={40}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-base truncate">
+                      {user.first_name} {user.last_name}
+                    </div>
+                    <div className="text-sm text-gray-500 mt-1 truncate">
+                      {user.area && user.team ? `${user.area} - ${user.team}` : user.area || user.team || 'No team assigned'}
+                    </div>
+                  </div>
                 </div>
               </button>
             ))}
