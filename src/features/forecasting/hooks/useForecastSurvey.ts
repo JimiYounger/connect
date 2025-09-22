@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
-import type { ForecastQuestion, ForecastSubmission, SurveyState, UserProfile, PeopleTextAnswer, AreaOption } from '../types';
+import type { ForecastQuestion, ForecastSubmission, SurveyState, UserProfile, SurveyPeopleTextAnswer, AreaOption } from '../types';
 
 function getNextMonday(date = new Date()): string {
   const d = new Date(date);
@@ -146,7 +146,7 @@ export function useForecastSurvey() {
     }
   });
 
-  const setAnswer = useCallback((questionId: string, value: string | number | string[] | PeopleTextAnswer) => {
+  const setAnswer = useCallback((questionId: string, value: string | number | string[] | SurveyPeopleTextAnswer) => {
     setSurveyState(prev => {
       const newAnswers = new Map(prev.answers);
       newAnswers.set(questionId, value);
@@ -217,7 +217,7 @@ export function useForecastSurvey() {
           return { question_id, answer_text: JSON.stringify(value) };
         } else if (value && typeof value === 'object' && 'people' in value) {
           // For people + text combo, store as: ["user1","user2"]||text content
-          const peopleTextAnswer = value as PeopleTextAnswer;
+          const peopleTextAnswer = value as SurveyPeopleTextAnswer;
           const combinedValue = `${JSON.stringify(peopleTextAnswer.people)}||${peopleTextAnswer.text}`;
           return { question_id, answer_text: combinedValue };
         } else {

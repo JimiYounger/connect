@@ -129,7 +129,13 @@ export interface PersonWithAvatar {
   user_key: string | null;
 }
 
-// Combined answer type for people + text questions
+// Combined answer type for people + text questions (for survey collection)
+export interface SurveyPeopleTextAnswer {
+  people: string[];
+  text: string;
+}
+
+// Combined answer type for people + text questions (for display with avatars)
 export interface PeopleTextAnswer {
   people: PersonWithAvatar[];
   text: string;
@@ -138,7 +144,7 @@ export interface PeopleTextAnswer {
 // Survey state management
 export interface SurveyState {
   currentQuestionIndex: number;
-  answers: Map<string, string | number | string[] | PeopleTextAnswer>;
+  answers: Map<string, string | number | string[] | SurveyPeopleTextAnswer>;
   isSubmitting: boolean;
   error: string | null;
   selectedArea?: string;

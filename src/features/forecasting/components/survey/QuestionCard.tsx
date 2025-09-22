@@ -6,12 +6,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { MobileSelect } from '@/components/ui/mobile-select';
 import { PeopleMultiSelect } from './PeopleMultiSelect';
-import type { ForecastQuestion, UserProfile, PeopleTextAnswer } from '../../types';
+import type { ForecastQuestion, UserProfile, SurveyPeopleTextAnswer } from '../../types';
 
 interface QuestionCardProps {
   question: ForecastQuestion;
-  value: string | number | string[] | PeopleTextAnswer | undefined;
-  onChange: (value: string | number | string[] | PeopleTextAnswer) => void;
+  value: string | number | string[] | SurveyPeopleTextAnswer | undefined;
+  onChange: (value: string | number | string[] | SurveyPeopleTextAnswer) => void;
   questionNumber: number;
   users?: UserProfile[];
   currentUserArea?: string | null;
@@ -72,8 +72,8 @@ export function QuestionCard({ question, value, onChange, questionNumber, users 
         return <div>No options available</div>;
 
       case 'people_multi_select':
-        // Handle both simple array and PeopleTextAnswer formats
-        const peopleValue = value as string[] | PeopleTextAnswer | undefined;
+        // Handle both simple array and SurveyPeopleTextAnswer formats
+        const peopleValue = value as string[] | SurveyPeopleTextAnswer | undefined;
         const currentPeople = Array.isArray(peopleValue) ? peopleValue : peopleValue?.people || [];
         const currentText = Array.isArray(peopleValue) ? "" : peopleValue?.text || "";
 
