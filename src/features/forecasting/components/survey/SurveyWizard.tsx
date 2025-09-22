@@ -139,14 +139,14 @@ export function SurveyWizard() {
       </div>
 
       {/* Navigation */}
-      <div className="border-t bg-white p-4">
-        <div className="max-w-2xl mx-auto flex justify-between items-center">
+      <div className="border-t bg-white px-4 pt-4 pb-6 safe-area-bottom">
+        <div className="max-w-2xl mx-auto flex justify-between items-center gap-4">
           <Button
             variant="outline"
-            size="mobile"
+            size="mobileLg"
             onClick={previousQuestion}
             disabled={isFirstQuestion || isSubmitting || isNavigating}
-            className="flex items-center gap-2 transition-all duration-200"
+            className="flex items-center gap-2 transition-all duration-200 min-w-[120px]"
             mobileOptimized
           >
             {isNavigating ? (
@@ -159,10 +159,10 @@ export function SurveyWizard() {
 
           {isLastQuestion ? (
             <Button
-              size="mobile"
+              size="mobileLg"
               onClick={handleSubmit}
               disabled={isSubmitting || isNavigating}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 transition-all duration-200"
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 transition-all duration-200 min-w-[160px]"
               mobileOptimized
             >
               {isSubmitting ? (
@@ -179,10 +179,10 @@ export function SurveyWizard() {
             </Button>
           ) : (
             <Button
-              size="mobile"
+              size="mobileLg"
               onClick={handleNext}
               disabled={isSubmitting || isNavigating}
-              className="flex items-center gap-2 transition-all duration-200"
+              className="flex items-center gap-2 transition-all duration-200 min-w-[120px]"
               mobileOptimized
             >
               {isNavigating ? (

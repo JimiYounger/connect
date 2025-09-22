@@ -4,7 +4,6 @@ import * as React from 'react';
 import { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { ChevronDown, Check } from 'lucide-react';
-import { useTouchHandler } from '@/hooks/useTouchHandler';
 
 export interface MobileSelectOption {
   value: string;
@@ -89,19 +88,15 @@ export function MobileSelect({
     }
   }, [value]);
 
-  // Touch handler for button
-  const buttonTouchRef = useTouchHandler<HTMLButtonElement>({
-    onTap: () => {
-      if (!disabled) {
-        setIsOpen(!isOpen);
-      }
-    },
-    disabled,
-    preventDefault: true,
-  });
+  // Handle button click/touch
+  const handleButtonClick = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
 
-  // Combine refs
-  React.useImperativeHandle(buttonTouchRef, () => buttonRef.current!, []);
+    if (!disabled) {
+      setIsOpen(!isOpen);
+    }
+  };
 
   return (
     <div className="relative">
@@ -120,6 +115,8 @@ export function MobileSelect({
         ref={buttonRef}
         type="button"
         disabled={disabled}
+        onClick={handleButtonClick}
+        onTouchEnd={handleButtonClick}
         className={cn(
           // Base styles
           'flex w-full items-center justify-between',
@@ -133,6 +130,8 @@ export function MobileSelect({
           'hover:bg-accent hover:text-accent-foreground',
           'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
           'disabled:cursor-not-allowed disabled:opacity-50',
+          // Active state for better mobile feedback
+          'active:bg-accent active:text-accent-foreground',
           // Text styling
           'text-base',
           !selectedValue && 'text-muted-foreground',
@@ -197,19 +196,19 @@ function OptionItem({
   isSelected: boolean;
   onSelect: (value: string) => void;
 }) {
-  const optionRef = useTouchHandler<HTMLDivElement>({
-    onTap: () => {
-      if (!option.disabled) {
-        onSelect(option.value);
-      }
-    },
-    disabled: option.disabled,
-    preventDefault: true,
-  });
+  const handleClick = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!option.disabled) {
+      onSelect(option.value);
+    }
+  };
 
   return (
     <div
-      ref={optionRef}
+      onClick={handleClick}
+      onTouchEnd={handleClick}
       className={cn(
         // Base styles
         'relative flex cursor-pointer items-center',
@@ -221,6 +220,7 @@ function OptionItem({
         'transition-colors',
         'hover:bg-accent hover:text-accent-foreground',
         'focus:bg-accent focus:text-accent-foreground focus:outline-none',
+        'active:bg-accent active:text-accent-foreground',
         // Selected state
         isSelected && 'bg-accent/50',
         // Disabled state
