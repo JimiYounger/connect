@@ -68,16 +68,8 @@ export function DateTimePicker({
     setSelectedDateTime(newDateTime)
   }
 
-  // PWA touch event handlers
-  const handleTriggerTouch = (e: React.TouchEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsOpen(!isOpen)
-  }
-
-  const handleTriggerClick = (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
+  // Simplified click handler without event blocking
+  const handleTriggerClick = () => {
     setIsOpen(!isOpen)
   }
 
@@ -95,7 +87,6 @@ export function DateTimePicker({
               !date && "text-muted-foreground"
             )}
             onClick={handleTriggerClick}
-            onTouchEnd={handleTriggerTouch}
             mobileOptimized
           >
             <CalendarIcon className="mr-2 h-4 w-4" />

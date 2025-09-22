@@ -88,33 +88,11 @@ export function MobileSelect({
     }
   }, [value]);
 
-  // Handle button click
-  const handleButtonClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
+  // Handle button click - simplified without blocking events
+  const handleButtonClick = () => {
     if (!disabled) {
       setIsOpen(!isOpen);
     }
-  };
-
-  // Handle touch events for PWA compatibility
-  const handleButtonTouch = (e: React.TouchEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (!disabled) {
-      setIsOpen(!isOpen);
-    }
-  };
-
-  // Additional PWA-specific touch handlers
-  const handleButtonTouchStart = (e: React.TouchEvent) => {
-    e.stopPropagation();
-  };
-
-  const handleButtonTouchMove = (e: React.TouchEvent) => {
-    e.stopPropagation();
   };
 
   return (
@@ -135,9 +113,6 @@ export function MobileSelect({
         type="button"
         disabled={disabled}
         onClick={handleButtonClick}
-        onTouchStart={handleButtonTouchStart}
-        onTouchMove={handleButtonTouchMove}
-        onTouchEnd={handleButtonTouch}
         className={cn(
           // Base styles
           'flex w-full items-center justify-between',
@@ -222,38 +197,44 @@ function OptionItem({
   isSelected: boolean;
   onSelect: (value: string) => void;
 }) {
-  const handleClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
 
+  const handleClick = () => {
     if (!option.disabled) {
       onSelect(option.value);
     }
   };
 
-  const handleTouch = (e: React.TouchEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (!option.disabled) {
-      onSelect(option.value);
-    }
-  };
-
+  // Track touch start position
   const handleTouchStart = (e: React.TouchEvent) => {
-    e.stopPropagation();
+    const touch = e.touches[0];
+    setTouchStart({ x: touch.clientX, y: touch.clientY });
   };
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    e.stopPropagation();
+  // Only select if touch didn't move much (not scrolling)
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStart || option.disabled) {
+      setTouchStart(null);
+      return;
+    }
+
+    const touch = e.changedTouches[0];
+    const deltaX = Math.abs(touch.clientX - touchStart.x);
+    const deltaY = Math.abs(touch.clientY - touchStart.y);
+
+    // If touch moved less than 10px, treat as tap
+    if (deltaX < 10 && deltaY < 10) {
+      onSelect(option.value);
+    }
+
+    setTouchStart(null);
   };
 
   return (
     <div
       onClick={handleClick}
       onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouch}
+      onTouchEnd={handleTouchEnd}
       className={cn(
         // Base styles
         'relative flex cursor-pointer items-center',
