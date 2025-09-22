@@ -143,8 +143,11 @@ export function PeopleMultiSelect({
                 key={user.id}
                 type="button"
                 className={`w-full min-h-[44px] p-4 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation [-webkit-tap-highlight-color:transparent] ${
-                  selectedUserIds.includes(user.id) ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+                  selectedUserIds.includes(user.id) ? 'bg-blue-50 border-l-4' : ''
                 }`}
+                style={selectedUserIds.includes(user.id) ? {
+                  borderLeftColor: '#61B2DC'
+                } : undefined}
                 onClick={() => handleUserSelect(user)}
               >
                 <div className="flex items-center gap-3">
