@@ -341,3 +341,93 @@
     outline: 1px solid currentColor;
   }
 }
+
+/* Athletic Loading Animations */
+.athletic-spin {
+  animation: athleticSpin 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.athletic-pulse {
+  animation: athleticPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.athletic-dot-1 {
+  animation: bounce 1.4s infinite;
+}
+
+.athletic-dot-2 {
+  animation: bounce 1.4s infinite;
+  animation-delay: 200ms;
+}
+
+.athletic-dot-3 {
+  animation: bounce 1.4s infinite;
+  animation-delay: 400ms;
+}
+
+.athletic-bg-pulse-1 {
+  animation: pulse 3s infinite;
+}
+
+.athletic-bg-pulse-2 {
+  animation: pulse 4s infinite;
+  animation-delay: 1s;
+}
+
+.athletic-progress {
+  animation: athleticProgress 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* Athletic Loading Keyframes */
+@keyframes athleticSpin {
+  0% {
+    transform: rotate(0deg);
+    border-top-color: #000;
+    border-right-color: transparent;
+  }
+  25% {
+    border-top-color: #333;
+    border-right-color: #000;
+  }
+  50% {
+    transform: rotate(180deg);
+    border-top-color: transparent;
+    border-right-color: #333;
+    border-bottom-color: #000;
+  }
+  75% {
+    border-bottom-color: #333;
+    border-left-color: #000;
+  }
+  100% {
+    transform: rotate(360deg);
+    border-top-color: #000;
+    border-right-color: transparent;
+  }
+}
+
+@keyframes athleticPulse {
+  0%, 100% {
+    opacity: 0.8;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+}
+
+@keyframes athleticProgress {
+  0% {
+    width: 0%;
+    transform: translateX(-100%);
+  }
+  50% {
+    width: 60%;
+    transform: translateX(0%);
+  }
+  100% {
+    width: 100%;
+    transform: translateX(100%);
+  }
+}
