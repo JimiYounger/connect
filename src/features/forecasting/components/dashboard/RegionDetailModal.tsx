@@ -3,6 +3,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   MapPin,
   CheckCircle,
@@ -12,7 +13,8 @@ import {
   ChevronUp,
   ChevronDown,
   Minus,
-  Loader2
+  Loader2,
+  X
 } from 'lucide-react';
 import { useState } from 'react';
 import type { ForecastSummary, AreaSummary } from '../../types';
@@ -145,14 +147,14 @@ export function RegionDetailModal({ region, data, previousWeekData, isOpen, onCl
     );
   };
 
-  const handleAreaClick = async (area: AreaSummary) => {
+  const handleAreaClick = (area: AreaSummary) => {
     if (!area.has_submitted || !onAreaClick) return;
 
     const areaId = `${area.area}-${area.region}`;
     setLoadingAreaId(areaId);
 
     try {
-      await onAreaClick(area);
+      onAreaClick(area);
     } finally {
       setLoadingAreaId(null);
     }
@@ -170,18 +172,31 @@ export function RegionDetailModal({ region, data, previousWeekData, isOpen, onCl
       <DialogContent className="w-screen h-screen max-w-none max-h-none m-0 p-0 bg-gradient-to-br from-gray-50 to-white">
         <div className="h-full flex flex-col">
           <DialogHeader className="p-4 md:p-6 pt-[max(1rem,env(safe-area-inset-top))] border-b border-gray-200">
-            <div className="flex items-center gap-3 md:gap-4">
-              <div className="p-2 md:p-3 rounded-xl" style={{ backgroundColor: '#61B2DC20' }}>
-                <MapPin className="h-5 w-5 md:h-6 md:w-6" style={{ color: '#61B2DC' }} />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 md:gap-4">
+                <div className="p-2 md:p-3 rounded-xl" style={{ backgroundColor: '#61B2DC20' }}>
+                  <MapPin className="h-5 w-5 md:h-6 md:w-6" style={{ color: '#61B2DC' }} />
+                </div>
+                <div>
+                  <DialogTitle className="text-lg md:text-2xl font-bold text-black tracking-tight">
+                    {region} Region Details
+                  </DialogTitle>
+                  <p className="text-sm md:text-base text-gray-600 font-medium">
+                    {completedAreas.length} of {regionAreas.length} areas completed • Week of {new Date(data.week_of + 'T12:00:00').toLocaleDateString()}
+                  </p>
+                </div>
               </div>
-              <div>
-                <DialogTitle className="text-lg md:text-2xl font-bold text-black tracking-tight">
-                  {region} Region Details
-                </DialogTitle>
-                <p className="text-sm md:text-base text-gray-600 font-medium">
-                  {completedAreas.length} of {regionAreas.length} areas completed • Week of {new Date(data.week_of + 'T12:00:00').toLocaleDateString()}
-                </p>
-              </div>
+              {/* Explicit close button for PWA compatibility */}
+              <Button
+                onClick={onClose}
+                variant="ghost"
+                size="icon"
+                className="h-11 w-11 rounded-full hover:bg-gray-100 touch-manipulation"
+                style={{ minWidth: '44px', minHeight: '44px' }}
+                aria-label="Close modal"
+              >
+                <X className="h-5 w-5" />
+              </Button>
             </div>
           </DialogHeader>
 

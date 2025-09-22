@@ -173,13 +173,13 @@ export function MobileSelect({
         />
       </button>
 
-      {/* Dropdown menu */}
+      {/* Dropdown menu - increased z-index for PWA compatibility */}
       {isOpen && (
         <div
           ref={dropdownRef}
           className={cn(
-            // Positioning
-            'absolute z-[60] mt-1 w-full',
+            // Positioning - increased z-index for PWA modals
+            'absolute z-[200] mt-1 w-full',
             // Styling
             'rounded-md border bg-background shadow-lg',
             // Animation
@@ -187,8 +187,11 @@ export function MobileSelect({
             // Scrolling
             'max-h-[300px] overflow-auto',
             // Mobile scroll optimization
-            'touch-manipulation [-webkit-overflow-scrolling:touch]'
+            'touch-manipulation [-webkit-overflow-scrolling:touch]',
+            // Ensure clicks work in PWA
+            'pointer-events-auto'
           )}
+          style={{ isolation: 'isolate' }}
           role="listbox"
           aria-label="Options"
         >

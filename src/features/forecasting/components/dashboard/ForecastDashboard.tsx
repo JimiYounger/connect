@@ -223,8 +223,8 @@ export function ForecastDashboard() {
               </div>
 
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                {/* Week Selector */}
-                <div className="sm:min-w-[280px] relative z-50">
+                {/* Week Selector - increased z-index and added pointer-events for PWA */}
+                <div className="sm:min-w-[280px] relative z-[100]" style={{ isolation: 'isolate' }}>
                   <MobileSelect
                     options={availableWeeks.map((week) => ({
                       value: week.value,
@@ -233,7 +233,7 @@ export function ForecastDashboard() {
                     value={selectedWeek}
                     onChange={handleWeekChange}
                     placeholder="Select week"
-                    className="w-full"
+                    className="w-full pointer-events-auto"
                   />
                 </div>
 
