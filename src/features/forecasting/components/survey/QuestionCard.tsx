@@ -1,9 +1,10 @@
 'use client';
 
 import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { MobileInput } from '@/components/ui/mobile-input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { MobileSelect } from '@/components/ui/mobile-select';
 import { PeopleMultiSelect } from './PeopleMultiSelect';
 import type { ForecastQuestion, UserProfile, PeopleTextAnswer } from '../../types';
 
@@ -22,24 +23,25 @@ export function QuestionCard({ question, value, onChange, questionNumber, users 
     switch (question.question_type) {
       case 'number':
         return (
-          <Input
+          <MobileInput
             type="number"
             value={value as number || ''}
             onChange={(e) => onChange(e.target.value ? Number(e.target.value) : 0)}
-            className="text-lg p-6 text-center"
+            className="text-center"
             placeholder="Enter number"
             inputMode="numeric"
+            mobileOptimized
           />
         );
 
       case 'text':
         return (
-          <Input
+          <MobileInput
             type="text"
             value={value as string || ''}
             onChange={(e) => onChange(e.target.value)}
-            className="text-lg p-6"
             placeholder="Enter your answer"
+            mobileOptimized
           />
         );
 
@@ -48,7 +50,7 @@ export function QuestionCard({ question, value, onChange, questionNumber, users 
           <Textarea
             value={value as string || ''}
             onChange={(e) => onChange(e.target.value)}
-            className="text-lg p-4 min-h-[200px] resize-none"
+            className="text-base min-h-[200px] resize-none touch-manipulation [-webkit-tap-highlight-color:transparent]"
             placeholder="Enter your answer"
           />
         );
@@ -56,18 +58,15 @@ export function QuestionCard({ question, value, onChange, questionNumber, users 
       case 'select':
         if (question.options && Array.isArray(question.options)) {
           return (
-            <select
+            <MobileSelect
+              options={question.options.map((option: string) => ({
+                value: option,
+                label: option
+              }))}
               value={value as string || ''}
-              onChange={(e) => onChange(e.target.value)}
-              className="w-full text-lg p-6 border rounded-md"
-            >
-              <option value="">Select an option</option>
-              {question.options.map((option: string, index: number) => (
-                <option key={index} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
+              onChange={onChange}
+              placeholder="Select an option"
+            />
           );
         }
         return <div>No options available</div>;

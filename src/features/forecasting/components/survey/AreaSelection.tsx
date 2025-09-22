@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { MobileSelect } from '@/components/ui/mobile-select';
 import { ChevronRight, Loader2 } from 'lucide-react';
 
 interface AreaOption {
@@ -54,9 +55,6 @@ export function AreaSelection({
     onAreaSelected(selectedArea, selectedRegion, defaultWeek);
   };
 
-  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedArea(e.target.value);
-  };
 
 
   return (
@@ -78,33 +76,29 @@ export function AreaSelection({
             <Label className="text-base font-medium text-gray-700">
               You are submitting for:
             </Label>
-            <select
+            <MobileSelect
+              options={areas.map(areaOption => ({
+                value: areaOption.area,
+                label: `${areaOption.area} (${areaOption.region})`,
+                disabled: isLoading || isTransitioning
+              }))}
               value={selectedArea}
-              onChange={handleSelectChange}
-              className="w-full text-lg p-4 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white touch-manipulation transition-opacity"
+              onChange={setSelectedArea}
+              placeholder="Select an area"
               disabled={isLoading || isTransitioning}
-              style={{
-                touchAction: 'manipulation',
-                opacity: isTransitioning ? 0.6 : 1
-              }}
-            >
-              {areas.map((areaOption) => (
-                <option key={areaOption.area} value={areaOption.area}>
-                  {areaOption.area} ({areaOption.region})
-                </option>
-              ))}
-            </select>
+              className={isTransitioning ? 'opacity-60' : ''}
+            />
           </div>
 
 
           {/* Continue Button */}
           <div className="pt-6 mt-6">
             <Button
+              size="mobileLg"
               onClick={handleContinue}
-              onTouchEnd={handleContinue}
               disabled={isLoading || isTransitioning}
-              className="w-full flex items-center justify-center gap-2 text-lg p-6 touch-manipulation select-none transition-all duration-200"
-              style={{ touchAction: 'manipulation' }}
+              className="w-full flex items-center justify-center gap-2"
+              mobileOptimized
             >
               {isTransitioning ? (
                 <>

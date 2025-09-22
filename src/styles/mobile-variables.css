@@ -1,0 +1,145 @@
+/**
+ * Mobile Variables CSS
+ * Single responsibility: Define mobile-specific CSS custom properties
+ * Following our DRY principle - single source of truth for mobile values
+ */
+
+:root {
+  /* Touch Target Sizes (Apple HIG compliant) */
+  --touch-target-min: 44px;
+  --touch-target-comfortable: 48px;
+  --touch-target-large: 52px;
+
+  /* Mobile Spacing Scale */
+  --mobile-space-xs: 8px;
+  --mobile-space-sm: 12px;
+  --mobile-space-md: 16px;
+  --mobile-space-lg: 24px;
+  --mobile-space-xl: 32px;
+  --mobile-space-2xl: 48px;
+
+  /* Mobile Typography */
+  --mobile-text-xs: 12px;
+  --mobile-text-sm: 14px;
+  --mobile-text-base: 16px; /* Prevents zoom on iOS */
+  --mobile-text-lg: 18px;
+  --mobile-text-xl: 20px;
+  --mobile-text-2xl: 24px;
+
+  /* Mobile Line Heights */
+  --mobile-leading-tight: 1.25;
+  --mobile-leading-normal: 1.5;
+  --mobile-leading-relaxed: 1.75;
+
+  /* Mobile Container Widths */
+  --mobile-container-full: 100%;
+  --mobile-container-sm: 640px;
+  --mobile-container-md: 768px;
+
+  /* Mobile Border Radius */
+  --mobile-radius-sm: 6px;
+  --mobile-radius-md: 8px;
+  --mobile-radius-lg: 12px;
+  --mobile-radius-xl: 16px;
+
+  /* Mobile Z-Index Scale */
+  --mobile-z-dropdown: 1000;
+  --mobile-z-modal: 1050;
+  --mobile-z-toast: 1100;
+  --mobile-z-tooltip: 1150;
+
+  /* Mobile Animation Durations */
+  --mobile-duration-fast: 150ms;
+  --mobile-duration-normal: 200ms;
+  --mobile-duration-slow: 300ms;
+
+  /* Mobile Animation Easings */
+  --mobile-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --mobile-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --mobile-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Safe Area Insets (for PWA) */
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+
+  /* Viewport Units (dynamic, set by JS) */
+  --viewport-height: 100vh;
+  --viewport-width: 100vw;
+  --viewport-height-small: 100svh; /* iOS Safari compatible */
+  --viewport-height-large: 100lvh; /* iOS Safari compatible */
+  --viewport-height-dynamic: 100dvh; /* iOS Safari compatible */
+
+  /* Mobile Breakpoints */
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+
+  /* Touch Gesture Thresholds */
+  --touch-slop: 10px; /* Movement tolerance */
+  --swipe-threshold: 50px; /* Minimum swipe distance */
+  --long-press-duration: 500ms; /* Long press timing */
+  --double-tap-delay: 300ms; /* Double tap window */
+
+  /* Mobile Form Optimizations */
+  --mobile-input-height: var(--touch-target-min);
+  --mobile-input-padding-x: var(--mobile-space-md);
+  --mobile-input-padding-y: var(--mobile-space-sm);
+  --mobile-input-font-size: var(--mobile-text-base);
+
+  /* Mobile Button Optimizations */
+  --mobile-button-height: var(--touch-target-min);
+  --mobile-button-height-lg: var(--touch-target-large);
+  --mobile-button-padding-x: var(--mobile-space-lg);
+  --mobile-button-padding-y: var(--mobile-space-sm);
+
+  /* Mobile Colors (with opacity variants) */
+  --mobile-overlay: rgba(0, 0, 0, 0.5);
+  --mobile-backdrop: rgba(0, 0, 0, 0.25);
+  --mobile-ripple: rgba(0, 0, 0, 0.1);
+  --mobile-highlight: rgba(59, 130, 246, 0.1); /* Blue 500 with opacity */
+}
+
+/* Mobile-specific overrides */
+@media (max-width: 767px) {
+  :root {
+    /* Increase touch targets on small screens */
+    --touch-target-min: 48px;
+    --touch-target-comfortable: 52px;
+    --touch-target-large: 56px;
+
+    /* Adjust spacing for smaller screens */
+    --mobile-space-lg: 20px;
+    --mobile-space-xl: 28px;
+    --mobile-space-2xl: 40px;
+  }
+}
+
+/* PWA-specific variables */
+html.pwa-mode {
+  /* PWA uses dynamic viewport heights */
+  --viewport-height: var(--viewport-height-dynamic, 100vh);
+
+  /* Account for safe areas in PWA */
+  --content-height: calc(var(--viewport-height) - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
+}
+
+/* High DPI screen adjustments */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  :root {
+    /* Slightly reduce sizes on high DPI screens */
+    --mobile-space-xs: 6px;
+    --mobile-space-sm: 10px;
+  }
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --mobile-duration-fast: 0ms;
+    --mobile-duration-normal: 0ms;
+    --mobile-duration-slow: 0ms;
+  }
+}

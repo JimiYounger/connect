@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Input } from '@/components/ui/input';
+import { MobileInput } from '@/components/ui/mobile-input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
@@ -90,10 +90,11 @@ export function PeopleMultiSelect({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-4 w-4 p-0 ml-1 hover:bg-gray-200"
+                  className="min-h-[32px] min-w-[32px] p-0 ml-1 hover:bg-gray-200 touch-manipulation"
                   onClick={() => handleRemoveUser(user.id)}
+                  mobileOptimized
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-4 w-4" />
                 </Button>
               </Badge>
             ))}
@@ -103,19 +104,22 @@ export function PeopleMultiSelect({
 
       {/* Search Input */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-        <Input
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 z-10 pointer-events-none" />
+        <MobileInput
           type="text"
           placeholder={placeholder}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-10"
+          inputMode="text"
+          autoComplete="off"
+          mobileOptimized
         />
       </div>
 
 
       {/* User List */}
-      <div className="border rounded-md max-h-60 overflow-y-auto">
+      <div className="border rounded-md max-h-60 overflow-y-auto touch-manipulation [-webkit-overflow-scrolling:touch]">
         {filteredUsers.length === 0 ? (
           <div className="p-4 text-center text-gray-500">
             {searchTerm ? 'No users found matching your search' : 'No users available'}
@@ -126,15 +130,15 @@ export function PeopleMultiSelect({
               <button
                 key={user.id}
                 type="button"
-                className={`w-full p-3 text-left hover:bg-gray-50 transition-colors ${
+                className={`w-full min-h-[44px] p-4 text-left hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation [-webkit-tap-highlight-color:transparent] ${
                   selectedUserIds.includes(user.id) ? 'bg-blue-50 border-l-4 border-blue-500' : ''
                 }`}
                 onClick={() => handleUserSelect(user)}
               >
-                <div className="font-medium">
+                <div className="font-medium text-base">
                   {user.first_name} {user.last_name}
                 </div>
-                <div className="text-sm text-gray-500">
+                <div className="text-sm text-gray-500 mt-1">
                   {user.area && user.team ? `${user.area} - ${user.team}` : user.area || user.team || 'No team assigned'}
                 </div>
               </button>
@@ -153,7 +157,7 @@ export function PeopleMultiSelect({
             value={textValue}
             onChange={(e) => onTextChange?.(e.target.value)}
             placeholder={textPlaceholder}
-            className="min-h-[100px] resize-none"
+            className="min-h-[100px] resize-none text-base touch-manipulation [-webkit-tap-highlight-color:transparent]"
           />
         </div>
       )}
