@@ -88,8 +88,8 @@ export function MobileSelect({
     }
   }, [value]);
 
-  // Handle button click/touch
-  const handleButtonClick = (e: React.MouseEvent | React.TouchEvent) => {
+  // Handle button click
+  const handleButtonClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -116,7 +116,6 @@ export function MobileSelect({
         type="button"
         disabled={disabled}
         onClick={handleButtonClick}
-        onTouchEnd={handleButtonClick}
         className={cn(
           // Base styles
           'flex w-full items-center justify-between',
@@ -196,7 +195,7 @@ function OptionItem({
   isSelected: boolean;
   onSelect: (value: string) => void;
 }) {
-  const handleClick = (e: React.MouseEvent | React.TouchEvent) => {
+  const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -208,7 +207,6 @@ function OptionItem({
   return (
     <div
       onClick={handleClick}
-      onTouchEnd={handleClick}
       className={cn(
         // Base styles
         'relative flex cursor-pointer items-center',

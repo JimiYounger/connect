@@ -139,7 +139,7 @@ export function SurveyWizard() {
       </div>
 
       {/* Navigation */}
-      <div className="border-t bg-white px-4 pt-4 pb-6 safe-area-bottom">
+      <div className="border-t bg-white px-4 pt-4 pb-8 safe-area-bottom">
         <div className="max-w-2xl mx-auto flex justify-between items-center gap-4">
           <Button
             variant="outline"
