@@ -431,3 +431,8 @@
     transform: translateX(100%);
   }
 }
+
+/* Background Gradient Classes */
+.bg-gradient-radial {
+  background: radial-gradient(circle, var(--tw-gradient-stops));
+}

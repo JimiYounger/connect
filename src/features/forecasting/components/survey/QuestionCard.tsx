@@ -111,28 +111,33 @@ export function QuestionCard({ question, value, onChange, questionNumber, users 
   };
 
   return (
-    <Card className="w-full p-8 shadow-lg border-0">
-      <div className="space-y-6">
-        {/* Section Label */}
-        <div className="text-sm text-gray-500 uppercase tracking-wide">
-          {question.section}
+    <Card className="w-full bg-white/80 backdrop-blur-sm border-0 shadow-xl rounded-3xl">
+      <div className="p-8 space-y-8">
+        {/* Question Number Badge */}
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 bg-black text-white rounded-full flex items-center justify-center font-bold text-lg">
+            {questionNumber}
+          </div>
+          <div className="text-sm font-semibold tracking-wider text-gray-600 uppercase">
+            {question.section}
+          </div>
         </div>
 
         {/* Question */}
-        <div className="space-y-2">
-          <Label className="text-xl md:text-2xl font-normal text-gray-900 leading-relaxed">
-            {questionNumber}. {question.question_text}
+        <div>
+          <Label className="text-xl md:text-2xl font-medium text-black leading-relaxed block">
+            {question.question_text}
           </Label>
         </div>
 
         {/* Input */}
-        <div className="pt-4">
+        <div className="pt-2">
           {renderInput()}
         </div>
 
         {/* Helper text for numeric inputs */}
         {question.question_type === 'number' && (
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 font-medium">
             Enter a numeric value
           </p>
         )}
