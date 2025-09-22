@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +18,7 @@ import {
   Gift,
   ClipboardList
 } from 'lucide-react';
-import type { AreaDetailView, PeopleTextAnswer } from '../../types';
+import type { AreaDetailView, PeopleTextAnswer, PersonWithAvatar } from '../../types';
 
 interface AreaDetailModalProps {
   area: AreaDetailView | null;
@@ -37,12 +38,14 @@ function SectionCard({
   className?: string;
 }) {
   return (
-    <Card className={`p-6 ${className}`}>
-      <div className="flex items-center gap-2 mb-4">
-        <div className="p-2 bg-blue-50 rounded-lg">
-          {icon}
+    <Card className={`bg-white/80 backdrop-blur-sm border-0 shadow-xl rounded-3xl p-6 ${className}`}>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="p-3 rounded-xl" style={{ backgroundColor: '#61B2DC20' }}>
+          <div style={{ color: '#61B2DC' }}>
+            {icon}
+          </div>
         </div>
-        <h3 className="font-semibold text-gray-900">{title}</h3>
+        <h3 className="text-lg font-bold text-black tracking-tight">{title}</h3>
       </div>
       {children}
     </Card>
@@ -54,18 +57,37 @@ function PeopleWithTextRenderer({
   icon,
   badgeClassName = "bg-gray-100 text-gray-800 border-gray-200"
 }: {
-  data: string[] | PeopleTextAnswer;
+  data: PersonWithAvatar[] | PeopleTextAnswer;
   icon: React.ReactNode;
   badgeClassName?: string;
 }) {
-  // Handle string array (people only)
+  // Handle PersonWithAvatar array (people only with avatars)
   if (Array.isArray(data)) {
     return (
       <div className="flex flex-wrap gap-1">
         {data.map((person, index) => (
-          <Badge key={index} className={`${badgeClassName} text-xs`}>
-            {icon}
-            {person}
+          <Badge key={index} className={`${badgeClassName} text-xs flex items-center gap-1`}>
+            <div className="w-4 h-4 rounded-full overflow-hidden bg-gray-200 flex-shrink-0 relative">
+              {person.user_key ? (
+                <Image
+                  src={`https://plpower.link/${person.user_key}.pic`}
+                  alt={person.name}
+                  width={16}
+                  height={16}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const fallback = target.parentElement?.querySelector('.fallback-icon') as HTMLElement;
+                    if (fallback) fallback.style.display = 'block';
+                  }}
+                />
+              ) : null}
+              <div className={`fallback-icon w-full h-full flex items-center justify-center ${person.user_key ? 'hidden' : 'block'}`} style={{ color: '#61B2DC' }}>
+                {icon}
+              </div>
+            </div>
+            {person.name}
           </Badge>
         ))}
       </div>
@@ -78,17 +100,36 @@ function PeopleWithTextRenderer({
       {data.people.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {data.people.map((person, index) => (
-            <Badge key={index} className={`${badgeClassName} text-xs`}>
-              {icon}
-              {person}
+            <Badge key={index} className={`${badgeClassName} text-xs flex items-center gap-1`}>
+              <div className="w-4 h-4 rounded-full overflow-hidden bg-gray-200 flex-shrink-0 relative">
+                {person.user_key ? (
+                  <Image
+                    src={`https://plpower.link/${person.user_key}.pic`}
+                    alt={person.name}
+                    width={16}
+                    height={16}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const fallback = target.parentElement?.querySelector('.fallback-icon') as HTMLElement;
+                      if (fallback) fallback.style.display = 'block';
+                    }}
+                  />
+                ) : null}
+                <div className={`fallback-icon w-full h-full flex items-center justify-center ${person.user_key ? 'hidden' : 'block'}`} style={{ color: '#61B2DC' }}>
+                  {icon}
+                </div>
+              </div>
+              {person.name}
             </Badge>
           ))}
         </div>
       )}
       {data.text && (
-        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
-          <p className="text-sm font-medium text-blue-900 mb-2">Management Plan</p>
-          <p className="text-sm text-blue-800 leading-relaxed">{data.text}</p>
+        <div className="bg-blue-50/80 border-l-4 border-blue-400 p-4 rounded-2xl">
+          <p className="text-sm font-semibold text-blue-900 mb-2 uppercase tracking-wide">Management Plan</p>
+          <p className="text-sm text-blue-800 leading-relaxed font-medium">{data.text}</p>
         </div>
       )}
     </div>
@@ -118,86 +159,121 @@ export function AreaDetailModal({ area, isOpen, onClose }: AreaDetailModalProps)
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-50 rounded-lg">
-              <MapPin className="h-5 w-5 text-blue-600" />
+      <DialogContent className="w-screen h-screen max-w-none max-h-none m-0 p-0 bg-gradient-to-br from-gray-50 to-white">
+        <div className="h-full flex flex-col">
+          <DialogHeader className="p-4 md:p-6 border-b border-gray-200">
+            <div className="flex items-center gap-3 md:gap-4">
+              <div className="p-2 md:p-3 rounded-xl" style={{ backgroundColor: '#61B2DC20' }}>
+                <MapPin className="h-5 w-5 md:h-6 md:w-6" style={{ color: '#61B2DC' }} />
+              </div>
+              <div>
+                <DialogTitle className="text-lg md:text-2xl font-bold text-black tracking-tight">
+                  {area.area} Forecast Details
+                </DialogTitle>
+                <p className="text-sm md:text-base text-gray-600 font-medium">{area.region} Region</p>
+              </div>
             </div>
-            <div>
-              <DialogTitle className="text-xl font-semibold">
-                {area.area} Forecast Details
-              </DialogTitle>
-              <p className="text-sm text-gray-600">{area.region} Region</p>
-            </div>
-          </div>
-        </DialogHeader>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto p-4 md:p-6">
 
         <div className="space-y-6">
           {/* Header Info */}
-          <Card className="p-4 bg-blue-50 border-blue-200">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
-              <div>
-                <Calendar className="h-4 w-4 mx-auto text-blue-600 mb-1" />
-                <p className="text-xs text-gray-600">Week Of</p>
-                <p className="text-sm font-medium">
+          <div className="grid grid-cols-3 gap-2 md:gap-6">
+            <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl rounded-2xl p-3 md:p-6">
+              <div className="text-center">
+                <Calendar className="h-4 w-4 md:h-5 md:w-5 mx-auto mb-2" style={{ color: '#61B2DC' }} />
+                <p className="text-xs md:text-sm font-semibold text-gray-600 uppercase tracking-wide">Week Of</p>
+                <p className="text-sm md:text-lg font-bold text-black">
                   {new Date(area.week_of + 'T12:00:00').toLocaleDateString()}
                 </p>
               </div>
-              {area.submitted_at && (
-                <div>
-                  <User className="h-4 w-4 mx-auto text-blue-600 mb-1" />
-                  <p className="text-xs text-gray-600">Submitted</p>
-                  <p className="text-sm font-medium">
+            </Card>
+            {area.submitted_at && (
+              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl rounded-2xl p-3 md:p-6">
+                <div className="text-center">
+                  <User className="h-4 w-4 md:h-5 md:w-5 mx-auto mb-2" style={{ color: '#61B2DC' }} />
+                  <p className="text-xs md:text-sm font-semibold text-gray-600 uppercase tracking-wide">Submitted</p>
+                  <p className="text-sm md:text-lg font-bold text-black">
                     {new Date(area.submitted_at).toLocaleDateString()}
                   </p>
                 </div>
-              )}
-              {area.manager_info && (
-                <div>
-                  <User className="h-4 w-4 mx-auto text-blue-600 mb-1" />
-                  <p className="text-xs text-gray-600">Manager</p>
-                  <p className="text-sm font-medium">{area.manager_info.name}</p>
+              </Card>
+            )}
+            {area.manager_info && (
+              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl rounded-2xl p-3 md:p-6">
+                <div className="text-center">
+                  <p className="text-xs md:text-sm font-semibold text-gray-600 uppercase tracking-wide mb-2">Submitted By</p>
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-6 h-6 md:w-8 md:h-8 rounded-full overflow-hidden bg-gray-200 flex-shrink-0 relative">
+                      {area.manager_info.user_key ? (
+                        <Image
+                          src={`https://plpower.link/${area.manager_info.user_key}.pic`}
+                          alt={area.manager_info.name}
+                          width={32}
+                          height={32}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const fallback = target.parentElement?.querySelector('.fallback-icon') as HTMLElement;
+                            if (fallback) fallback.style.display = 'block';
+                          }}
+                        />
+                      ) : null}
+                      <User className={`fallback-icon h-3 w-3 md:h-4 md:w-4 mx-auto mt-1.5 md:mt-2 ${area.manager_info.user_key ? 'hidden' : 'block'}`} style={{ color: '#61B2DC' }} />
+                    </div>
+                    <p className="text-sm md:text-lg font-bold text-black">{area.manager_info.name}</p>
+                  </div>
                 </div>
-              )}
-            </div>
-          </Card>
+              </Card>
+            )}
+          </div>
 
           {/* Forecast Numbers */}
-          <SectionCard
-            title="Forecast Numbers"
-            icon={<Target className="h-5 w-5 text-blue-600" />}
-          >
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="text-center">
-                <TrendingUp className="h-8 w-8 mx-auto text-blue-600 mb-2" />
-                <p className="text-2xl font-bold text-gray-900">
-                  {new Intl.NumberFormat('en-US').format(area.forecast_numbers?.sales_forecast || 0)}
-                </p>
-                <p className="text-sm text-gray-600">Sales Forecast</p>
+          <div>
+            <h3 className="text-lg md:text-xl font-bold text-black mb-4 md:mb-6 flex items-center gap-2 md:gap-3">
+              <div className="p-2 md:p-3 rounded-xl" style={{ backgroundColor: '#61B2DC20' }}>
+                <Target className="h-4 w-4 md:h-5 md:w-5" style={{ color: '#61B2DC' }} />
               </div>
-              <div className="text-center">
-                <Users className="h-8 w-8 mx-auto text-green-600 mb-2" />
-                <p className="text-2xl font-bold text-gray-900">
-                  {new Intl.NumberFormat('en-US').format(area.forecast_numbers?.lead_forecast || 0)}
-                </p>
-                <p className="text-sm text-gray-600">Lead Forecast</p>
-              </div>
-              <div className="text-center">
-                <Target className="h-8 w-8 mx-auto text-purple-600 mb-2" />
-                <p className="text-2xl font-bold text-gray-900">
-                  {new Intl.NumberFormat('en-US').format(area.forecast_numbers?.stretch_goal || 0)}
-                </p>
-                <p className="text-sm text-gray-600">Stretch Goal</p>
-              </div>
+              Forecast Numbers
+            </h3>
+            <div className="grid grid-cols-3 gap-2 md:gap-6">
+              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl rounded-2xl p-3 md:p-6">
+                <div className="text-center">
+                  <TrendingUp className="h-6 w-6 md:h-10 md:w-10 mx-auto mb-2 md:mb-3" style={{ color: '#61B2DC' }} />
+                  <p className="text-lg md:text-3xl font-bold text-black">
+                    {new Intl.NumberFormat('en-US').format(area.forecast_numbers?.sales_forecast || 0)}
+                  </p>
+                  <p className="text-xs md:text-sm font-semibold text-gray-600 uppercase tracking-wide mt-1 md:mt-2">Sales</p>
+                </div>
+              </Card>
+              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl rounded-2xl p-3 md:p-6">
+                <div className="text-center">
+                  <Users className="h-6 w-6 md:h-10 md:w-10 mx-auto mb-2 md:mb-3 text-green-600" />
+                  <p className="text-lg md:text-3xl font-bold text-black">
+                    {new Intl.NumberFormat('en-US').format(area.forecast_numbers?.lead_forecast || 0)}
+                  </p>
+                  <p className="text-xs md:text-sm font-semibold text-gray-600 uppercase tracking-wide mt-1 md:mt-2">Leads</p>
+                </div>
+              </Card>
+              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl rounded-2xl p-3 md:p-6">
+                <div className="text-center">
+                  <Target className="h-6 w-6 md:h-10 md:w-10 mx-auto mb-2 md:mb-3 text-purple-600" />
+                  <p className="text-lg md:text-3xl font-bold text-black">
+                    {new Intl.NumberFormat('en-US').format(area.forecast_numbers?.stretch_goal || 0)}
+                  </p>
+                  <p className="text-xs md:text-sm font-semibold text-gray-600 uppercase tracking-wide mt-1 md:mt-2">Stretch</p>
+                </div>
+              </Card>
             </div>
-          </SectionCard>
+          </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Team Status */}
             <SectionCard
               title="Team Status"
-              icon={<Users className="h-5 w-5 text-blue-600" />}
+              icon={<Users className="h-5 w-5" />}
             >
               <div className="space-y-4">
                 {area.team_status?.unavailable_people && (
@@ -233,13 +309,13 @@ export function AreaDetailModal({ area, isOpen, onClose }: AreaDetailModalProps)
             {/* Leadership Intuition */}
             <SectionCard
               title="Leadership Intuition"
-              icon={<Brain className="h-5 w-5 text-blue-600" />}
+              icon={<Brain className="h-5 w-5" />}
             >
               <div className="space-y-4">
                 {area.leadership_intuition?.team_state_of_mind && (
                   <div>
-                    <p className="text-sm font-medium text-gray-700 mb-1">Team State of Mind</p>
-                    <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
+                    <p className="text-sm font-semibold text-gray-700 mb-2 uppercase tracking-wide">Team State of Mind</p>
+                    <p className="text-sm text-gray-600 bg-gray-50/50 p-4 rounded-2xl font-medium">
                       {area.leadership_intuition.team_state_of_mind}
                     </p>
                   </div>
@@ -247,8 +323,8 @@ export function AreaDetailModal({ area, isOpen, onClose }: AreaDetailModalProps)
 
                 {area.leadership_intuition?.weather_impact && (
                   <div>
-                    <p className="text-sm font-medium text-gray-700 mb-1">Weather Impact</p>
-                    <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
+                    <p className="text-sm font-semibold text-gray-700 mb-2 uppercase tracking-wide">Weather Impact</p>
+                    <p className="text-sm text-gray-600 bg-gray-50/50 p-4 rounded-2xl font-medium">
                       {area.leadership_intuition.weather_impact}
                     </p>
                   </div>
@@ -287,9 +363,9 @@ export function AreaDetailModal({ area, isOpen, onClose }: AreaDetailModalProps)
             {/* Past Performance */}
             <SectionCard
               title="Past Performance"
-              icon={<TrendingUp className="h-5 w-5 text-blue-600" />}
+              icon={<TrendingUp className="h-5 w-5" />}
             >
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {area.past_performance?.last_week_sales && (
                   <MetricRow
                     label="Last Week Sales"
@@ -297,9 +373,9 @@ export function AreaDetailModal({ area, isOpen, onClose }: AreaDetailModalProps)
                   />
                 )}
                 {area.past_performance?.performance_factors && (
-                  <div className="pt-3 border-t">
-                    <p className="text-sm font-medium text-gray-700 mb-2">Performance Factors</p>
-                    <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                  <div className="pt-4 border-t border-gray-200">
+                    <p className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Performance Factors</p>
+                    <p className="text-sm text-gray-600 bg-gray-50/50 p-4 rounded-2xl font-medium leading-relaxed">
                       {area.past_performance.performance_factors}
                     </p>
                   </div>
@@ -310,7 +386,7 @@ export function AreaDetailModal({ area, isOpen, onClose }: AreaDetailModalProps)
             {/* Opportunities */}
             <SectionCard
               title="Actual Opportunities"
-              icon={<ClipboardList className="h-5 w-5 text-blue-600" />}
+              icon={<ClipboardList className="h-5 w-5" />}
             >
               <div className="space-y-3">
                 {area.opportunities?.scheduled_leads && (
@@ -332,13 +408,13 @@ export function AreaDetailModal({ area, isOpen, onClose }: AreaDetailModalProps)
           {/* Incentives */}
           <SectionCard
             title="Incentives"
-            icon={<Gift className="h-5 w-5 text-blue-600" />}
+            icon={<Gift className="h-5 w-5" />}
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {area.incentives?.current_incentives && (
                 <div>
-                  <p className="text-sm font-medium text-gray-700 mb-2">Current Incentives</p>
-                  <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                  <p className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Current Incentives</p>
+                  <p className="text-sm text-gray-600 bg-gray-50/50 p-4 rounded-2xl font-medium leading-relaxed">
                     {area.incentives.current_incentives}
                   </p>
                 </div>
@@ -346,8 +422,8 @@ export function AreaDetailModal({ area, isOpen, onClose }: AreaDetailModalProps)
 
               {area.incentives?.planned_incentives && (
                 <div>
-                  <p className="text-sm font-medium text-gray-700 mb-2">Planned Incentives</p>
-                  <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                  <p className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Planned Incentives</p>
+                  <p className="text-sm text-gray-600 bg-gray-50/50 p-4 rounded-2xl font-medium leading-relaxed">
                     {area.incentives.planned_incentives}
                   </p>
                 </div>
@@ -355,6 +431,8 @@ export function AreaDetailModal({ area, isOpen, onClose }: AreaDetailModalProps)
 
             </div>
           </SectionCard>
+          </div>
+        </div>
         </div>
       </DialogContent>
     </Dialog>

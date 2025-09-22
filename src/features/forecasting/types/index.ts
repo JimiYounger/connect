@@ -123,9 +123,15 @@ export interface UserProfile {
   user_key: string | null;
 }
 
+// Person with avatar support
+export interface PersonWithAvatar {
+  name: string;
+  user_key: string | null;
+}
+
 // Combined answer type for people + text questions
 export interface PeopleTextAnswer {
-  people: string[];
+  people: PersonWithAvatar[];
   text: string;
 }
 
@@ -177,6 +183,7 @@ export interface AreaDetailView {
   manager_info?: {
     name: string;
     email: string;
+    user_key: string;
   };
   sections?: {
     [sectionName: string]: QuestionAnswer[];
@@ -187,13 +194,13 @@ export interface AreaDetailView {
   };
   leadership_intuition: {
     team_state_of_mind?: string;
-    personal_challenges?: string[] | PeopleTextAnswer;
-    struggling_reps?: string[] | PeopleTextAnswer;
+    personal_challenges?: PersonWithAvatar[] | PeopleTextAnswer;
+    struggling_reps?: PersonWithAvatar[] | PeopleTextAnswer;
     weather_impact?: string;
   };
   team_status: {
-    unavailable_people?: string[] | PeopleTextAnswer;
-    coaching_needed?: string[] | PeopleTextAnswer;
+    unavailable_people?: PersonWithAvatar[] | PeopleTextAnswer;
+    coaching_needed?: PersonWithAvatar[] | PeopleTextAnswer;
   };
   opportunities: {
     scheduled_leads?: number;

@@ -5,21 +5,14 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
   ChevronUp,
   ChevronDown,
   Minus,
   CheckCircle,
   Clock,
   ArrowUpDown,
-  Loader2
+  Loader2,
+  TrendingUp
 } from 'lucide-react';
 import type { ForecastSummary, AreaSummary } from '../../types';
 
@@ -200,13 +193,20 @@ export function AreaForecastTable({ data, previousWeekData, onAreaClick }: AreaF
 
   if (data.by_area.length === 0) {
     return (
-      <Card className="p-8 text-center">
-        <h3 className="text-lg font-medium text-gray-900 mb-2">
-          No Area Data
-        </h3>
-        <p className="text-gray-600">
-          Area breakdown will appear once forecast submissions are received.
-        </p>
+      <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl rounded-3xl">
+        <div className="p-8 text-center space-y-4">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto">
+            <TrendingUp className="h-8 w-8 text-gray-400" />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-xl font-bold text-black">
+              No Area Data
+            </h3>
+            <p className="text-gray-600 font-medium">
+              Area breakdown will appear once forecast submissions are received.
+            </p>
+          </div>
+        </div>
       </Card>
     );
   }
@@ -214,205 +214,263 @@ export function AreaForecastTable({ data, previousWeekData, onAreaClick }: AreaF
   return (
     <div className="space-y-6">
       {/* Header with Filters */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900">
-            Area Forecasts
-          </h2>
-          <p className="text-sm text-gray-600">
-            {submittedCount} submitted • {pendingCount} pending
-          </p>
-        </div>
+      <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl rounded-3xl">
+        <div className="p-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="space-y-1">
+              <h2 className="text-2xl font-bold text-black tracking-tight">
+                Area Forecasts
+              </h2>
+              <p className="text-gray-600 font-medium">
+                {submittedCount} submitted • {pendingCount} pending
+              </p>
+            </div>
 
-        <div className="flex items-center gap-2">
-          <Button
-            variant={filter === 'all' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilter('all')}
-          >
-            All ({data.by_area.length})
-          </Button>
-          <Button
-            variant={filter === 'submitted' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilter('submitted')}
-          >
-            Submitted ({submittedCount})
-          </Button>
-          <Button
-            variant={filter === 'pending' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilter('pending')}
-          >
-            Pending ({pendingCount})
-          </Button>
-        </div>
-      </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                variant={filter === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilter('all')}
+                className={`rounded-2xl font-semibold transition-all duration-200 ${
+                  filter === 'all'
+                    ? 'bg-black text-white hover:bg-gray-800 shadow-lg'
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'
+                }`}
+                mobileOptimized
+              >
+                All ({data.by_area.length})
+              </Button>
+              <Button
+                variant={filter === 'submitted' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilter('submitted')}
+                className={`rounded-2xl font-semibold transition-all duration-200 ${
+                  filter === 'submitted'
+                    ? 'bg-black text-white hover:bg-gray-800 shadow-lg'
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'
+                }`}
+                mobileOptimized
+              >
+                Submitted ({submittedCount})
+              </Button>
+              <Button
+                variant={filter === 'pending' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilter('pending')}
+                className={`rounded-2xl font-semibold transition-all duration-200 ${
+                  filter === 'pending'
+                    ? 'bg-black text-white hover:bg-gray-800 shadow-lg'
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'
+                }`}
+                mobileOptimized
+              >
+                Pending ({pendingCount})
+              </Button>
+            </div>
+          </div>
 
-      {/* Table */}
-      <Card>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead
-                  className="cursor-pointer hover:bg-gray-50"
-                  onClick={() => handleSort('area')}
-                >
-                  <div className="flex items-center gap-1">
-                    Area / Region
-                    <ArrowUpDown className="h-3 w-3 text-gray-400" />
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer hover:bg-gray-50"
-                  onClick={() => handleSort('status')}
-                >
-                  <div className="flex items-center gap-1">
-                    Status
-                    <ArrowUpDown className="h-3 w-3 text-gray-400" />
-                  </div>
-                </TableHead>
-                <TableHead className="text-right w-40">Last Week Performance</TableHead>
-                <TableHead className="text-right w-28">Scheduled Leads</TableHead>
-                <TableHead
-                  className="cursor-pointer hover:bg-gray-50 text-right w-28"
-                  onClick={() => handleSort('leads')}
-                >
-                  <div className="flex items-center justify-end gap-1">
-                    Lead Forecast
-                    <ArrowUpDown className="h-3 w-3 text-gray-400" />
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer hover:bg-gray-50 text-right w-32"
-                  onClick={() => handleSort('sales')}
-                >
-                  <div className="flex items-center justify-end gap-1">
-                    Sales Forecast
-                    <ArrowUpDown className="h-3 w-3 text-gray-400" />
-                  </div>
-                </TableHead>
-                <TableHead className="text-right w-24">Stretch Goal</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortedAreas.map((area) => {
-                const previousWeek = getPreviousWeekArea(area);
-                const areaId = `${area.area}-${area.region}`;
-                const isLoading = loadingAreaId === areaId;
-                const isClickable = area.has_submitted;
-
-                return (
-                  <TableRow
-                    key={areaId}
-                    className={`transition-colors ${
-                      isClickable
-                        ? 'hover:bg-gray-50 cursor-pointer'
-                        : 'hover:bg-gray-25'
-                    } ${isLoading ? 'bg-blue-50' : ''}`}
-                    onClick={() => handleRowClick(area)}
-                  >
-                    {/* Area/Region */}
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div>
-                          <div className="font-medium text-gray-900">{area.area}</div>
-                          <div className="text-sm text-gray-500">{area.region}</div>
-                        </div>
-                        {isLoading && (
-                          <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                        )}
-                      </div>
-                    </TableCell>
-
-                    {/* Status */}
-                    <TableCell>
-                      {area.has_submitted ? (
-                        <Badge className="bg-green-100 text-green-800 border-green-200">
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Submitted
-                        </Badge>
-                      ) : (
-                        <Badge className="bg-orange-100 text-orange-800 border-orange-200">
-                          <Clock className="h-3 w-3 mr-1" />
-                          Pending
-                        </Badge>
-                      )}
-                    </TableCell>
-
-                    {/* Last Week Performance */}
-                    <TableCell className="text-right">
-                      <ForecastAccuracy
-                        actual={area.last_week_sales}
-                        forecast={area.last_week_sales_forecast}
-                        accuracy={area.forecast_accuracy}
-                      />
-                    </TableCell>
-
-                    {/* Scheduled Leads */}
-                    <TableCell className="text-right">
-                      {area.has_submitted && area.scheduled_leads !== undefined ? (
-                        <span className="font-medium">
-                          {new Intl.NumberFormat('en-US').format(area.scheduled_leads)}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">—</span>
-                      )}
-                    </TableCell>
-
-                    {/* Lead Forecast */}
-                    <TableCell className="text-right">
-                      {area.has_submitted ? (
-                        <TrendCell
-                          currentValue={area.lead_forecast}
-                          previousValue={previousWeek?.lead_forecast}
-                        />
-                      ) : (
-                        <span className="text-gray-400">—</span>
-                      )}
-                    </TableCell>
-
-                    {/* Sales Forecast */}
-                    <TableCell className="text-right">
-                      {area.has_submitted ? (
-                        <TrendCell
-                          currentValue={area.sales_forecast}
-                          previousValue={previousWeek?.sales_forecast}
-                        />
-                      ) : (
-                        <span className="text-gray-400">—</span>
-                      )}
-                    </TableCell>
-
-                    {/* Stretch Goal */}
-                    <TableCell className="text-right">
-                      {area.has_submitted ? (
-                        <span className="font-medium text-purple-600">
-                          {new Intl.NumberFormat('en-US').format(area.stretch_goal)}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">—</span>
-                      )}
-                    </TableCell>
-
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+          {/* Sort Controls */}
+          <div className="flex flex-wrap items-center gap-3 mt-4 pt-4 border-t border-gray-200">
+            <span className="text-sm font-medium text-gray-600">Sort by:</span>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleSort('area')}
+                className={`rounded-xl text-xs font-medium transition-all duration-200 ${
+                  sortField === 'area'
+                    ? 'bg-blue-50 border-blue-200 text-blue-700'
+                    : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                }`}
+                mobileOptimized
+              >
+                <ArrowUpDown className="h-3 w-3 mr-1" />
+                Area {sortField === 'area' && (sortDirection === 'desc' ? '↓' : '↑')}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleSort('status')}
+                className={`rounded-xl text-xs font-medium transition-all duration-200 ${
+                  sortField === 'status'
+                    ? 'bg-blue-50 border-blue-200 text-blue-700'
+                    : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                }`}
+                mobileOptimized
+              >
+                <ArrowUpDown className="h-3 w-3 mr-1" />
+                Status {sortField === 'status' && (sortDirection === 'desc' ? '↓' : '↑')}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleSort('leads')}
+                className={`rounded-xl text-xs font-medium transition-all duration-200 ${
+                  sortField === 'leads'
+                    ? 'bg-blue-50 border-blue-200 text-blue-700'
+                    : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                }`}
+                mobileOptimized
+              >
+                <ArrowUpDown className="h-3 w-3 mr-1" />
+                Leads {sortField === 'leads' && (sortDirection === 'desc' ? '↓' : '↑')}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleSort('sales')}
+                className={`rounded-xl text-xs font-medium transition-all duration-200 ${
+                  sortField === 'sales'
+                    ? 'bg-blue-50 border-blue-200 text-blue-700'
+                    : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                }`}
+                mobileOptimized
+              >
+                <ArrowUpDown className="h-3 w-3 mr-1" />
+                Sales {sortField === 'sales' && (sortDirection === 'desc' ? '↓' : '↑')}
+              </Button>
+            </div>
+          </div>
         </div>
       </Card>
 
+      {/* Mobile-First Area Cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-6">
+        {sortedAreas.map((area) => {
+          const previousWeek = getPreviousWeekArea(area);
+          const areaId = `${area.area}-${area.region}`;
+          const isLoading = loadingAreaId === areaId;
+
+          // Pending areas get a compact layout
+          if (!area.has_submitted) {
+            return (
+              <Card
+                key={areaId}
+                className="bg-white/80 backdrop-blur-sm border-0 shadow-lg rounded-2xl opacity-75"
+              >
+                <div className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div>
+                        <h3 className="text-lg font-bold text-black">{area.area}</h3>
+                        <p className="text-sm text-gray-600 font-medium">{area.region}</p>
+                      </div>
+                    </div>
+                    <Badge className="bg-orange-100 text-orange-800 border-orange-200 rounded-xl px-3 py-1.5 font-semibold">
+                      <Clock className="h-4 w-4 mr-2" />
+                      Pending
+                    </Badge>
+                  </div>
+                </div>
+              </Card>
+            );
+          }
+
+          // Submitted areas get the full layout but more compact
+          return (
+            <Card
+              key={areaId}
+              className={`bg-white/80 backdrop-blur-sm border-0 shadow-xl rounded-2xl transition-all duration-300 hover:shadow-2xl hover:scale-[1.01] cursor-pointer ${
+                isLoading ? 'bg-blue-50/80' : ''
+              }`}
+              onClick={() => handleRowClick(area)}
+            >
+              <div className="p-4 space-y-3">
+                {/* Header Row */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <h3 className="text-lg font-bold text-black tracking-tight">{area.area}</h3>
+                      <p className="text-sm text-gray-600 font-medium">{area.region}</p>
+                    </div>
+                    {isLoading && (
+                      <Loader2 className="h-4 w-4 animate-spin" style={{ color: '#61B2DC' }} />
+                    )}
+                  </div>
+                  <Badge className="bg-green-100 text-green-800 border-green-200 rounded-xl px-3 py-1.5 font-semibold">
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Submitted
+                  </Badge>
+                </div>
+
+                {/* Compact Metrics Row */}
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Last Week Performance */}
+                  <div className="bg-gray-50/50 rounded-xl p-3">
+                    <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Last Week</h4>
+                    <ForecastAccuracy
+                      actual={area.last_week_sales}
+                      forecast={area.last_week_sales_forecast}
+                      accuracy={area.forecast_accuracy}
+                    />
+                  </div>
+
+                  {/* Scheduled Leads */}
+                  <div className="bg-gray-50/50 rounded-xl p-3">
+                    <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Scheduled</h4>
+                    <div className="text-right">
+                      <span className="text-xl font-bold text-black">
+                        {area.scheduled_leads !== undefined
+                          ? new Intl.NumberFormat('en-US').format(area.scheduled_leads)
+                          : '—'
+                        }
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Forecast Row */}
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Lead Forecast */}
+                  <div className="bg-gray-50/50 rounded-xl p-3">
+                    <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Lead Forecast</h4>
+                    <TrendCell
+                      currentValue={area.lead_forecast}
+                      previousValue={previousWeek?.lead_forecast}
+                    />
+                  </div>
+
+                  {/* Sales Forecast */}
+                  <div className="bg-gray-50/50 rounded-xl p-3">
+                    <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Sales Forecast</h4>
+                    <TrendCell
+                      currentValue={area.sales_forecast}
+                      previousValue={previousWeek?.sales_forecast}
+                    />
+                  </div>
+                </div>
+
+                {/* Stretch Goal Banner */}
+                <div className="bg-gradient-to-r from-purple-100 to-pink-100 rounded-xl p-3 border border-purple-200">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-semibold text-purple-700 uppercase tracking-wide">Stretch Goal</h4>
+                    <span className="text-xl font-bold text-purple-700">
+                      {new Intl.NumberFormat('en-US').format(area.stretch_goal)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+
       {/* No results message */}
       {sortedAreas.length === 0 && (
-        <Card className="p-8 text-center">
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            No areas match your filter
-          </h3>
-          <p className="text-gray-600">
-            Try adjusting your filter criteria.
-          </p>
+        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl rounded-3xl">
+          <div className="p-8 text-center space-y-4">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto">
+              <TrendingUp className="h-8 w-8 text-gray-400" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold text-black">
+                No areas match your filter
+              </h3>
+              <p className="text-gray-600 font-medium">
+                Try adjusting your filter criteria to see more results.
+              </p>
+            </div>
+          </div>
         </Card>
       )}
     </div>

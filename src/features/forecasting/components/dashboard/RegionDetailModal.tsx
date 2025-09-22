@@ -4,14 +4,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
   MapPin,
   CheckCircle,
   Clock,
@@ -175,176 +167,185 @@ export function RegionDetailModal({ region, data, previousWeekData, isOpen, onCl
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-50 rounded-lg">
-              <MapPin className="h-5 w-5 text-blue-600" />
+      <DialogContent className="w-screen h-screen max-w-none max-h-none m-0 p-0 bg-gradient-to-br from-gray-50 to-white">
+        <div className="h-full flex flex-col">
+          <DialogHeader className="p-4 md:p-6 border-b border-gray-200">
+            <div className="flex items-center gap-3 md:gap-4">
+              <div className="p-2 md:p-3 rounded-xl" style={{ backgroundColor: '#61B2DC20' }}>
+                <MapPin className="h-5 w-5 md:h-6 md:w-6" style={{ color: '#61B2DC' }} />
+              </div>
+              <div>
+                <DialogTitle className="text-lg md:text-2xl font-bold text-black tracking-tight">
+                  {region} Region Details
+                </DialogTitle>
+                <p className="text-sm md:text-base text-gray-600 font-medium">
+                  {completedAreas.length} of {regionAreas.length} areas completed • Week of {new Date(data.week_of + 'T12:00:00').toLocaleDateString()}
+                </p>
+              </div>
             </div>
-            <div>
-              <DialogTitle className="text-xl font-semibold">
-                {region} Region Details
-              </DialogTitle>
-              <p className="text-sm text-gray-600">
-                {completedAreas.length} of {regionAreas.length} areas completed • Week of {new Date(data.week_of + 'T12:00:00').toLocaleDateString()}
-              </p>
-            </div>
-          </div>
-        </DialogHeader>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto p-4 md:p-6">
 
         <div className="space-y-6">
           {/* Regional Summary */}
-          <Card className="p-4 bg-blue-50 border-blue-200">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-              <div>
-                <TrendingUp className="h-4 w-4 mx-auto text-blue-600 mb-1" />
-                <p className="text-xs text-gray-600">Sales Forecast</p>
-                <p className="text-lg font-bold text-gray-900">
+          <div className="grid grid-cols-3 gap-2 md:gap-6">
+            <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl rounded-2xl p-3 md:p-6">
+              <div className="text-center">
+                <TrendingUp className="h-5 w-5 md:h-8 md:w-8 mx-auto mb-2 md:mb-3" style={{ color: '#61B2DC' }} />
+                <p className="text-xs md:text-sm font-semibold text-gray-600 uppercase tracking-wide">Sales</p>
+                <p className="text-lg md:text-3xl font-bold text-black">
                   {new Intl.NumberFormat('en-US').format(regionTotals.sales_forecast)}
                 </p>
               </div>
-              <div>
-                <Users className="h-4 w-4 mx-auto text-green-600 mb-1" />
-                <p className="text-xs text-gray-600">Lead Forecast</p>
-                <p className="text-lg font-bold text-gray-900">
+            </Card>
+            <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl rounded-2xl p-3 md:p-6">
+              <div className="text-center">
+                <Users className="h-5 w-5 md:h-8 md:w-8 mx-auto mb-2 md:mb-3 text-green-600" />
+                <p className="text-xs md:text-sm font-semibold text-gray-600 uppercase tracking-wide">Leads</p>
+                <p className="text-lg md:text-3xl font-bold text-black">
                   {new Intl.NumberFormat('en-US').format(regionTotals.lead_forecast)}
                 </p>
               </div>
-              <div>
-                <CheckCircle className="h-4 w-4 mx-auto text-purple-600 mb-1" />
-                <p className="text-xs text-gray-600">Completion Rate</p>
-                <p className="text-lg font-bold text-gray-900">
+            </Card>
+            <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl rounded-2xl p-3 md:p-6">
+              <div className="text-center">
+                <CheckCircle className="h-5 w-5 md:h-8 md:w-8 mx-auto mb-2 md:mb-3 text-purple-600" />
+                <p className="text-xs md:text-sm font-semibold text-gray-600 uppercase tracking-wide">Complete</p>
+                <p className="text-lg md:text-3xl font-bold text-black">
                   {((completedAreas.length / regionAreas.length) * 100).toFixed(1)}%
                 </p>
               </div>
-            </div>
-          </Card>
+            </Card>
+          </div>
 
           {/* Completed Areas */}
           {completedAreas.length > 0 && (
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-green-600" />
+              <h3 className="text-lg md:text-xl font-bold text-black mb-4 md:mb-6 flex items-center gap-2 md:gap-3">
+                <CheckCircle className="h-5 w-5 md:h-6 md:w-6 text-green-600" />
                 Completed Areas ({completedAreas.length})
               </h3>
-              <Card>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Area</TableHead>
-                        <TableHead className="text-right w-40">Last Week Performance</TableHead>
-                        <TableHead className="text-right w-28">Scheduled Leads</TableHead>
-                        <TableHead className="text-right w-28">Lead Forecast</TableHead>
-                        <TableHead className="text-right w-32">Sales Forecast</TableHead>
-                        <TableHead className="text-right w-24">Stretch Goal</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {completedAreas.map((area) => {
-                        const previousWeek = getPreviousWeekArea(area);
-                        const areaId = `${area.area}-${area.region}`;
-                        const isLoading = loadingAreaId === areaId;
-                        const isClickable = area.has_submitted && onAreaClick;
+              <div className="space-y-3">
+                {completedAreas.map((area) => {
+                  const previousWeek = getPreviousWeekArea(area);
+                  const areaId = `${area.area}-${area.region}`;
+                  const isLoading = loadingAreaId === areaId;
+                  const isClickable = area.has_submitted && onAreaClick;
 
-                        return (
-                          <TableRow
-                            key={areaId}
-                            className={`transition-colors ${
-                              isClickable
-                                ? 'hover:bg-gray-50 cursor-pointer'
-                                : 'hover:bg-gray-25'
-                            } ${isLoading ? 'bg-blue-50' : ''}`}
-                            onClick={() => handleAreaClick(area)}
-                          >
-                            {/* Area */}
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <div>
-                                  <div className="font-medium text-gray-900">{area.area}</div>
-                                  {area.submitted_at && (
-                                    <div className="text-xs text-gray-500">
-                                      Submitted {new Date(area.submitted_at).toLocaleDateString()}
-                                    </div>
-                                  )}
-                                </div>
-                                {isLoading && (
-                                  <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                                )}
-                              </div>
-                            </TableCell>
+                  return (
+                    <Card
+                      key={areaId}
+                      className={`bg-white/80 backdrop-blur-sm border-0 shadow-xl rounded-2xl transition-all duration-300 ${
+                        isClickable
+                          ? 'hover:shadow-2xl hover:scale-[1.01] cursor-pointer'
+                          : ''
+                      } ${isLoading ? 'bg-blue-50/80' : ''}`}
+                      onClick={() => handleAreaClick(area)}
+                    >
+                      <div className="p-4 space-y-3">
+                        {/* Header */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div>
+                              <h4 className="text-lg font-bold text-black">{area.area}</h4>
+                              {area.submitted_at && (
+                                <p className="text-xs text-gray-500 font-medium">
+                                  Submitted {new Date(area.submitted_at).toLocaleDateString()}
+                                </p>
+                              )}
+                            </div>
+                            {isLoading && (
+                              <Loader2 className="h-4 w-4 animate-spin" style={{ color: '#61B2DC' }} />
+                            )}
+                          </div>
+                          <Badge className="bg-green-100 text-green-800 border-green-200 rounded-xl px-3 py-1.5 font-semibold">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Submitted
+                          </Badge>
+                        </div>
 
-                            {/* Last Week Performance */}
-                            <TableCell className="text-right">
-                              <ForecastAccuracy
-                                actual={area.last_week_sales}
-                                forecast={area.last_week_sales_forecast}
-                                accuracy={area.forecast_accuracy}
-                              />
-                            </TableCell>
+                        {/* Metrics Grid */}
+                        <div className="grid grid-cols-2 gap-3">
+                          {/* Last Week Performance */}
+                          <div className="bg-gray-50/50 rounded-xl p-3">
+                            <h5 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Last Week</h5>
+                            <ForecastAccuracy
+                              actual={area.last_week_sales}
+                              forecast={area.last_week_sales_forecast}
+                              accuracy={area.forecast_accuracy}
+                            />
+                          </div>
 
-                            {/* Scheduled Leads */}
-                            <TableCell className="text-right">
+                          {/* Scheduled Leads */}
+                          <div className="bg-gray-50/50 rounded-xl p-3">
+                            <h5 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Scheduled</h5>
+                            <div className="text-right">
                               {area.scheduled_leads !== undefined ? (
-                                <span className="font-medium">
+                                <span className="text-xl font-bold text-black">
                                   {new Intl.NumberFormat('en-US').format(area.scheduled_leads)}
                                 </span>
                               ) : (
-                                <span className="text-gray-400">—</span>
+                                <span className="text-xl font-bold text-gray-400">—</span>
                               )}
-                            </TableCell>
+                            </div>
+                          </div>
 
-                            {/* Lead Forecast */}
-                            <TableCell className="text-right">
-                              <TrendCell
-                                currentValue={area.lead_forecast}
-                                previousValue={previousWeek?.lead_forecast}
-                              />
-                            </TableCell>
+                          {/* Lead Forecast */}
+                          <div className="bg-gray-50/50 rounded-xl p-3">
+                            <h5 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Lead Forecast</h5>
+                            <TrendCell
+                              currentValue={area.lead_forecast}
+                              previousValue={previousWeek?.lead_forecast}
+                            />
+                          </div>
 
-                            {/* Sales Forecast */}
-                            <TableCell className="text-right">
-                              <TrendCell
-                                currentValue={area.sales_forecast}
-                                previousValue={previousWeek?.sales_forecast}
-                              />
-                            </TableCell>
+                          {/* Sales Forecast */}
+                          <div className="bg-gray-50/50 rounded-xl p-3">
+                            <h5 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Sales Forecast</h5>
+                            <TrendCell
+                              currentValue={area.sales_forecast}
+                              previousValue={previousWeek?.sales_forecast}
+                            />
+                          </div>
+                        </div>
 
-                            {/* Stretch Goal */}
-                            <TableCell className="text-right">
-                              <span className="font-medium text-purple-600">
-                                {new Intl.NumberFormat('en-US').format(area.stretch_goal)}
-                              </span>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              </Card>
+                        {/* Stretch Goal Banner */}
+                        <div className="bg-gradient-to-r from-purple-100 to-pink-100 rounded-xl p-3 border border-purple-200">
+                          <div className="flex items-center justify-between">
+                            <h5 className="text-xs font-semibold text-purple-700 uppercase tracking-wide">Stretch Goal</h5>
+                            <span className="text-xl font-bold text-purple-700">
+                              {new Intl.NumberFormat('en-US').format(area.stretch_goal)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
             </div>
           )}
 
           {/* Pending Areas */}
           {pendingAreas.length > 0 && (
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Clock className="h-5 w-5 text-orange-600" />
+              <h3 className="text-xl font-bold text-black mb-6 flex items-center gap-3">
+                <Clock className="h-6 w-6 text-orange-600" />
                 Pending Areas ({pendingAreas.length})
               </h3>
-              <div className="grid gap-3">
+              <div className="grid gap-4">
                 {pendingAreas.map((area) => (
-                  <Card key={`${area.area}-${area.region}`} className="p-4 bg-orange-50 border-orange-200">
+                  <Card key={`${area.area}-${area.region}`} className="bg-white/80 backdrop-blur-sm border-0 shadow-xl rounded-3xl p-6">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <h4 className="font-medium text-gray-900">{area.area}</h4>
-                        <Badge className="bg-orange-100 text-orange-800 border-orange-200 text-xs">
-                          <Clock className="h-3 w-3 mr-1" />
+                      <div className="flex items-center gap-4">
+                        <h4 className="text-lg font-bold text-black">{area.area}</h4>
+                        <Badge className="bg-orange-100 text-orange-800 border-orange-200 rounded-xl px-3 py-1.5 font-semibold">
+                          <Clock className="h-4 w-4 mr-2" />
                           Pending
                         </Badge>
                       </div>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-gray-600 font-medium">
                         Forecast not yet submitted
                       </p>
                     </div>
@@ -356,16 +357,24 @@ export function RegionDetailModal({ region, data, previousWeekData, isOpen, onCl
 
           {/* No areas message */}
           {regionAreas.length === 0 && (
-            <Card className="p-8 text-center">
-              <MapPin className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No Areas Found
-              </h3>
-              <p className="text-gray-600">
-                No areas found for the {region} region for this week.
-              </p>
+            <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl rounded-3xl">
+              <div className="p-8 text-center space-y-4">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto">
+                  <MapPin className="h-8 w-8 text-gray-400" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-xl font-bold text-black">
+                    No Areas Found
+                  </h3>
+                  <p className="text-gray-600 font-medium">
+                    No areas found for the {region} region for this week.
+                  </p>
+                </div>
+              </div>
             </Card>
           )}
+          </div>
+        </div>
         </div>
       </DialogContent>
     </Dialog>

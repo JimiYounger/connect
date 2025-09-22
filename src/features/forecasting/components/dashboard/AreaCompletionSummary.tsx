@@ -1,8 +1,7 @@
 'use client';
 
 import { Card } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { TrendingUp, TrendingDown, Users } from 'lucide-react';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 import type { ForecastSummary } from '../../types';
 
 interface AreaCompletionSummaryProps {
@@ -27,35 +26,43 @@ function MetricCard({ title, value, icon, suffix = '', description, trend }: Met
   const formattedValue = new Intl.NumberFormat('en-US').format(value);
 
   return (
-    <Card className="p-6 hover:shadow-lg transition-shadow">
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
-          <div className="flex items-baseline gap-2">
-            <h3 className="text-3xl font-bold text-gray-900">
-              {formattedValue}{suffix}
-            </h3>
-            {trend && (
-              <span
-                className={`text-sm font-medium flex items-center gap-1 ${
-                  trend.isPositive ? 'text-green-600' : 'text-red-600'
-                }`}
-              >
-                {trend.isPositive ? (
-                  <TrendingUp className="h-4 w-4" />
-                ) : (
-                  <TrendingDown className="h-4 w-4" />
-                )}
-                {Math.abs(trend.value)}%
-              </span>
+    <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl rounded-3xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
+      <div className="p-4 md:p-6 space-y-2 md:space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex-1 text-center md:text-left">
+            <p className="text-xs md:text-sm font-semibold tracking-wide text-gray-600 uppercase mb-1 md:mb-2">{title}</p>
+            <div className="flex flex-col items-center md:flex-row md:items-baseline gap-1 md:gap-3">
+              <h3 className="text-xl md:text-3xl lg:text-4xl font-bold text-black">
+                {formattedValue}{suffix}
+              </h3>
+              {trend && (
+                <span
+                  className={`text-xs md:text-sm font-bold flex items-center gap-1 px-1.5 md:px-2 py-0.5 md:py-1 rounded-full ${
+                    trend.isPositive
+                      ? 'text-green-700 bg-green-100'
+                      : 'text-red-700 bg-red-100'
+                  }`}
+                >
+                  {trend.isPositive ? (
+                    <TrendingUp className="h-2 w-2 md:h-3 md:w-3" />
+                  ) : (
+                    <TrendingDown className="h-2 w-2 md:h-3 md:w-3" />
+                  )}
+                  <span>{Math.abs(trend.value)}%</span>
+                </span>
+              )}
+            </div>
+            {description && (
+              <p className="text-xs md:text-sm font-medium text-gray-500 mt-1 md:mt-2 hidden md:block">{description}</p>
             )}
           </div>
-          {description && (
-            <p className="text-sm text-gray-500 mt-1">{description}</p>
+          {icon && (
+            <div className="ml-2 md:ml-4 p-2 md:p-4 rounded-xl hidden md:block" style={{ backgroundColor: '#61B2DC20' }}>
+              <div style={{ color: '#61B2DC' }}>
+                {icon}
+              </div>
+            </div>
           )}
-        </div>
-        <div className="ml-4 p-3 bg-blue-50 rounded-lg">
-          {icon}
         </div>
       </div>
     </Card>
@@ -75,87 +82,103 @@ export function AreaCompletionSummary({ data, previousWeekData, onRegionClick }:
   } : undefined;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900">
-            Weekly Forecast Overview
-          </h2>
-          <p className="text-sm text-gray-600">
-            Week of {new Date(data.week_of + 'T12:00:00').toLocaleDateString('en-US', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            })}
-          </p>
-        </div>
-        <div className="text-right">
-          <p className="text-sm text-gray-600">Area Completion</p>
-          <p className="text-2xl font-bold text-gray-900">
-            {data.completion_stats.completed_areas} of {data.completion_stats.total_areas}
-          </p>
-        </div>
+    <div className="space-y-8">
+      <div className="space-y-1">
+        <h2 className="text-2xl md:text-3xl font-bold text-black tracking-tight">
+          Weekly Forecast Overview
+        </h2>
+        <p className="text-gray-600 font-medium">
+          Week of {new Date(data.week_of + 'T12:00:00').toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          })}
+        </p>
       </div>
 
-      {/* Forecast Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* All Metrics in One Row */}
+      <div className="grid grid-cols-4 gap-2 md:gap-6">
+        {/* Area Completion */}
+        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl rounded-3xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
+          <div className="p-4 md:p-6 space-y-2 md:space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 text-center md:text-left">
+                <p className="text-xs md:text-sm font-semibold tracking-wide text-gray-600 uppercase mb-1 md:mb-2">
+                  <span className="md:hidden">Areas</span>
+                  <span className="hidden md:inline">Area Completion</span>
+                </p>
+                <p className="text-xl md:text-3xl lg:text-4xl font-bold text-black">
+                  {data.completion_stats.completed_areas} <span className="text-gray-400 text-sm md:text-xl">of</span> {data.completion_stats.total_areas}
+                </p>
+                <p className="text-xs md:text-sm font-medium text-gray-500 mt-1 md:mt-2 hidden md:block">Areas submitted</p>
+              </div>
+            </div>
+          </div>
+        </Card>
         {/* Sales Forecast */}
         <MetricCard
-          title="Sales Forecast"
+          title="Sales"
           value={data.sales_forecast}
-          icon={<TrendingUp className="h-6 w-6 text-blue-600" />}
+          icon={null}
           description="Total projected sales"
           trend={salesTrend}
         />
 
         {/* Lead Forecast */}
         <MetricCard
-          title="Lead Forecast"
+          title="Leads"
           value={data.lead_forecast}
-          icon={<Users className="h-6 w-6 text-green-600" />}
+          icon={null}
           description="Expected new leads"
           trend={leadsTrend}
         />
 
         {/* Stretch Goal */}
         <MetricCard
-          title="Stretch Goal"
+          title="Stretch"
           value={data.stretch_goal}
-          icon={<TrendingUp className="h-6 w-6 text-purple-600" />}
+          icon={null}
           description="Total stretch target"
         />
       </div>
 
       {/* Regional Completion Summary */}
       {data.completion_stats.by_region.length > 0 && (
-        <Card className="p-6">
-          <h3 className="font-medium text-gray-900 mb-4">Completion by Region</h3>
-          <div className="space-y-3">
-            {data.completion_stats.by_region.map((region) => (
-              <div
-                key={region.region}
-                className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
-                  onRegionClick ? 'hover:bg-gray-50 cursor-pointer' : ''
-                }`}
-                onClick={() => onRegionClick?.(region.region)}
-              >
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium text-gray-700">
+        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl rounded-3xl">
+          <div className="p-6 space-y-6">
+            <h3 className="text-xl font-bold text-black">Completion by Region</h3>
+            <div className="space-y-4">
+              {data.completion_stats.by_region.map((region) => (
+                <div
+                  key={region.region}
+                  className={`p-4 rounded-2xl transition-all duration-200 ${
+                    onRegionClick
+                      ? 'hover:bg-gray-50 cursor-pointer transform hover:scale-102 active:scale-98'
+                      : 'bg-gray-50/50'
+                  }`}
+                  onClick={() => onRegionClick?.(region.region)}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="font-semibold text-black text-lg">
                       {region.region}
                     </span>
-                    <span className="text-sm text-gray-600">
+                    <span className="font-bold text-gray-600">
                       {region.completed_areas}/{region.total_areas}
                     </span>
                   </div>
-                  <Progress
-                    value={region.completion_rate}
-                    className="h-2"
-                  />
+                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-500 ease-out"
+                      style={{
+                        width: `${region.completion_rate}%`,
+                        backgroundColor: '#61B2DC'
+                      }}
+                    />
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </Card>
       )}

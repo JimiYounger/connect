@@ -132,7 +132,7 @@ export function MobileSelect({
           // Active state for better mobile feedback
           'active:bg-accent active:text-accent-foreground',
           // Text styling
-          'text-base',
+          'text-base font-semibold',
           !selectedValue && 'text-muted-foreground',
           className
         )}
@@ -210,7 +210,7 @@ function OptionItem({
       className={cn(
         // Base styles
         'relative flex cursor-pointer items-center',
-        'px-4 py-3 text-base',
+        'px-4 py-3 text-base font-medium',
         // Touch optimization
         'min-h-[44px] touch-manipulation',
         '[-webkit-tap-highlight-color:transparent]',

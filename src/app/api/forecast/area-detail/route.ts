@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
-import type { AreaDetailView } from '@/features/forecasting/types';
+import type { AreaDetailView, PersonWithAvatar, PeopleTextAnswer } from '@/features/forecasting/types';
 
 export async function GET(request: Request) {
   try {
@@ -65,7 +65,7 @@ export async function GET(request: Request) {
     if (response.user_id) {
       const { data } = await supabase
         .from('user_profiles')
-        .select('first_name, last_name, email')
+        .select('first_name, last_name, email, user_key')
         .eq('id', response.user_id)
         .single();
       userProfile = data;
@@ -86,26 +86,29 @@ export async function GET(request: Request) {
 
 
     // Helper to parse people selection with additional text
-    const getPeopleWithText = async (questionText: string): Promise<string[] | { people: string[]; text: string }> => {
+    const getPeopleWithText = async (questionText: string): Promise<PersonWithAvatar[] | PeopleTextAnswer> => {
       const answerText = getAnswer(questionText);
-      if (!answerText) return [];
+      if (!answerText) return [] as PersonWithAvatar[];
 
       // Handle format: ["id1","id2"]||text
       const peopleMatch = answerText.match(/^\[(.*?)\]/);
       if (peopleMatch) {
         try {
           const ids = JSON.parse(`[${peopleMatch[1]}]`);
-          let people: string[] = [];
+          let people: PersonWithAvatar[] = [];
 
-          // Fetch user names from their IDs
+          // Fetch user names and keys from their IDs
           if (ids.length > 0) {
             const { data: users } = await supabase
               .from('user_profiles')
-              .select('first_name, last_name')
+              .select('first_name, last_name, user_key')
               .in('id', ids);
 
             if (users) {
-              people = users.map(u => `${u.first_name} ${u.last_name}`);
+              people = users.map(u => ({
+                name: `${u.first_name} ${u.last_name}`,
+                user_key: u.user_key || null
+              }));
             }
           }
 
@@ -120,10 +123,10 @@ export async function GET(request: Request) {
 
           return people;
         } catch {
-          return [];
+          return [] as PersonWithAvatar[];
         }
       }
-      return [];
+      return [] as PersonWithAvatar[];
     };
 
     // Organize all answers by section
@@ -148,11 +151,14 @@ export async function GET(request: Request) {
             if (ids.length > 0) {
               const { data: users } = await supabase
                 .from('user_profiles')
-                .select('first_name, last_name')
+                .select('first_name, last_name, user_key')
                 .in('id', ids);
 
               if (users) {
-                answerValue = users.map(u => `${u.first_name} ${u.last_name}`);
+                answerValue = users.map(u => ({
+                  name: `${u.first_name} ${u.last_name}`,
+                  user_key: u.user_key || null
+                }));
               }
             }
           } catch {
@@ -193,7 +199,8 @@ export async function GET(request: Request) {
       submitted_at: response.submitted_at || undefined,
       manager_info: userProfile ? {
         name: `${userProfile.first_name} ${userProfile.last_name}`,
-        email: userProfile.email
+        email: userProfile.email,
+        user_key: userProfile.user_key || ''
       } : undefined,
       sections: Object.fromEntries(sections),
       // Keep backward compatibility
