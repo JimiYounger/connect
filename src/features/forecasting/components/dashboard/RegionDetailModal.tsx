@@ -169,7 +169,7 @@ export function RegionDetailModal({ region, data, previousWeekData, isOpen, onCl
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-screen h-screen max-w-none max-h-none m-0 p-0 bg-gradient-to-br from-gray-50 to-white">
         <div className="h-full flex flex-col">
-          <DialogHeader className="p-4 md:p-6 border-b border-gray-200">
+          <DialogHeader className="p-4 md:p-6 pt-[max(1rem,env(safe-area-inset-top))] border-b border-gray-200">
             <div className="flex items-center gap-3 md:gap-4">
               <div className="p-2 md:p-3 rounded-xl" style={{ backgroundColor: '#61B2DC20' }}>
                 <MapPin className="h-5 w-5 md:h-6 md:w-6" style={{ color: '#61B2DC' }} />

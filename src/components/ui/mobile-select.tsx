@@ -98,6 +98,16 @@ export function MobileSelect({
     }
   };
 
+  // Handle touch events for PWA compatibility
+  const handleButtonTouch = (e: React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!disabled) {
+      setIsOpen(!isOpen);
+    }
+  };
+
   return (
     <div className="relative">
       {/* Hidden input for form submission */}
@@ -116,14 +126,17 @@ export function MobileSelect({
         type="button"
         disabled={disabled}
         onClick={handleButtonClick}
+        onTouchEnd={handleButtonTouch}
         className={cn(
           // Base styles
           'flex w-full items-center justify-between',
           'rounded-md border border-input bg-background',
-          'px-4 py-3 text-left',
+          'px-4 py-3 text-left cursor-pointer',
           // Touch optimization
           'min-h-[44px] touch-manipulation',
           '[-webkit-tap-highlight-color:transparent]',
+          // PWA specific
+          '[user-select:none] [touch-action:manipulation]',
           // States
           'transition-all duration-200',
           'hover:bg-accent hover:text-accent-foreground',
@@ -155,7 +168,7 @@ export function MobileSelect({
           ref={dropdownRef}
           className={cn(
             // Positioning
-            'absolute z-50 mt-1 w-full',
+            'absolute z-[9999] mt-1 w-full',
             // Styling
             'rounded-md border bg-background shadow-lg',
             // Animation
@@ -204,9 +217,19 @@ function OptionItem({
     }
   };
 
+  const handleTouch = (e: React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!option.disabled) {
+      onSelect(option.value);
+    }
+  };
+
   return (
     <div
       onClick={handleClick}
+      onTouchEnd={handleTouch}
       className={cn(
         // Base styles
         'relative flex cursor-pointer items-center',
@@ -214,6 +237,8 @@ function OptionItem({
         // Touch optimization
         'min-h-[44px] touch-manipulation',
         '[-webkit-tap-highlight-color:transparent]',
+        // PWA specific
+        '[user-select:none] [touch-action:manipulation]',
         // States
         'transition-colors',
         'hover:bg-accent hover:text-accent-foreground',
