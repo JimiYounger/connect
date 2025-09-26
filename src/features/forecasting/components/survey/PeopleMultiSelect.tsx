@@ -131,7 +131,7 @@ export function PeopleMultiSelect({
 
 
       {/* User List */}
-      <div className="border rounded-md max-h-60 overflow-y-auto touch-manipulation [-webkit-overflow-scrolling:touch]">
+      <div className="border rounded-md touch-manipulation [-webkit-overflow-scrolling:touch]">
         {filteredUsers.length === 0 ? (
           <div className="p-4 text-center text-gray-500">
             {searchTerm ? 'No users found matching your search' : 'No users available'}
