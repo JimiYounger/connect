@@ -1,20 +1,19 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useAuth } from '@/features/auth/context/auth-context'
+import { authService } from '@/features/auth/utils/supabase-client'
 import { useRouter } from 'next/navigation'
 
 export default function LogoutPage() {
-  const { signOut } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
     const handleLogout = async () => {
-      await signOut()
+      await authService.signOut()
       router.push('/')
     }
     handleLogout()
-  }, [signOut, router])
+  }, [router])
 
   return (
     <div className="flex min-h-screen items-center justify-center">
