@@ -37,7 +37,7 @@ export async function middleware(request: NextRequest) {
     const res = await updateSession(request)
 
     // Add public URLs and API routes that handle their own auth
-    const publicUrls = ['/', '/auth/callback', '/api/log-error', '/login', '/auth/processing', '/auth/error']
+    const publicUrls = ['/', '/auth/callback', '/api/log-error', '/login', '/auth/processing', '/auth/error', '/logout']
     const authFlowUrls = ['/auth/callback', '/auth/processing', '/auth/error'] 
     
     // Service API routes that use their own API key auth, not session auth
