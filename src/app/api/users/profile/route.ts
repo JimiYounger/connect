@@ -137,9 +137,23 @@ async function getFreshProfile(email: string, googleUserId: string, supabase: an
     throw fetchError
   }
 
+  // Backfill user_id if missing
+  if (existingProfile && !existingProfile.user_id) {
+    const { data: updatedProfile } = await supabase
+      .from('user_profiles')
+      .update({ user_id: googleUserId })
+      .eq('email', email)
+      .select()
+      .single()
+
+    if (updatedProfile) {
+      existingProfile.user_id = updatedProfile.user_id
+    }
+  }
+
   // Check if we need to sync
-  const needsSync = !existingProfile || 
-    !existingProfile.last_airtable_sync || 
+  const needsSync = !existingProfile ||
+    !existingProfile.last_airtable_sync ||
     isStale(existingProfile.last_airtable_sync)
 
   if (needsSync) {

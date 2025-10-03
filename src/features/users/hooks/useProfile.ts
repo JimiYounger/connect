@@ -96,7 +96,7 @@ export function useProfile(session: Session | null): UseProfileResult {
 
         // Validate that the response matches UserProfile type
         const profile = data as UserProfile
-        if (!profile.email || !profile.user_id) {
+        if (!profile.email) {
           throw new Error('Invalid profile data: missing required fields')
         }
 
