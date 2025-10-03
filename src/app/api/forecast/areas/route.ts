@@ -20,6 +20,7 @@ export async function GET() {
 
     if (!currentUserProfile) {
       return NextResponse.json({ error: 'User profile not found' }, { status: 404 });
+      
     }
 
     // Get distinct area-region pairs from user_profiles
