@@ -209,7 +209,7 @@ export const forecastService = {
     const salesForecastId = questions?.find((q: { question_text: string; id: string }) => q.question_text.includes('sales forecast for this week'))?.id;
     const leadForecastId = questions?.find((q: { question_text: string; id: string }) => q.question_text.includes('lead forecast for this week'))?.id;
     const stretchGoalId = questions?.find((q: { question_text: string; id: string }) => q.question_text.includes('stretch goal for sales'))?.id;
-    const lastWeekSalesId = questions?.find((q: { question_text: string; id: string }) => q.question_text.includes('total sales last week'))?.id;
+    const lastWeekSalesId = questions?.find((q: { question_text: string; id: string }) => q.question_text.includes('total sales this week'))?.id;
     const scheduledLeadsId = questions?.find((q: { question_text: string; id: string }) => q.question_text.includes('leads and two-touches are currently scheduled'))?.id;
 
     // Create map of previous week's forecasts for comparison
