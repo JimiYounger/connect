@@ -24,13 +24,15 @@ export async function GET() {
     }
 
     // Get distinct area-region pairs from user_profiles
+    // Filter to only include Outside Sales and Field Marketing departments
     const { data: areas, error: areasError } = await supabase
       .from('user_profiles')
-      .select('area, region')
+      .select('area, region, department')
       .not('area', 'is', null)
       .not('region', 'is', null)
       .not('area', 'eq', '')
       .not('region', 'eq', '')
+      .in('department', ['Outside Sales', 'Field Marketing'])
       .order('area');
 
     if (areasError) {

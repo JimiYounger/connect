@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import Image from 'next/image';
 import {
   MapPin,
   CheckCircle,
@@ -14,7 +15,8 @@ import {
   ChevronDown,
   Minus,
   Loader2,
-  X
+  X,
+  User
 } from 'lucide-react';
 import { useState } from 'react';
 import type { ForecastSummary, AreaSummary } from '../../types';
@@ -274,9 +276,33 @@ export function RegionDetailModal({ region, data, previousWeekData, isOpen, onCl
                               <Loader2 className="h-4 w-4 animate-spin" style={{ color: '#61B2DC' }} />
                             )}
                           </div>
-                          <Badge className="bg-green-100 text-green-800 border-green-200 rounded-xl px-3 py-1.5 font-semibold">
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            Submitted
+                          <Badge className="bg-green-100 text-green-800 border-green-200 rounded-xl px-2.5 py-1.5">
+                            <div className="flex items-center gap-2">
+                              <div className="h-5 w-5 rounded-full overflow-hidden bg-gray-200 flex-shrink-0 relative">
+                                {area.submitter_user_key ? (
+                                  <Image
+                                    src={`https://plpower.link/${area.submitter_user_key}.pic`}
+                                    alt={area.submitter_name || 'Submitter'}
+                                    width={20}
+                                    height={20}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.style.display = 'none';
+                                      const fallback = target.parentElement?.querySelector('.fallback-icon') as HTMLElement;
+                                      if (fallback) fallback.style.display = 'block';
+                                    }}
+                                  />
+                                ) : null}
+                                <User className={`fallback-icon h-3 w-3 mx-auto mt-1 ${area.submitter_user_key ? 'hidden' : 'block'}`} style={{ color: '#61B2DC' }} />
+                              </div>
+                              <div className="flex flex-col items-start">
+                                <span className="font-semibold text-xs leading-tight">
+                                  {area.submitter_name || 'Unknown'}
+                                </span>
+                                <span className="text-[10px] leading-tight opacity-75">Submitted</span>
+                              </div>
+                            </div>
                           </Badge>
                         </div>
 

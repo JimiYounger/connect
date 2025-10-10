@@ -142,13 +142,16 @@ export const forecastService = {
     const targetWeek = weekOf || getMonday();
 
     // Get all unique areas from user_profiles for completion tracking
+    // Filter to only include Outside Sales and Field Marketing departments
     const { data: allAreas, error: areasError } = await client
       .from('user_profiles')
-      .select('area, region')
+      .select('area, region, department')
       .not('area', 'is', null)
       .not('area', 'eq', '')
       .not('region', 'is', null)
-      .not('region', 'eq', 'Corporate');
+      .not('region', 'eq', 'Corporate')
+      .not('region', 'eq', 'Inside Sales')
+      .in('department', ['Outside Sales', 'Field Marketing']);
 
     if (areasError) throw areasError;
 
@@ -158,18 +161,22 @@ export const forecastService = {
     ).map((combo) => {
       const [area, region] = (combo as string).split('|');
       return { area, region };
-    }).filter(area => area.region && area.region !== 'Corporate');
+    }).filter(area => area.region && area.region !== 'Corporate' && area.region !== 'Inside Sales');
 
-    // Get all responses for the week (excluding Corporate and null regions)
+    // Get all responses for the week (excluding Corporate, Inside Sales and null regions)
+    // Also join with user_profiles to filter by department and get submitter info
     const { data: responses, error: responsesError } = await client
       .from('forecast_responses')
       .select(`
         *,
-        forecast_answers (*)
+        forecast_answers (*),
+        user_profiles!user_id (department, first_name, last_name, profile_pic_url, user_key)
       `)
       .eq('week_of', targetWeek)
       .not('region', 'is', null)
-      .not('region', 'eq', 'Corporate');
+      .not('region', 'eq', 'Corporate')
+      .not('region', 'eq', 'Inside Sales')
+      .in('user_profiles.department', ['Outside Sales', 'Field Marketing']);
 
     if (responsesError) throw responsesError;
 
@@ -182,11 +189,14 @@ export const forecastService = {
       .from('forecast_responses')
       .select(`
         *,
-        forecast_answers (*)
+        forecast_answers (*),
+        user_profiles!user_id (department)
       `)
       .eq('week_of', previousWeek)
       .not('region', 'is', null)
-      .not('region', 'eq', 'Corporate');
+      .not('region', 'eq', 'Corporate')
+      .not('region', 'eq', 'Inside Sales')
+      .in('user_profiles.department', ['Outside Sales', 'Field Marketing']);
 
     // Get all questions to map answers
     const { data: questions, error: questionsError } = await client
@@ -230,10 +240,10 @@ export const forecastService = {
         days_overdue: 0 // TODO: Calculate based on expected submission date
       }));
 
-    // Calculate regional completion stats (excluding Corporate and null regions)
+    // Calculate regional completion stats (excluding Corporate, Inside Sales and null regions)
     const regionCompletionMap = new Map<string, { total: number; completed: number }>();
     uniqueAreas.forEach(area => {
-      if (area.region && area.region !== 'Corporate') {
+      if (area.region && area.region !== 'Corporate' && area.region !== 'Inside Sales') {
         if (!regionCompletionMap.has(area.region)) {
           regionCompletionMap.set(area.region, { total: 0, completed: 0 });
         }
@@ -299,6 +309,11 @@ export const forecastService = {
           // Get previous week's forecast for this area
           const lastWeekForecast = previousWeekForecastMap.get(areaKey) || 0;
 
+          // Get submitter info from the joined user_profiles data
+          const userProfile = response.user_profiles;
+          const submitterName = userProfile ?
+            `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim() : '';
+
           areaMap.set(areaKey, {
             area: response.area,
             region: response.region,
@@ -311,6 +326,10 @@ export const forecastService = {
             scheduled_leads: 0,
             has_submitted: true,
             submitted_at: response.submitted_at,
+            submitted_by: response.user_id,
+            submitter_name: submitterName,
+            submitter_profile_pic: userProfile?.profile_pic_url || null,
+            submitter_user_key: userProfile?.user_key || null,
             forecast_accuracy: null // Will be calculated after aggregation
           });
         }

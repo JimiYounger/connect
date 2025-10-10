@@ -93,6 +93,10 @@ export interface AreaSummary {
   scheduled_leads?: number;
   has_submitted: boolean;
   submitted_at?: string;
+  submitted_by?: string; // User ID who submitted
+  submitter_name?: string; // Name of submitter
+  submitter_profile_pic?: string; // Profile pic URL
+  submitter_user_key?: string; // User key for profile pic
   week_over_week_sales_change?: number;
   week_over_week_leads_change?: number;
   forecast_accuracy?: 'above' | 'hit' | 'below' | null; // Performance vs last week's forecast
